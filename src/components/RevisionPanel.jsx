@@ -1,37 +1,37 @@
 import React, { useState } from 'react';
-import API from '../api/axiosConfig';
-
-import axios from 'axios';
+import API from '../api/axiosConfig'; // Centralized API for AWS/Production
 import { 
   UserPlus, 
   CheckCircle, 
   RefreshCcw, 
-  Calendar, 
   AlertTriangle,
   History,
   UserCheck,
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  ShieldAlert
 } from 'lucide-react';
 
+/**
+ * REVISION PANEL: MANUAL INTERVENTION MODULE
+ * Purpose: Handles 'Revision' status tasks by allowing deadline approval or node reassignment.
+ */
 const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
   const [newDoerId, setNewDoerId] = useState('');
   const [reassignRemarks, setReassignRemarks] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 1. Approve the Doer's requested deadline (Logic Preserved)
+  // --- 1. APPROVE LOGIC (Preserved Exactly) ---
   const handleApprove = async () => {
     try {
       setIsProcessing(true);
-      
-      // Safety Guard: Extract the date from the remarks string
       let proposedDate = task.deadline; 
       if (task.remarks && task.remarks.includes("Proposed Deadline:")) {
           const extractedDate = task.remarks.split("Proposed Deadline: ")[1]?.split(".")[0];
           if (extractedDate) proposedDate = extractedDate;
       }
       
-      await axios.put(`/tasks/handle-revision`, {
+      await API.put(`/tasks/handle-revision`, {
         taskId: task._id,
         action: 'Approve',
         newDeadline: proposedDate, 
@@ -48,13 +48,13 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
     }
   };
 
-  // 2. Reassign the task to a different Doer (Logic Preserved)
+  // --- 2. REASSIGN LOGIC (Preserved Exactly) ---
   const handleReassign = async () => {
     if (!newDoerId) return alert("Please select a new Doer for reassignment.");
     
     try {
       setIsProcessing(true);
-      await axios.put(`/tasks/handle-revision`, {
+      await API.put(`/tasks/handle-revision`, {
         taskId: task._id,
         action: 'Reassign',
         newDoerId: newDoerId,
@@ -72,102 +72,116 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
   };
 
   return (
-    <div className="mt-4 bg-amber-500/5 rounded-2xl border border-amber-500/20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
-      {/* Header Banner */}
-      <div className="px-6 py-4 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-            <AlertTriangle className="text-amber-500" size={18} />
-            <h4 className="text-amber-500 text-xs font-black uppercase tracking-[0.2em] m-0">Intervention Protocol: Revision Request</h4>
+    <div className="mt-8 bg-amber-50/30 dark:bg-amber-500/5 rounded-[2.5rem] border border-amber-200 dark:border-amber-500/20 overflow-hidden shadow-sm dark:shadow-none animate-in fade-in slide-in-from-top-4 duration-700">
+      
+      {/* --- HEADER COMMAND BANNER --- */}
+      <div className="px-8 py-6 bg-amber-100/40 dark:bg-amber-500/10 border-b border-amber-200 dark:border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-500/20 rounded-2xl border border-amber-500/30">
+                <ShieldAlert className="text-amber-600 dark:text-amber-500" size={24} />
+            </div>
+            <div>
+                <h4 className="text-amber-900 dark:text-amber-500 text-[11px] font-black uppercase tracking-[0.3em] m-0">Protocol: Revision Request</h4>
+                <p className="text-amber-700/60 dark:text-amber-500/40 text-[10px] font-black uppercase tracking-widest mt-0.5">Manual Decision Required</p>
+            </div>
         </div>
-        <div className="bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/20">
-            <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Pending Decision</span>
+        <div className="bg-card px-5 py-2 rounded-full border border-amber-200 dark:border-amber-500/20 shadow-sm">
+            <span className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">Awaiting Command</span>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Request Details Block */}
-        <div className="bg-slate-950/50 p-4 rounded-xl border border-amber-500/10 space-y-2">
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                <MessageSquare size={12} className="text-amber-500" /> Doer's Statement
+      <div className="p-6 md:p-10 space-y-10">
+        
+        {/* REQUEST SUBMISSION BLOCK */}
+        <div className="bg-card p-6 md:p-8 rounded-3xl border border-amber-100 dark:border-amber-500/10 space-y-4 shadow-inner">
+            <div className="flex items-center gap-3 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                <MessageSquare size={16} className="text-amber-500" /> Doer Transmission
             </div>
-            <p className="text-slate-300 text-sm font-medium leading-relaxed italic">
-                "{task.remarks || "Standard revision requested without additional context."}"
+            <p className="text-foreground text-sm font-bold leading-relaxed italic border-l-4 border-amber-500/40 pl-6 py-1">
+                "{task.remarks || "Standard revision requested. Context: Deadline adjustment required for operational continuity."}"
             </p>
         </div>
 
-        {/* Action Choice 1: Approve */}
-        <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Option A: Accept Proposal</label>
-            <button 
-                disabled={isProcessing}
-                onClick={handleApprove}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/10"
-            >
-                {isProcessing ? <RefreshCcw size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                Authorize Proposed Deadline
-            </button>
-        </div>
-
-        {/* Divider */}
-        <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="flex-shrink mx-4 text-[10px] font-black text-slate-700 uppercase tracking-widest">OR RE-ROUTE</span>
-            <div className="flex-grow border-t border-slate-800"></div>
-        </div>
-
-        {/* Action Choice 2: Reassign */}
-        <div className="space-y-4">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Option B: Task Rerouting</label>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             
-            <div className="grid grid-cols-1 gap-3">
-                <div className="relative group">
-                    <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-sky-400 transition-colors" size={16} />
-                    <select 
-                        value={newDoerId} 
-                        onChange={(e) => setNewDoerId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 pl-12 pr-10 py-3.5 rounded-xl text-xs font-bold outline-none focus:border-sky-500/50 transition-all cursor-pointer appearance-none"
-                    >
-                        <option value="">Select Alternative Doer</option>
-                        {employees
-                        .filter(emp => (emp.roles?.includes('Doer') || emp.role === 'Doer') && emp._id !== task.doerId?._id)
-                        .map(emp => (
-                            <option key={emp._id} value={emp._id}>{emp.name} ({emp.department})</option>
-                        ))
-                        }
-                    </select>
-                    <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-700 rotate-90 pointer-events-none" size={16} />
+            {/* ACTION ALPHA: APPROVAL */}
+            <div className="space-y-6">
+                <div className="flex flex-col gap-1.5 ml-1">
+                    <label className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.25em]">Option Alpha</label>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-tight">Authorize Proposed Deadline Change</span>
                 </div>
-
-                <div className="relative group">
-                    <History className="absolute left-4 top-4 text-slate-700 group-focus-within:text-sky-400 transition-colors" size={16} />
-                    <textarea 
-                        placeholder="Reason for rerouting (to be shown to new doer)..." 
-                        value={reassignRemarks}
-                        onChange={(e) => setReassignRemarks(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 text-slate-100 pl-12 pr-5 py-3.5 rounded-xl text-xs font-medium outline-none focus:border-sky-500/50 transition-all min-h-[80px] resize-none"
-                    />
-                </div>
-
                 <button 
-                    disabled={isProcessing || !newDoerId}
-                    onClick={handleReassign}
-                    className={`
-                        w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-3
-                        ${!newDoerId ? 'bg-slate-800 text-slate-500 border border-slate-700' : 'bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-lg shadow-sky-500/10'}
-                    `}
+                    disabled={isProcessing}
+                    onClick={handleApprove}
+                    className="group w-full bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-400 text-white dark:text-slate-950 py-6 rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/20 dark:shadow-emerald-500/10 cursor-pointer"
                 >
-                    {isProcessing ? <RefreshCcw size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                    Execute Reroute
+                    {isProcessing ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle size={18} className="group-hover:scale-110 transition-transform" />}
+                    Authorize Update
                 </button>
+            </div>
+
+            {/* ACTION BETA: REASSIGNMENT */}
+            <div className="space-y-6">
+                <div className="flex flex-col gap-1.5 ml-1">
+                    <label className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.25em]">Option Beta</label>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-tight">Reroute Mission to Alternate Node</span>
+                </div>
+                
+                <div className="space-y-4">
+                    {/* Select Alternative Node */}
+                    <div className="relative group">
+                        <UserCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 group-focus-within:text-primary transition-colors" size={18} />
+                        <select 
+                            value={newDoerId} 
+                            onChange={(e) => setNewDoerId(e.target.value)}
+                            className="w-full bg-card border border-border text-foreground pl-14 pr-12 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all cursor-pointer appearance-none shadow-sm"
+                        >
+                            <option value="">Choose Alternative Node</option>
+                            {employees
+                                .filter(emp => (emp.roles?.includes('Doer') || emp.role === 'Doer') && emp._id !== task.doerId?._id)
+                                .map(emp => (
+                                    <option key={emp._id} value={emp._id}>{emp.name} — {emp.department}</option>
+                                ))
+                            }
+                        </select>
+                        <ChevronRight className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={16} />
+                    </div>
+
+                    {/* Reroute Remarks */}
+                    <div className="relative group">
+                        <History className="absolute left-5 top-5 text-slate-400 dark:text-slate-700 group-focus-within:text-primary transition-colors" size={18} />
+                        <textarea 
+                            placeholder="Reason for Mission Reroute..." 
+                            value={reassignRemarks}
+                            onChange={(e) => setReassignRemarks(e.target.value)}
+                            className="w-full bg-card border border-border text-foreground pl-14 pr-6 py-5 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all min-h-[120px] resize-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                        />
+                    </div>
+
+                    <button 
+                        disabled={isProcessing || !newDoerId}
+                        onClick={handleReassign}
+                        className={`
+                            w-full py-6 rounded-2xl font-black text-[11px] uppercase tracking-[0.25em] transition-all active:scale-[0.98] flex items-center justify-center gap-3 cursor-pointer
+                            ${!newDoerId 
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-border cursor-not-allowed opacity-50' 
+                                : 'bg-primary hover:bg-sky-400 text-white dark:text-slate-950 shadow-xl shadow-primary/20'
+                            }
+                        `}
+                    >
+                        {isProcessing ? <RefreshCcw size={18} className="animate-spin" /> : <UserPlus size={18} />}
+                        Execute Reroute
+                    </button>
+                </div>
             </div>
         </div>
       </div>
 
-      {/* Footer Meta */}
-      <div className="px-6 py-3 bg-amber-500/5 border-t border-amber-500/10 flex items-center gap-2">
-         <History size={12} className="text-amber-500/60" />
-         <span className="text-[9px] font-black text-amber-500/60 uppercase tracking-widest leading-none">
-            Intervention will be logged in the permanent task history.
+      {/* --- AUDIT TRAIL FOOTER --- */}
+      <div className="px-8 py-5 bg-background/50 border-t border-border flex items-center gap-4">
+         <History size={16} className="text-amber-600 dark:text-amber-500/40" />
+         <span className="text-[10px] font-black text-slate-500 dark:text-amber-500/40 uppercase tracking-[0.25em]">
+            Permanent Ledger: This intervention will be logged as a protocol override.
          </span>
       </div>
     </div>

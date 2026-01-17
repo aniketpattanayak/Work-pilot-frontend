@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api/axiosConfig'; // Centralized API instance
+import API from '../api/axiosConfig'; 
 import { 
   Trash2, 
   ExternalLink, 
@@ -18,66 +18,61 @@ import {
   Link as LinkIcon,
   Edit3,
   CheckCircle,
-  LogIn
+  LogIn,
+  ShieldAlert,
+  Server,
+  Activity,
+  Terminal,
+  ChevronRight,
+  Database
 } from 'lucide-react';
 
+/**
+ * SUPER ADMIN: ROOT INFRASTRUCTURE COMMAND v1.3
+ * Purpose: Global oversight and provisioning of SaaS factory nodes.
+ * Logic: Manages multi-tenant instance lifecycles, branding sync, and root authentication.
+ */
 const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [companies, setCompanies] = useState([]); 
-  
-  // State for Form Handling
   const [factoryData, setFactoryData] = useState({
     companyName: '', subdomain: '', ownerEmail: '', adminPassword: ''
   });
-  
-  // Edit Mode States
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
-
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  /**
-   * 1. FETCH ALL COMPANIES
-   * Updated with defensive unwrapping and centralized API instance.
-   */
+  // --- DATA ACQUISITION: GLOBAL NODE REGISTRY ---
   const fetchCompanies = useCallback(async () => {
     try {
-      // Switched to centralized API instance
       const res = await API.get('/superadmin/all-companies');
-      
-      // Safety: Handle nested data structure
-      const data = Array.isArray(res.data) 
-        ? res.data 
-        : (res.data?.companies || res.data?.data || []);
-        
+      const data = Array.isArray(res.data) ? res.data : (res.data?.companies || res.data?.data || []);
       setCompanies(data);
     } catch (err) {
-      console.error("Failed to fetch companies:", err);
-      setCompanies([]); // Fallback
+      console.error("Infrastructure Sync Failure:", err);
+      setCompanies([]); 
     }
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchCompanies();
-    }
+    if (isAuthenticated) fetchCompanies();
   }, [isAuthenticated, fetchCompanies]);
 
+  // --- COMMAND: ROOT HANDSHAKE ---
   const handleMasterLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Switched to centralized API instance
       const res = await API.post('/superadmin/master-login', {
         username: loginData.username.trim(),
         password: loginData.password.trim()
       });
       onLogin(res.data.token, res.data.user);
     } catch (err) {
-      alert(err.response?.data?.message || "Invalid Master Credentials");
+      alert(err.response?.data?.message || "Root credentials rejected by security protocol.");
     } finally {
       setLoading(false);
     }
@@ -91,7 +86,6 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
     }
   };
 
-  // Logic to switch to Edit Mode
   const startEdit = (company) => {
     setIsEditing(true);
     setEditId(company._id);
@@ -113,6 +107,7 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
     setLogoPreview(null);
   };
 
+  // --- COMMAND: PROVISION / SYNC NODE ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setProcessing(true);
@@ -124,58 +119,80 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
       if (logoFile) formData.append('logo', logoFile);
 
       if (isEditing) {
-        // Switched to centralized API instance
         await API.put(`/superadmin/update-branding`, formData, {
             params: { tenantId: editId },
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        alert("SaaS Node Updated Successfully!");
+        alert("SaaS Node Synchronized successfully!");
       } else {
         formData.append('subdomain', factoryData.subdomain);
-        // Switched to centralized API instance
         await API.post('/superadmin/create-company', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        alert("New Factory Registered Successfully!");
+        alert("New Node Instance Initialized!");
       }
-
       cancelEdit();
       fetchCompanies(); 
     } catch (err) {
-      alert("Action Failed: " + (err.response?.data?.message || "Check Server Connection"));
+      alert("Action Failed: " + (err.response?.data?.message || "Check Infrastructure Linkage"));
     } finally {
       setProcessing(false);
     }
   };
 
   const handleDelete = async (id, name) => {
-    if (window.confirm(`PERMANENT DESTRUCTION: Delete ${name}? All data will be lost forever.`)) {
+    if (window.confirm(`PERMANENT DECOMMISSION: Terminate node ${name}? This action is immutable and all node data will be purged from AWS/Database.`)) {
       try {
-        // Switched to centralized API instance
         await API.delete(`/superadmin/company/${id}`);
         fetchCompanies(); 
       } catch (err) {
-        alert("Delete failed.");
+        alert("Termination sequence failed. Node integrity preserved.");
       }
     }
   };
 
+  // --- MASTER AUTHENTICATION GATEWAY (Root Logic) ---
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 selection:bg-sky-500/30">
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800/60 p-10 md:p-12 rounded-[3rem] w-full max-w-[440px] shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-700">
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-gradient-to-br from-sky-400 to-sky-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(56,189,248,0.2)]">
-               <ShieldCheck size={44} className="text-slate-950" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 selection:bg-primary/30 transition-all duration-1000 relative overflow-hidden">
+        
+        {/* Atmosphere Modules */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute -top-1/4 -right-1/4 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[140px]" />
+            <div className="absolute -bottom-1/4 -left-1/4 w-[800px] h-[800px] bg-indigo-500/5 rounded-full blur-[140px]" />
+        </div>
+
+        <div className="bg-card backdrop-blur-3xl border border-border p-10 md:p-16 rounded-[4rem] w-full max-w-[500px] shadow-[0_50px_100px_rgba(0,0,0,0.1)] dark:shadow-none relative z-10 animate-in fade-in zoom-in-95 duration-1000">
+          <div className="text-center mb-14">
+            <div className="relative group inline-block">
+                <div className="absolute inset-0 bg-primary/20 blur-3xl group-hover:bg-primary/40 transition-all rounded-full" />
+                <div className="relative w-24 h-24 bg-background border border-border rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:border-primary/50">
+                   <ShieldCheck size={48} className="text-primary" />
+                </div>
             </div>
-            <h2 className="text-white text-3xl font-black tracking-tighter m-0">Master Control</h2>
+            <h2 className="text-foreground text-4xl font-black tracking-tighter m-0 uppercase leading-none">Root Access</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.5em] mt-4 opacity-70">Infrastructure Control Mode</p>
           </div>
           
-          <form onSubmit={handleMasterLogin} className="space-y-6">
-            <input type="text" placeholder="Root Username" className="w-full bg-slate-950 border border-slate-800 text-white pl-6 pr-5 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold" onChange={(e) => setLoginData({...loginData, username: e.target.value})} required />
-            <input type="password" placeholder="Master Password" className="w-full bg-slate-950 border border-slate-800 text-white pl-6 pr-5 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold" onChange={(e) => setLoginData({...loginData, password: e.target.value})} required />
-            <button type="submit" disabled={loading} className="w-full py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 text-slate-950 font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(56,189,248,0.2)]">
-              {loading ? <RefreshCcw className="animate-spin" size={20} /> : "Execute Login"}
+          <form onSubmit={handleMasterLogin} className="space-y-8">
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-3 block">Root Identifier</label>
+                <div className="relative group">
+                    <Users className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                    <input type="text" placeholder="Authorized Username" className="w-full bg-background border border-border text-foreground pl-16 pr-8 py-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700" onChange={(e) => setLoginData({...loginData, username: e.target.value})} required />
+                </div>
+            </div>
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-3 block">Master Cipher</label>
+                <div className="relative group">
+                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                    <input type="password" placeholder="••••••••" className="w-full bg-background border border-border text-foreground pl-16 pr-8 py-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700" onChange={(e) => setLoginData({...loginData, password: e.target.value})} required />
+                </div>
+            </div>
+            <button type="submit" disabled={loading} className="group w-full py-6 rounded-[2rem] bg-foreground text-background dark:bg-primary dark:text-slate-950 font-black text-xs uppercase tracking-[0.4em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-5 cursor-pointer overflow-hidden relative">
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              {loading ? <RefreshCcw className="animate-spin" size={24} /> : <LogIn size={24} className="group-hover:translate-x-2 transition-transform duration-500" />}
+              <span className="relative z-10">Authorize Master Session</span>
             </button>
           </form>
         </div>
@@ -183,134 +200,168 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
     );
   }
 
-  // Defensive check for rendering the companies list
   const safeCompanies = Array.isArray(companies) ? companies : [];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans p-6 md:p-10 selection:bg-sky-500/30">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800/60 backdrop-blur-md">
-        <div>
-          <div className="flex items-center gap-4 mb-2">
-            <div className="bg-sky-500/10 p-2 rounded-xl border border-sky-500/20"><LayoutGrid size={24} className="text-sky-400" /></div>
-            <h1 className="text-3xl font-black tracking-tighter m-0">Master Console</h1>
+    <div className="min-h-screen bg-background text-foreground font-sans p-6 md:p-12 transition-all duration-1000 selection:bg-primary/30">
+      
+      {/* --- EXECUTIVE TOP BAR --- */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-16 gap-8 bg-card p-10 md:p-12 rounded-[4rem] border border-border backdrop-blur-xl shadow-2xl transition-all duration-500">
+        <div className="flex items-center gap-8">
+          <div className="p-5 bg-primary/10 rounded-[2rem] border border-primary/20 shadow-inner transition-transform hover:rotate-6">
+            <LayoutGrid size={40} className="text-primary" />
           </div>
-          <p className="text-slate-500 text-sm font-medium tracking-wide">Work Pilot Infrastructure — SaaS Client Provisioning & Global Oversight</p>
+          <div>
+            <h1 className="text-5xl font-black tracking-tighter m-0 uppercase leading-none">Master Console</h1>
+            <div className="flex items-center gap-4 mt-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
+                <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.4em]">Work Pilot Core • SaaS Global Oversight</p>
+            </div>
+          </div>
         </div>
-        <button onClick={onLogout} className="flex items-center gap-3 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 text-red-400 px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
-          <LogOut size={18} /> Revoke Master Token
+        <button onClick={onLogout} className="w-full lg:w-auto flex items-center justify-center gap-4 bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:text-white px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all active:scale-95 shadow-xl hover:shadow-rose-500/20">
+          <LogOut size={20} /> Revoke Master Token
         </button>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_1.8fr] gap-12">
         
-        {/* FORM: PROVISION OR EDIT NODE */}
-        <section className="bg-slate-900/40 backdrop-blur-md p-8 md:p-10 rounded-[3rem] border border-slate-800/60 shadow-2xl relative overflow-hidden h-fit group">
-          <h3 className={`${isEditing ? 'text-emerald-400' : 'text-sky-400'} text-xl font-black tracking-tight flex items-center gap-3 mb-10 relative z-10`}>
-            {isEditing ? <Edit3 size={22} /> : <PlusCircle size={22} />} 
-            {isEditing ? 'Modify Active Node' : 'Provision New Node'}
-          </h3>
+        {/* --- SECTION 1: NODE PROVISIONING TERMINAL --- */}
+        <section className="bg-card backdrop-blur-xl p-10 md:p-14 rounded-[4rem] border border-border shadow-2xl relative overflow-hidden h-fit group transition-all duration-500">
+          <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/5 rounded-full blur-[120px] pointer-events-none group-hover:opacity-40 transition-opacity" />
+          
+          <div className="flex items-center gap-6 mb-14 relative z-10">
+              <div className={`p-4 rounded-2xl border transition-all duration-500 shadow-inner ${isEditing ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-primary/10 border-primary/20 text-primary'}`}>
+                {isEditing ? <Edit3 size={28} /> : <PlusCircle size={28} />}
+              </div>
+              <h3 className="text-3xl font-black tracking-tighter m-0 uppercase leading-none">
+                {isEditing ? 'Modify Active Node' : 'Provision SaaS Node'}
+              </h3>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-            <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Official Entity Name</label>
-                <input type="text" placeholder="e.g. Apex Manufacturing" value={factoryData.companyName} className="w-full bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" onChange={(e) => setFactoryData({...factoryData, companyName: e.target.value})} required />
+          <form onSubmit={handleSubmit} className="space-y-10 relative z-10">
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 block">Official Entity Designation</label>
+                <input type="text" placeholder="e.g. Apex Industrial Group" value={factoryData.companyName} className="w-full bg-background border border-border text-foreground px-8 py-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black uppercase tracking-tight shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700" onChange={(e) => setFactoryData({...factoryData, companyName: e.target.value})} required />
             </div>
             
-            <div className="space-y-2 opacity-80">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Virtual Subdomain {isEditing && "(Locked)"}</label>
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 block">Dynamic Subdomain {isEditing && "(Immutable Protocol)"}</label>
                 <div className="relative group">
-                    <LinkIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                    <input type="text" disabled={isEditing} placeholder="e.g. apexnode" value={factoryData.subdomain} className={`w-full ${isEditing ? 'bg-slate-900 cursor-not-allowed' : 'bg-slate-950'} border border-slate-800 text-sky-400 pl-14 pr-6 py-4 rounded-2xl font-mono font-bold`} onChange={(e) => setFactoryData({...factoryData, subdomain: e.target.value.toLowerCase()})} required />
+                    <LinkIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                    <input type="text" disabled={isEditing} placeholder="e.g. apexnode" value={factoryData.subdomain} className={`w-full ${isEditing ? 'bg-background/50 cursor-not-allowed opacity-50' : 'bg-background'} border border-border text-primary pl-16 pr-8 py-6 rounded-[2rem] font-mono font-black shadow-inner lowercase`} onChange={(e) => setFactoryData({...factoryData, subdomain: e.target.value.toLowerCase()})} required />
                 </div>
             </div>
             
-            <div className="bg-slate-950/60 p-6 rounded-3xl border border-slate-800 border-dashed">
-              <label className="text-[10px] font-black text-sky-400/60 flex items-center gap-2 uppercase tracking-widest mb-4"><ImageIcon size={14} /> Factory Identity Emblem</label>
-              <div className="flex items-center gap-6">
+            {/* S3 Logo Logic Block */}
+            <div className="bg-background/50 p-10 rounded-[3rem] border-4 border-dashed border-border transition-all hover:border-primary/40 shadow-inner group/drop">
+              <label className="text-[10px] font-black text-slate-400 dark:text-primary/60 flex items-center gap-4 uppercase tracking-[0.4em] mb-8 px-2"><ImageIcon size={20} /> Identity Emblem (AWS S3)</label>
+              <div className="flex flex-col md:flex-row items-center gap-10">
                 {logoPreview ? (
-                  <div className="relative">
-                    <div className="w-20 h-20 bg-white p-2 rounded-2xl border-2 border-sky-500 flex items-center justify-center overflow-hidden"><img src={logoPreview} alt="Preview" className="max-h-full object-contain" /></div>
-                    <button type="button" onClick={() => {setLogoFile(null); setLogoPreview(null);}} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full"><X size={14} /></button>
+                  <div className="relative group/logo">
+                    <div className="w-32 h-32 bg-white p-4 rounded-[2.5rem] border-2 border-primary shadow-2xl flex items-center justify-center overflow-hidden transition-all group-hover/logo:scale-105">
+                        <img src={logoPreview} alt="Node Logo" className="max-h-full object-contain brightness-100 dark:brightness-110" />
+                    </div>
+                    <button type="button" onClick={() => {setLogoFile(null); setLogoPreview(null);}} className="absolute -top-4 -right-4 bg-rose-500 text-white p-3 rounded-full shadow-2xl hover:scale-110 transition-all border-4 border-card"><X size={18} /></button>
                   </div>
                 ) : (
-                  <label className="w-20 h-20 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center cursor-pointer hover:bg-slate-800"><PlusCircle size={24} className="text-slate-600" /><input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} /></label>
+                  <label className="w-32 h-32 bg-card border border-border rounded-[2.5rem] flex items-center justify-center cursor-pointer hover:bg-background transition-all shadow-xl group/upload">
+                    <PlusCircle size={40} className="text-slate-300 group-hover/upload:text-primary group-hover/upload:rotate-90 transition-all duration-700" />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                  </label>
                 )}
-                <p className="text-[11px] text-slate-500 font-bold leading-relaxed">{logoFile ? `FILE: ${logoFile.name}` : "Emblem used across dashboards."}</p>
+                <div className="space-y-2 text-center md:text-left">
+                    <p className="text-sm font-black text-foreground uppercase tracking-tight leading-none">{logoFile ? `ASSET: ${logoFile.name}` : "Emblem required for node identity."}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest leading-loose opacity-70">Sizing: 512x512 Master <br/> Format: Transparent PNG Preferred</p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Admin Access Node (Gmail)</label>
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 block">Root Admin Protocol (G-Mail)</label>
                 <div className="relative group">
-                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                    <input type="email" placeholder="admin@node.com" value={factoryData.ownerEmail} className="w-full bg-slate-950 border border-slate-800 text-white pl-14 pr-6 py-4 rounded-2xl font-bold" onChange={(e) => setFactoryData({...factoryData, ownerEmail: e.target.value})} required />
+                    <Mail className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                    <input type="email" placeholder="admin@factory-node.com" value={factoryData.ownerEmail} className="w-full bg-background border border-border text-foreground pl-16 pr-8 py-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700" onChange={(e) => setFactoryData({...factoryData, ownerEmail: e.target.value})} required />
                 </div>
             </div>
             
-            <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{isEditing ? "Update Password (Leave blank to keep current)" : "Initialize Access Key"}</label>
+            <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 block">{isEditing ? "Update Master Cipher (Optional)" : "Initialize Access Sequence"}</label>
                 <div className="relative group">
-                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                    <input type="password" placeholder="••••••••" value={factoryData.adminPassword} className="w-full bg-slate-950 border border-slate-800 text-white pl-14 pr-6 py-4 rounded-2xl font-bold" onChange={(e) => setFactoryData({...factoryData, adminPassword: e.target.value})} required={!isEditing} />
+                    <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                    <input type="password" placeholder="••••••••" value={factoryData.adminPassword} className="w-full bg-background border border-border text-foreground pl-16 pr-8 py-6 rounded-[2rem] outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700" onChange={(e) => setFactoryData({...factoryData, adminPassword: e.target.value})} required={!isEditing} />
                 </div>
             </div>
             
-            <div className="flex gap-4">
-                {isEditing && <button type="button" onClick={cancelEdit} className="flex-1 py-5 rounded-2xl border border-slate-700 text-slate-400 font-black text-sm uppercase tracking-widest hover:bg-slate-800">Cancel</button>}
-                <button type="submit" disabled={processing} className={`flex-[2] py-5 rounded-2xl bg-gradient-to-r ${isEditing ? 'from-emerald-500 to-emerald-600 shadow-[0_0_30px_rgba(16,185,129,0.2)]' : 'from-sky-500 to-sky-600 shadow-[0_0_30px_rgba(56,189,248,0.2)]'} text-slate-950 font-black text-sm uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3`}>
-                {processing ? <RefreshCcw className="animate-spin" size={20} /> : isEditing ? <CheckCircle size={20} /> : <Factory size={20} />}
-                {processing ? "Syncing..." : isEditing ? "Save Modifications" : "Initialize SaaS Node"}
+            <div className="flex flex-col md:flex-row gap-6 pt-6">
+                {isEditing && (
+                    <button type="button" onClick={cancelEdit} className="flex-1 py-6 rounded-2xl border border-border text-slate-500 font-black text-xs uppercase tracking-[0.3em] hover:bg-background transition-all active:scale-95 shadow-lg">
+                        Abort Protocol
+                    </button>
+                )}
+                <button type="submit" disabled={processing} className={`flex-[2] py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all active:scale-[0.98] flex items-center justify-center gap-5 shadow-2xl relative overflow-hidden ${isEditing ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-emerald-500/20' : 'bg-foreground text-background dark:bg-primary dark:text-slate-950 shadow-primary/20'}`}>
+                    {processing ? <RefreshCcw className="animate-spin" size={24} /> : isEditing ? <CheckCircle size={24} /> : <Server size={24} />}
+                    <span className="relative z-10">{processing ? "Syncing Logic..." : isEditing ? "Push Modifications" : "Initialize Node"}</span>
                 </button>
             </div>
           </form>
         </section>
 
-        {/* DIRECTORY: CLIENT INFRASTRUCTURE */}
-        <section className="bg-slate-900/40 backdrop-blur-md p-8 md:p-10 rounded-[3rem] border border-slate-800/60 shadow-2xl overflow-hidden flex flex-col">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="text-sky-400 text-xl font-black tracking-tight flex items-center gap-3 m-0"><Globe size={22} /> Client Infrastructure</h3>
-            <div className="bg-slate-950 px-5 py-2 rounded-full border border-slate-800 shadow-inner">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Nodes: </span>
-                <span className="text-sky-400 font-black text-sm">{safeCompanies.length}</span>
+        {/* --- SECTION 2: GLOBAL INFRASTRUCTURE DIRECTORY --- */}
+        <section className="bg-card backdrop-blur-xl p-10 md:p-14 rounded-[4rem] border border-border shadow-2xl overflow-hidden flex flex-col transition-all duration-500">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-14 gap-8 relative z-10">
+            <div className="flex items-center gap-6">
+                <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 shadow-inner">
+                    <Globe size={32} className="text-primary" />
+                </div>
+                <h3 className="text-3xl font-black tracking-tighter m-0 uppercase leading-none">Global Nodes</h3>
+            </div>
+            <div className="bg-background px-8 py-3 rounded-full border border-border shadow-inner flex items-center gap-4 transition-all hover:border-primary/30">
+                <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_12px_#38bdf8]" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Active Instances: </span>
+                <span className="text-primary font-black text-xl tracking-tighter">{safeCompanies.length}</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-x-auto custom-scrollbar">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-900/80 border-b border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest text-left">
-                  <th className="px-8 py-5">Instance & Admin Gmail</th>
-                  <th className="px-8 py-5">Terminal Link</th>
-                  <th className="px-8 py-5 text-right">Intervention</th>
+                <tr className="bg-background/50 border-y border-border text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] text-left">
+                  <th className="px-10 py-8">Node Identity & Root Protocol</th>
+                  <th className="px-10 py-8">Virtual Terminal Access</th>
+                  <th className="px-10 py-8 text-right">Intervention</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40">
-                {safeCompanies.map(c => {
-                   // UPDATED: Dynamic Link detection for AWS vs Localhost
+              <tbody className="divide-y divide-border/40">
+                {safeCompanies.map((c, idx) => {
                    const baseDomain = window.location.hostname.includes('localhost') ? 'localhost:5173' : window.location.hostname;
                    const terminalUrl = `http://${c.subdomain}.${baseDomain}`;
 
                    return (
-                  <tr key={c._id} className="group hover:bg-slate-900/30 transition-all duration-300">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-xl border border-slate-800">
-                          {c.logo ? <img src={c.logo} alt="L" className="max-h-full object-contain" /> : <div className="w-full h-full bg-slate-950 rounded-lg flex items-center justify-center text-sky-400 font-black text-[9px] uppercase">Node</div>}
+                  <tr key={c._id} className="group hover:bg-background/50 transition-all duration-500 animate-in slide-in-from-right-6" style={{ animationDelay: `${idx * 50}ms` }}>
+                    <td className="px-10 py-10">
+                      <div className="flex items-center gap-8">
+                        <div className="w-20 h-20 bg-white dark:bg-background rounded-[1.5rem] flex items-center justify-center p-3 shadow-2xl border border-border transition-all group-hover:scale-110 group-hover:border-primary/30">
+                          {c.logo ? <img src={c.logo} alt="Node Identity" className="max-h-full object-contain brightness-100 dark:brightness-110" /> : <div className="w-full h-full bg-slate-950 rounded-xl flex items-center justify-center text-primary font-black text-[10px] uppercase tracking-tighter shadow-inner">Node</div>}
                         </div>
-                        <div>
-                            <div className="text-white font-black text-base tracking-tight leading-none mb-1.5">{c.companyName}</div>
-                            <div className="text-[10px] text-sky-400 font-black uppercase tracking-tight flex items-center gap-1"><Mail size={10} /> {c.adminEmail || 'No Email Found'}</div>
+                        <div className="min-w-0">
+                            <div className="text-foreground font-black text-2xl tracking-tighter leading-none mb-3 uppercase group-hover:text-primary transition-colors duration-300">{c.companyName}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.3em] flex items-center gap-3"><Mail size={14} className="text-primary/40" /> {c.adminEmail || 'Ledger Entry Missing'}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 font-mono text-slate-500 font-bold text-xs group-hover:text-sky-300 transition-colors">
-                      {c.subdomain}.{baseDomain}
+                    <td className="px-10 py-10">
+                      <div className="bg-background p-4 rounded-2xl border border-border inline-block shadow-inner group-hover:border-primary/20 transition-all">
+                        <span className="font-mono text-primary font-black text-sm lowercase tracking-tight">
+                           {c.subdomain}.{baseDomain}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                        <button onClick={() => startEdit(c)} className="p-3 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20 hover:bg-sky-500 hover:text-slate-950 transition-all active:scale-90" title="Edit Node Details"><Edit3 size={18}/></button>
-                        <a href={terminalUrl} target="_blank" rel="noreferrer" className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 transition-all active:scale-90" title="Open Node Terminal"><ExternalLink size={18}/></a>
-                        <button onClick={() => handleDelete(c._id, c.companyName)} className="p-3 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Permanent Decommission"><Trash2 size={18}/></button>
+                    <td className="px-10 py-10">
+                      <div className="flex justify-end gap-4 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-500 transform lg:translate-x-6 lg:group-hover:translate-x-0">
+                        <button onClick={() => startEdit(c)} className="p-4 bg-background text-slate-500 hover:text-primary rounded-2xl border border-border hover:border-primary transition-all active:scale-90 shadow-lg" title="Modify Node Cluster"><Edit3 size={20}/></button>
+                        <a href={terminalUrl} target="_blank" rel="noreferrer" className="p-4 bg-background text-emerald-500 rounded-2xl border border-border hover:border-emerald-500 transition-all active:scale-90 shadow-lg" title="Access Virtual Node Terminal"><ExternalLink size={20}/></a>
+                        <button onClick={() => handleDelete(c._id, c.companyName)} className="p-4 bg-background text-rose-500 rounded-2xl border border-border hover:border-rose-500 transition-all active:scale-90 shadow-lg" title="Emergency Node Decommission"><Trash2 size={20}/></button>
                       </div>
                     </td>
                   </tr>
@@ -319,10 +370,30 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
               </tbody>
             </table>
           </div>
+          
+          {/* Dashboard Dormant View */}
+          {safeCompanies.length === 0 && (
+             <div className="flex-1 flex flex-col items-center justify-center py-40 opacity-20 grayscale transition-all duration-1000">
+                <div className="relative mb-10">
+                    <Terminal size={120} className="text-slate-400" />
+                    <div className="absolute inset-0 bg-primary/10 blur-3xl rounded-full animate-pulse" />
+                </div>
+                <p className="font-black text-xl uppercase tracking-[0.8em] text-slate-400">Infrastructure Dormant</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-6">Awaiting node registry synchronization</p>
+             </div>
+          )}
         </section>
       </div>
 
-      <style>{`.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; } .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.1); border-radius: 10px; }`}</style>
+      {/* Industrial Root Stylings */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; } 
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin-slow 12s linear infinite; }
+      `}</style>
     </div>
   );
 };

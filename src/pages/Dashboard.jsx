@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axiosConfig';
-import axios from 'axios';
+import ThemeToggle from '../components/ThemeToggle';
 
 // Component Imports
 import Sidebar from '../components/Sidebar';
@@ -36,11 +36,13 @@ import {
   Award, 
   ShieldCheck,
   Sparkles,
+  Menu,
+  X,
+  ChevronRight,
+  Activity,
   Crown,
-  Search,
-  CheckCircle2,
-  ArrowRight,
-  Calendar
+  RefreshCcw,
+  WifiOff
 } from 'lucide-react';
 
 const Dashboard = ({ user, tenantId, onLogout }) => {
@@ -50,49 +52,38 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   const [employees, setEmployees] = useState([]); 
   const [selectedEmployee, setSelectedEmployee] = useState(null); 
   const [loading, setLoading] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [networkError, setNetworkError] = useState(false); 
 
-  // Persistence Logic (Preserved)
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const sessionUser = JSON.parse(localStorage.getItem('user'));
   
-  // CRITICAL: Accurate ID Detection
   const userId = user?._id || user?.id || sessionUser?.id || sessionUser?._id;
 
-  // Multi-Role Logic (Preserved)
   const userRoles = user?.roles || sessionUser?.roles || 
                    (user?.role ? [user.role] : []) || 
                    (sessionUser?.role ? [sessionUser.role] : []) || [];
 
-  // Icon Mapping for dynamic badge rendering
   const badgeIconMap = {
-    Star: Star,
-    Trophy: Trophy,
-    Medal: Medal,
-    Zap: Zap,
-    ShieldCheck: ShieldCheck,
-    Flame: Flame,
-    Target: Target,
-    Rocket: Rocket,
-    Award: Award
+    Star, Trophy, Medal, Zap, ShieldCheck, Flame, Target, Rocket, Award
   };
 
   /**
-   * UPDATED: Defensive Data Fetching
-   * Ensures 'employees' is always an array to prevent crashes.
+   * REFRESH PERSONNEL DATA
+   * Preserved: Logic for multi-tenant data unwrap and network failure handling.
    */
   const fetchEmployees = useCallback(async () => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      // Use the centralized API instance
+      setNetworkError(false);
       const res = await API.get(`/superadmin/employees/${currentTenantId}`);
-      
-      // Safety: Unwrap data if it's nested in an object (common in consolidated APIs)
       const data = Array.isArray(res.data) ? res.data : (res.data?.employees || res.data?.data || []);
       setEmployees(data);
     } catch (err) {
-      console.error("Fetch Error:", err);
-      setEmployees([]); // Fallback to empty array
+      console.error("Dashboard Personnel Sync Error:", err);
+      if (err.code === 'ERR_NETWORK') setNetworkError(true);
+      setEmployees([]); 
     } finally {
       setLoading(false);
     }
@@ -102,12 +93,10 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  // FIX: Added Array.isArray check to prevent '.find is not a function' error
   const currentUserData = Array.isArray(employees) 
     ? employees.find(emp => emp._id === userId) 
     : null;
   
-  // Logic to get the LATEST earned badge for the header
   const latestBadge = currentUserData?.earnedBadges?.length > 0 
     ? currentUserData.earnedBadges[currentUserData.earnedBadges.length - 1] 
     : null;
@@ -116,7 +105,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
 
   const getPageTitle = () => {
     const path = location.pathname.split('/').pop();
-    if (!path || path === 'dashboard') return 'Overview';
+    if (!path || path === 'dashboard' || path === '') return 'Executive Overview';
     return path.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -126,229 +115,208 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
     const route = tab === 'Dashboard' ? '' : tab.toLowerCase().replace(/\s+/g, '-');
     navigate(`/dashboard/${route}`);
     setSelectedEmployee(null); 
+    setSidebarOpen(false);
   };
 
   /**
-   * LEADERBOARD SUB-COMPONENT (Optimized for Width)
+   * LEADERBOARD MODULE: PERFORMANCE ANALYTICS
+   * Fully adapted for Semantic Themes.
    */
   const PerformanceLeaderboard = () => {
-    // FIX: Ensure employees is an array before sorting/mapping
     const safeEmployees = Array.isArray(employees) ? employees : [];
     const topPerformers = [...safeEmployees]
       .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
       .slice(0, 5);
 
     return (
-      <div className="bg-slate-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-slate-800/60 shadow-2xl relative overflow-hidden group">
-        <div className="absolute -top-12 -right-12 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl group-hover:bg-amber-500/10 transition-colors" />
+      <div className="bg-card backdrop-blur-xl p-8 md:p-12 rounded-[3.5rem] border border-border shadow-2xl relative overflow-hidden group transition-all duration-500">
+        <div className="absolute -top-12 -right-12 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="flex justify-between items-center mb-10 relative z-10">
-          <h3 className="text-2xl font-bold flex items-center gap-4 text-amber-400">
-            <Trophy size={28} className="animate-pulse" /> Factory Top Performers
-          </h3>
-          <span className="text-[12px] font-black text-slate-500 uppercase tracking-widest bg-slate-950 px-4 py-1.5 rounded-full border border-slate-800">Global Rankings</span>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-6 relative z-10">
+          <div className="flex items-center gap-5">
+            <div className="p-3.5 bg-amber-500/10 rounded-2xl border border-amber-500/20 shadow-inner">
+                <Trophy size={32} className="text-amber-500 animate-pulse" />
+            </div>
+            <h3 className="text-3xl font-black text-foreground tracking-tighter uppercase leading-none">Global Rankings</h3>
+          </div>
+          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] bg-background px-6 py-2.5 rounded-full border border-border shadow-inner">Operational Excellence</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 relative z-10">
-          {topPerformers.length > 0 ? topPerformers.map((emp, idx) => (
-            <div key={emp._id} className="relative flex items-center justify-between p-6 bg-slate-950/50 rounded-3xl border border-slate-800/50 hover:border-amber-500/30 transition-all group/item shadow-inner">
-              
+        <div className="space-y-5 relative z-10">
+          {topPerformers.map((emp, idx) => (
+            <div key={emp._id} className="relative flex items-center justify-between p-6 md:p-8 bg-background border border-border rounded-[2.5rem] hover:border-amber-500/40 hover:bg-card hover:shadow-xl transition-all duration-300 group/item">
               {idx === 0 && (
-                <div className="absolute -top-3 left-8 z-20 animate-bounce">
-                  <div className="bg-gradient-to-r from-amber-400 to-yellow-600 p-1.5 rounded-md shadow-[0_0_15px_rgba(251,191,36,0.5)] border border-white/20">
-                    <Trophy size={12} className="text-slate-950" fill="currentColor" />
+                <div className="absolute -top-4 left-10 z-20">
+                  <div className="bg-gradient-to-r from-amber-400 to-yellow-600 p-2 rounded-xl shadow-2xl border border-white/20">
+                    <Crown size={14} className="text-slate-950" fill="currentColor" />
                   </div>
                 </div>
               )}
-
-              <div className="flex items-center gap-6">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl relative
-                  ${idx === 0 ? 'bg-amber-500 text-slate-950 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 
-                    idx === 1 ? 'bg-slate-300 text-slate-950' : 
-                    idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}>
+              <div className="flex items-center gap-6 md:gap-10">
+                <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-transform group-hover/item:scale-105
+                  ${idx === 0 ? 'bg-amber-500 text-slate-950' : 
+                    idx === 1 ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 
+                    idx === 2 ? 'bg-amber-800 text-white' : 'bg-card border border-border text-slate-400'}`}>
                   {idx + 1}
                 </div>
                 <div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-white font-black text-lg group-hover/item:text-amber-400 transition-colors">{emp.name}</p>
-                    {idx === 0 && (
-                       <span className="text-[8px] font-black bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2.5 py-1 rounded-full uppercase tracking-widest shadow-[0_0_10px_rgba(251,191,36,0.2)]">
-                         Champion
-                       </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-2 mt-2">
-                    {/* FIX: Safe check for earnedBadges map */}
+                  <p className="text-foreground font-black text-lg md:text-xl group-hover/item:text-amber-600 transition-colors truncate max-w-[140px] md:max-w-none uppercase tracking-tight">{emp.name}</p>
+                  <div className="flex gap-2 mt-3">
                     {Array.isArray(emp.earnedBadges) && emp.earnedBadges.length > 0 ? (
                       emp.earnedBadges.slice(0, 5).map((badge, bIdx) => {
                         const BadgeIcon = badgeIconMap[badge.iconName] || Star;
                         return (
-                          <div 
-                            key={bIdx} 
-                            title={badge.name}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/5 shadow-inner hover:scale-110 transition-transform"
-                            style={{ backgroundColor: `${badge.color}20` }}
-                          >
-                             <BadgeIcon size={14} color={badge.color} style={{ filter: `drop-shadow(0 0 3px ${badge.color}50)` }} />
+                          <div key={bIdx} title={badge.name} className="w-8 h-8 rounded-xl flex items-center justify-center border border-border shadow-sm transition-all hover:scale-110" style={{ backgroundColor: `${badge.color}15` }}>
+                             <BadgeIcon size={14} color={badge.color} />
                           </div>
                         );
                       })
                     ) : (
-                      <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">Awaiting First Achievement</p>
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1">Pending Achievement</p>
                     )}
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-amber-400 font-black text-3xl leading-none tracking-tighter">{emp.totalPoints || 0}</div>
-                <div className="text-[10px] text-slate-600 font-black uppercase tracking-widest mt-1">Reward Points</div>
+                <div className="text-amber-600 dark:text-amber-400 font-black text-3xl md:text-4xl leading-none tracking-tighter">{emp.totalPoints || 0}</div>
+                <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.25em] mt-3">Node Output</div>
               </div>
             </div>
-          )) : (
-            <p className="text-center py-20 text-slate-600 text-sm font-bold uppercase tracking-widest">Points initialization pending...</p>
-          )}
+          ))}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="flex h-screen w-screen bg-slate-950 overflow-hidden font-sans selection:bg-sky-500/30">
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans transition-all duration-700 selection:bg-primary/30">
       
-      <Sidebar 
-        roles={userRoles} 
-        activeTab={activeTab} 
-        onNavigate={handleNavigate} 
-      />
-      
-      <div className="flex-1 flex flex-col relative overflow-y-auto bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-900 to-slate-950 custom-scrollbar">
+      {/* ADAPTIVE SIDEBAR CONTAINER */}
+      <div className={`
+        fixed inset-y-0 left-0 transform transition-transform duration-500 ease-in-out z-[200]
+        lg:relative lg:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0 shadow-[50px_0_100px_rgba(0,0,0,0.3)]' : '-translate-x-full'}
+      `}>
+        <Sidebar roles={userRoles} activeTab={activeTab} onNavigate={handleNavigate} />
         
-        {/* EXECUTIVE STICKY HEADER */}
-        <header className="sticky top-0 z-[100] bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 px-10 py-4 flex justify-between items-center min-h-[80px]">
-          <div className="flex items-center gap-4">
-            <div className="bg-sky-500/10 p-2.5 rounded-xl border border-sky-500/20">
-              <Layout size={20} className="text-sky-400" />
+      </div>
+
+      {isSidebarOpen && <div onClick={() => setSidebarOpen(false)} className="lg:hidden fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[150] transition-opacity duration-500" />}
+      
+      <div className="flex-1 flex flex-col relative overflow-y-auto custom-scrollbar">
+        
+        {/* EXECUTIVE COMMAND HEADER: Fixed background color for both modes */}
+        <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-2xl border-b border-border px-8 md:px-12 py-6 flex justify-between items-center min-h-[100px] transition-all duration-500">
+          <div className="flex items-center gap-6">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-4 bg-background border border-border text-slate-500 rounded-[1.5rem] hover:text-primary shadow-sm active:scale-90 transition-all">
+              <Menu size={24} />
+            </button>
+            <div className="hidden sm:flex bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-inner transition-transform hover:scale-110">
+              <Layout size={26} className="text-primary" />
             </div>
             <div className="flex flex-col justify-center">
-              <h2 className="text-slate-100 text-lg font-bold tracking-tight leading-none mb-1">
-                {getPageTitle()}
-              </h2>
-              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">
-                Work Pilot Node
-              </span>
+              <h2 className="text-foreground text-xl font-black tracking-tighter leading-none mb-2 uppercase">{getPageTitle()}</h2>
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] leading-none">Authorization Valid</span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-8 h-full">
-            <div className="hidden md:flex items-center gap-4 border-r border-slate-800 pr-8 h-10">
-               <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest leading-none">Efficiency Index</span>
-               <div className="flex items-center justify-center">
-                  <ScoreBadge employeeId={userId} minimalist={true} /> 
-               </div>
+          <div className="flex items-center gap-6 md:gap-12 h-full">
+            {/* PULSE INDEX: No longer hardcoded dark */}
+            <div className="hidden lg:flex items-center gap-6 border-r border-border pr-12 h-12">
+               <span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] leading-none">Operational Pulse</span>
+               <ScoreBadge employeeId={userId} minimalist={true} /> 
             </div>
 
-            <div className="flex items-center gap-5">
-              <div className="text-right flex flex-col justify-center relative">
-                
+            <div className="flex items-center gap-5 md:gap-8">
+              <ThemeToggle />
+              
+              <div className="text-right hidden sm:flex flex-col justify-center relative min-w-[120px]">
                 {latestBadge && (
-                  <div className="absolute -top-3.5 -right-2 animate-bounce-slow">
-                     <HeaderBadgeIcon 
-                        size={14} 
-                        color={latestBadge.color} 
-                        fill={latestBadge.color} 
-                        fillOpacity={0.2} 
-                        style={{ filter: `drop-shadow(0 0 8px ${latestBadge.color}80)` }}
-                      />
+                  <div className="absolute -top-5 -right-3 animate-bounce-slow">
+                     <HeaderBadgeIcon size={20} color={latestBadge.color} style={{ filter: `drop-shadow(0 0 10px ${latestBadge.color}80)` }} />
                   </div>
                 )}
-                
-                <div className="flex items-center gap-2 justify-end">
-                    <div className="text-slate-200 text-sm font-black leading-none">{user?.name || sessionUser?.name}</div>
-                    
-                    <span 
-                      className="text-[7px] font-black text-slate-950 px-1.5 py-0.5 rounded-sm uppercase tracking-tighter shadow-lg"
-                      style={{ backgroundColor: latestBadge ? latestBadge.color : '#fbbf24' }}
-                    >
-                      {latestBadge ? latestBadge.name : 'Standard Node'}
-                    </span>
+                <div className="flex items-center gap-4 justify-end">
+                    <div className="text-foreground text-base font-black leading-none uppercase tracking-tight">{user?.name || sessionUser?.name}</div>
+                    <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: latestBadge ? latestBadge.color : '#38bdf8' }} />
                 </div>
-                <div className="inline-block self-end mt-1">
-                    <span className="text-sky-400 text-[9px] font-black uppercase tracking-[0.2em] leading-none bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">
-                      {userRoles[0] || 'Member'}
+                <div className="inline-block self-end mt-2.5">
+                    <span className="text-primary text-[10px] font-black uppercase tracking-[0.3em] leading-none bg-primary/10 px-3 py-2 rounded-xl border border-primary/20 shadow-sm">
+                      {userRoles[0] || 'Authenticated Node'}
                     </span>
                 </div>
               </div>
               
-              <button 
-                onClick={onLogout}
-                title="Secure Sign Out"
-                className="group bg-red-500/5 border border-red-500/20 p-3 rounded-2xl text-red-400 hover:bg-red-500/10 transition-all active:scale-95 shadow-lg shadow-red-500/5"
-              >
-                <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
+              {/* EXIT TRIGGER */}
+              <button onClick={onLogout} title="De-authorize Session" className="group bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl text-rose-600 dark:text-rose-500 hover:bg-rose-600 hover:text-white active:scale-95 shadow-lg transition-all duration-300">
+                <LogOut size={22} className="group-hover:rotate-12 transition-transform" />
               </button>
             </div>
           </div>
         </header>
 
-        {/* PAGE CONTENT CONTAINER */}
-        <div className="p-10 w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-500">
+        {/* MAIN MISSION AREA */}
+        <main className="p-6 md:p-14 w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          
+          {/* NETWORK HANDSHAKE FAILURE UI */}
+          {networkError && (
+            <div className="mb-12 bg-rose-500/10 border border-rose-500/20 p-10 rounded-[4rem] text-center animate-in zoom-in-95 duration-500 shadow-2xl">
+                <WifiOff className="mx-auto text-rose-500 mb-6" size={56} />
+                <h3 className="text-rose-600 dark:text-rose-500 font-black uppercase tracking-tighter text-2xl leading-none">Handshake Severed</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-widest mt-3 opacity-80">Unable to establish secure telemetry with the master node.</p>
+                <button onClick={fetchEmployees} className="mt-8 px-10 py-4 bg-rose-600 text-white font-black text-[11px] uppercase tracking-[0.4em] rounded-[1.5rem] shadow-xl shadow-rose-600/20 active:scale-95 transition-all">Retry Synchronization</button>
+            </div>
+          )}
+
           <Routes>
             <Route path="/" element={
-              <div className="text-white space-y-10">
-                <div className="mb-4">
-                  <h1 className="text-4xl font-black tracking-tighter mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-500">
-                    Station Overview
-                  </h1>
-                  <p className="text-slate-400 text-lg">Central command for factory telemetry and staff performance.</p>
+              <div className="space-y-16">
+                <div className="flex items-baseline gap-4">
+                    <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-foreground uppercase leading-none">Central Station</h1>
+                    <div className="h-1.5 flex-1 bg-border/40 rounded-full" />
                 </div>
-
-                {/* SYSTEM IDENTITY (TOP FULL WIDTH) */}
-                <div className="bg-slate-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-slate-800/60 shadow-2xl relative overflow-hidden group">
-                  <div className="absolute -top-24 -right-24 w-80 h-80 bg-sky-500/5 rounded-full blur-3xl group-hover:bg-sky-500/10 transition-colors" />
+                
+                {/* PRIMARY SYSTEM IDENTITY CARD */}
+                <div className="bg-card backdrop-blur-xl p-8 md:p-14 rounded-[4rem] border border-border shadow-[0_40px_80px_rgba(0,0,0,0.05)] dark:shadow-none relative overflow-hidden group transition-all duration-500">
+                  <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none group-hover:opacity-60 transition-opacity" />
                   
-                  <div className="flex justify-between items-center mb-10 relative z-10">
-                    <h3 className="text-2xl font-bold flex items-center gap-3 text-sky-400">
-                      <User size={28} /> System Identity
-                    </h3>
-                    <div className="flex items-center gap-2 bg-sky-500/10 px-6 py-2 rounded-full border border-sky-500/20 shadow-inner">
-                      <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-                      <span className="text-[12px] font-black text-sky-400 uppercase tracking-widest">Authorized Active Session</span>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8 relative z-10">
+                    <div className="flex items-center gap-6">
+                        <div className="p-4 bg-primary/10 rounded-[1.8rem] border border-primary/20 shadow-inner">
+                            <User size={36} className="text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="text-3xl font-black text-foreground uppercase tracking-tighter leading-none">Node Intelligence</h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.4em] mt-2 opacity-70">Authenticated Profile Telemetry</p>
+                        </div>
                     </div>
                   </div>
-                  
-                  <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-12 items-start">
-                    {/* Score Badge Left Side */}
-                    <div className="bg-slate-950/50 p-8 rounded-[2rem] border border-slate-800/40 shadow-inner">
+
+                  <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr] gap-14 items-start">
+                    <div className="bg-background/50 backdrop-blur-xl p-8 md:p-12 rounded-[3.5rem] border border-border shadow-inner">
                       <ScoreBadge employeeId={userId} />
                     </div>
-
-                    {/* Achievement Gallery Right Side */}
-                    <div className="space-y-6">
-                      {/* FIX: Safe check for earnedBadges map in system identity section */}
+                    
+                    <div className="space-y-10">
                       {Array.isArray(currentUserData?.earnedBadges) && currentUserData.earnedBadges.length > 0 ? (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                           <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.4em] mb-6 flex items-center gap-3 px-1">
-                             <Sparkles size={16} className="text-amber-400" /> Achievement Workshop Log
+                        <div className="animate-in fade-in slide-in-from-right-10 duration-1000">
+                           <h4 className="text-[10px] font-black text-slate-400 dark:text-primary uppercase tracking-[0.5em] mb-10 flex items-center gap-4 px-3">
+                             <Sparkles size={18} className="text-amber-500 animate-pulse" /> Unlocked Merit Badges
                            </h4>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                               {currentUserData.earnedBadges.map((badge, bIdx) => {
                                 const BadgeIcon = badgeIconMap[badge.iconName] || Star;
                                 return (
-                                  <div key={bIdx} className="flex items-center gap-4 bg-slate-950/60 p-4 rounded-3xl border border-slate-800/40 hover:border-amber-500/20 transition-all group/badge shadow-sm">
-                                    <div 
-                                      className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5 shadow-inner"
-                                      style={{ backgroundColor: `${badge.color}15` }}
-                                    >
-                                       <BadgeIcon size={22} color={badge.color} />
+                                  <div key={bIdx} className="flex items-center gap-6 bg-background border border-border p-6 rounded-[2.5rem] hover:border-primary/40 hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 group/badge shadow-sm">
+                                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center border border-border shadow-inner transition-transform group-hover/badge:rotate-6" style={{ backgroundColor: `${badge.color}15` }}>
+                                       <BadgeIcon size={32} color={badge.color} style={{ filter: `drop-shadow(0 0 10px ${badge.color}80)` }} />
                                     </div>
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-black text-slate-200 group-hover/badge:text-amber-400 transition-colors">
-                                        {badge.name}
-                                      </span>
-                                      <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                                        Unlocked Milestone
-                                      </span>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-lg font-black text-foreground group-hover/badge:text-primary transition-colors truncate uppercase tracking-tight">{badge.name}</span>
+                                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-2">Protocol Verified</span>
                                     </div>
                                   </div>
                                 );
@@ -356,56 +324,36 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                            </div>
                         </div>
                       ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-10 border-2 border-dashed border-slate-800/50 rounded-[2rem] opacity-30">
-                           <Medal size={48} className="text-slate-600 mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Workshop Awaiting Completion Data</p>
+                        <div className="h-full flex flex-col items-center justify-center py-24 px-12 border-4 border-dashed border-border rounded-[4rem] opacity-20 grayscale transition-all">
+                           <Award size={80} className="text-slate-300 dark:text-slate-700 mb-8" />
+                           <p className="text-[12px] font-black uppercase tracking-[0.6em] text-slate-400 text-center leading-loose">Mission history required <br/> to generate achievement nodes.</p>
                         </div>
                       )}
                     </div>
                   </div>
-
-                  <div className="mt-10 pt-8 border-t border-slate-800/60 flex gap-4 flex-wrap relative z-10">
-                    {/* FIX: Added check before mapping roles */}
-                    {Array.isArray(userRoles) && userRoles.map((role, idx) => (
-                      <span key={idx} className="text-[11px] font-black tracking-widest uppercase text-slate-400 bg-slate-950 px-6 py-3 rounded-2xl border border-slate-800 shadow-sm transition-colors hover:border-sky-500/30">
-                        Operational Tier: {role}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
-                {/* FACTORY TOP PERFORMERS (BELOW) */}
                 <PerformanceLeaderboard />
               </div>
             } />
 
+            {/* ROUTE MAPPING: All Page Wrappers now use bg-card */}
             <Route path="employees" element={
-              <div className="flex flex-col gap-10">
-                <div className="bg-slate-900/30 p-1.5 rounded-[2.5rem] border border-slate-800/40 shadow-inner">
-                  <AddEmployee 
-                    tenantId={currentTenantId} 
-                    selectedEmployee={selectedEmployee} 
-                    onSuccess={() => {
-                      fetchEmployees(); 
-                      setSelectedEmployee(null); 
-                    }} 
-                  />
+              <div className="flex flex-col gap-16">
+                <div className="bg-card backdrop-blur-xl p-4 rounded-[4rem] border border-border shadow-inner">
+                  <AddEmployee tenantId={currentTenantId} selectedEmployee={selectedEmployee} onSuccess={() => { fetchEmployees(); setSelectedEmployee(null); }} />
                 </div>
                 <div className="relative">
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                      <div className="w-10 h-10 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin" />
-                      <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">Synchronizing Personnel Data...</p>
+                    <div className="flex flex-col items-center justify-center py-48 gap-8 transition-colors duration-700">
+                        <div className="relative">
+                            <RefreshCcw className="animate-spin text-primary" size={64} />
+                            <div className="absolute inset-0 blur-3xl bg-primary/20 animate-pulse rounded-full"></div>
+                        </div>
+                        <p className="text-slate-400 dark:text-slate-500 font-black text-[13px] tracking-[0.6em] uppercase">Decrypting Personnel Registry...</p>
                     </div>
                   ) : (
-                    <RegisteredEmployees 
-                      employees={employees} 
-                      onEdit={(emp) => {
-                        setSelectedEmployee(emp); 
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }} 
-                      fetchEmployees={fetchEmployees}
-                    />
+                    <RegisteredEmployees employees={employees} onEdit={(emp) => { setSelectedEmployee(emp); window.scrollTo({ top: 0, behavior: 'smooth' }); }} fetchEmployees={fetchEmployees} />
                   )}
                 </div>
               </div>
@@ -423,31 +371,16 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
             <Route path="tracking" element={<CoordinatorDashboard coordinatorId={userId} />} />
             <Route path="rewards-log" element={<RewardsLog userId={userId} tenantId={currentTenantId} />} />
           </Routes>
-        </div>
+        </main>
       </div>
 
-      {/* Internal Custom Scrollbar Styling */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #1e293b;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #334155;
-        }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 2s infinite ease-in-out;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+        @keyframes bounce-slow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite ease-in-out; }
       `}</style>
     </div>
   );
