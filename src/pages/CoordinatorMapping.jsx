@@ -113,7 +113,7 @@ const CoordinatorMapping = ({ tenantId }) => {
         <RefreshCcw className="animate-spin text-primary" size={56} />
         <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse"></div>
       </div>
-      <p className="text-slate-400 dark:text-slate-500 font-black text-[11px] tracking-[0.5em] uppercase">Recalibrating Hierarchy Matrix...</p>
+      <p className="text-slate-400 dark:text-slate-500 font-black text-[11px] tracking-[0.5em] uppercase">Loading...</p>
     </div>
   );
 
@@ -129,9 +129,9 @@ const CoordinatorMapping = ({ tenantId }) => {
             <UserCog className="text-primary" size={36} />
           </div>
           <div>
-            <h2 className="text-foreground text-4xl font-black tracking-tighter m-0 uppercase leading-none">Universal Mapping</h2>
+            <h2 className="text-foreground text-4xl font-black tracking-tighter m-0 uppercase leading-none">PC Flock Mapping</h2>
             <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mt-3 opacity-80">
-              Authorize operational nodes to delegate and monitor cross-departmental assets.
+              Group System Wide Task To Be Viewed By Process Coordinator.
             </p>
           </div>
         </div>
@@ -139,7 +139,7 @@ const CoordinatorMapping = ({ tenantId }) => {
           onClick={fetchEmployees} 
           className="group bg-card hover:bg-background border border-border px-10 py-5 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.25em] transition-all flex items-center gap-4 active:scale-95 shadow-xl hover:shadow-primary/5"
         >
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Sync Registry
+          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
@@ -158,12 +158,12 @@ const CoordinatorMapping = ({ tenantId }) => {
             <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-inner">
                 <ShieldCheck size={24} className="text-primary" />
             </div>
-            <h4 className="text-foreground font-black text-xl tracking-tighter uppercase">1. Identify Subject</h4>
+            <h4 className="text-foreground font-black text-xl tracking-tighter uppercase">Select User</h4>
           </div>
           
           <div className="space-y-8">
             <div className="relative group">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 mb-3 block">Supervisor Node</label>
+                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 mb-3 block">Select User who will act as coordinator</label>
                 <select 
                 value={selectedSupervisor}
                 onChange={(e) => setSelectedSupervisor(e.target.value)}
@@ -186,8 +186,8 @@ const CoordinatorMapping = ({ tenantId }) => {
                 <div className="flex gap-5 relative z-10">
                     <AlertCircle className="text-primary shrink-0" size={22} />
                     <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black leading-relaxed uppercase tracking-widest">
-                    <span className="text-primary font-black mr-2">Core Logic:</span> 
-                    Linking staff here grants the Subject authority to delegate tasks and execute verification protocols for the chosen targets.
+                    <span className="text-primary font-black mr-2"> Alert:</span> 
+                    Designated users can view, complete, and send reminders for team tasks.
                     </p>
                 </div>
             </div>
@@ -203,7 +203,7 @@ const CoordinatorMapping = ({ tenantId }) => {
                 <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner">
                     <Users size={24} className="text-emerald-500" />
                 </div>
-                <h4 className="text-foreground font-black text-xl tracking-tighter uppercase">2. Authority Scope</h4>
+                <h4 className="text-foreground font-black text-xl tracking-tighter uppercase">Choose Authorized Flock</h4>
             </div>
             
             <div className="flex items-center gap-5 w-full sm:w-auto">
@@ -216,7 +216,7 @@ const CoordinatorMapping = ({ tenantId }) => {
                   {selectedTargets.length === (safeEmployees.length - 1) && safeEmployees.length > 0 ? "Deselect All" : "Select All Nodes"}
                 </button>
                 <div className="bg-background px-6 py-2.5 rounded-full border border-border text-emerald-500 font-black text-[10px] tracking-[0.2em] shadow-inner uppercase">
-                  {selectedTargets.length} Targets
+                  {selectedTargets.length} Selected
                 </div>
             </div>
           </div>
@@ -273,7 +273,7 @@ const CoordinatorMapping = ({ tenantId }) => {
             `}
           >
             {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Save size={24} />}
-            {saving ? 'Transmitting Hierarchical Updates...' : 'Commit Operational Mapping'}
+            {saving ? 'Loading...' : 'Save'}
           </button>
         </div>
       </div>

@@ -57,7 +57,7 @@ const Sidebar = ({ roles = [], tenantId }) => {
   const fetchFactoryBranding = useCallback(async () => {
     if (!currentTenantId) return;
     try {
-      setLoadingLogo(true);// Use the API instance which has the correct base URL
+      setLoadingLogo(true);
       const res = await API.get(`/superadmin/settings/${currentTenantId}`);
       if (res.data) {
         setFactoryLogo(res.data.logo || '');
@@ -76,10 +76,10 @@ const Sidebar = ({ roles = [], tenantId }) => {
     return () => window.removeEventListener('brandingUpdated', fetchFactoryBranding);
   }, [fetchFactoryBranding]);
 
-  // --- UPDATED CATEGORIES FOR UNIVERSAL ACCESS (Phase 7.2) ---
+  // --- UPDATED CATEGORIES PER YOUR REQUEST ---
   const categories = [
     {
-      label: 'Main',
+      label: '',
       items: [
         { name: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
       ]
@@ -89,48 +89,54 @@ const Sidebar = ({ roles = [], tenantId }) => {
       items: [
         { name: 'Create Task', icon: <ListTodo />, roles: ['Admin', 'Assigner'] },
         { name: 'Manage Tasks', icon: <ClipboardList />, roles: ['Admin', 'Assigner'] },
-        /** * UPDATED: 'My Tasks' is now visible to ALL roles
-         * This allows Admins/Assigners to act as "Doers" when assigned a task.
-         */
         { name: 'My Tasks', icon: <CheckSquare />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
       ]
     },
     {
-      label: 'Routine Checklists',
+      label: 'Checklist Task',
       items: [
-        { name: 'Checklist Setup', icon: <LayoutList />, roles: ['Admin'] },
+        // Updated Label
+        { name: 'Create Checklist', icon: <LayoutList />, roles: ['Admin'] },
         { name: 'Manage Checklist', icon: <ClipboardList />, roles: ['Admin'] },
+        // Updated Label & Positioned before Monitor
+        { name: 'My Checklist', icon: <ListTodo />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Checklist Monitor', icon: <Activity />, roles: ['Admin', 'Coordinator'] },
-        /** * UPDATED: 'Checklist' is now visible to ALL roles
-         * Any role can now be assigned routine operations.
-         */
-        { name: 'Checklist', icon: <ListTodo />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
       ]
     },
     {
-      label: 'Administration',
+      label: 'Security & Settings',
       items: [
         { name: 'Employees', icon: <Users />, roles: ['Admin'] },
         { name: 'Mapping', icon: <UserCog />, roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
-        { 
-          name: 'Rewards Log', 
-          icon: <HistoryIcon />, 
-          roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] 
-        },
-        { name: 'Factory Settings', icon: <Settings />, roles: ['Admin'] },
+        { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
       ]
     }
   ];
 
+  /**
+   * FIX: Helper to standardize route generation
+   */
+  const getRoute = (itemName) => {
+    if (itemName === 'Dashboard') return '';
+    // Map custom display names to the actual routes defined in Dashboard.jsx
+    if (itemName === 'Create Checklist') return 'checklist-setup';
+    if (itemName === 'My Checklist') return 'checklist';
+    
+    return itemName.toLowerCase().replace(/\s+/g, '-');
+  };
+
   const isActive = (itemName) => {
-    const route = itemName === 'Dashboard' ? 'dashboard' : itemName.toLowerCase().replace(/\s+/g, '-');
-    const currentPath = location.pathname.split('/').pop() || 'dashboard';
+    const route = getRoute(itemName);
+    const currentPath = location.pathname.split('/').pop() || '';
+    
+    if (route === '' && (currentPath === 'dashboard' || currentPath === '')) return true;
     return currentPath === route;
   };
 
   const handleNavigate = (itemName) => {
-    const route = itemName === 'Dashboard' ? '' : itemName.toLowerCase().replace(/\s+/g, '-');
+    const route = getRoute(itemName);
     navigate(`/dashboard/${route}`);
   };
 
@@ -163,7 +169,6 @@ const Sidebar = ({ roles = [], tenantId }) => {
           </div>
         )}
         
-        {/* ROLE BADGES */}
         <div className="flex flex-wrap gap-1.5 mt-2">
           {safeRoles.length > 0 ? safeRoles.map((r, i) => (
             <span key={i} className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20">
@@ -176,9 +181,9 @@ const Sidebar = ({ roles = [], tenantId }) => {
           )}
         </div>
 
-        {/* --- PERFORMANCE SCORE & BADGES --- */}
+        {/* PERFORMANCE SCORE & BADGES */}
         {user?.totalPoints !== undefined && (
-          <div className="mt-5 p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.05)] animate-in fade-in duration-500">
+          <div className="mt-5 p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 shadow-[0_0_20px_rgba(251,191,36,0.05)]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-500/20 rounded-lg">
                 <Trophy size={16} className="text-amber-400" />
@@ -191,7 +196,6 @@ const Sidebar = ({ roles = [], tenantId }) => {
               </div>
             </div>
 
-            {/* ACHIEVEMENT GALLERY */}
             {user?.earnedBadges?.length > 0 && (
               <div className="mt-4 pt-3 border-t border-amber-500/10">
                 <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">Unlocked Achievements</p>
@@ -202,11 +206,10 @@ const Sidebar = ({ roles = [], tenantId }) => {
                       <div 
                         key={idx} 
                         title={`${badge.name}`}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center border animate-in zoom-in-50"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center border"
                         style={{ 
                           backgroundColor: `${badge.color}15`, 
-                          borderColor: `${badge.color}30`,
-                          animationDelay: `${idx * 100}ms`
+                          borderColor: `${badge.color}30`
                         }}
                       >
                         <IconComponent 
@@ -248,7 +251,7 @@ const Sidebar = ({ roles = [], tenantId }) => {
                       className={`
                         group flex items-center justify-between px-4 py-3 cursor-pointer rounded-xl transition-all duration-200
                         ${active 
-                          ? 'bg-sky-500/10 text-sky-400 shadow-[inset_0_0_10px_rgba(56,189,248,0.05)] border border-sky-500/20' 
+                          ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' 
                           : 'text-slate-400 hover:bg-slate-900 hover:text-slate-100 border border-transparent'
                         }
                       `}
@@ -281,9 +284,6 @@ const Sidebar = ({ roles = [], tenantId }) => {
             v 1.2.0 • PRO Edition
           </p>
         </div>
-        <p className="text-[9px] text-slate-600 mt-1 font-medium">
-          M-Tenant Secure Protocol Active
-        </p>
       </div>
 
       <style>{`

@@ -10,12 +10,20 @@ import {
   AlertCircle,
   RefreshCcw,
   MessageCircle,
-  Zap
+  Zap,
+  X,
+  Phone,
+  MessageSquare
 } from "lucide-react";
 
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // --- NEW STATES FOR MODAL ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [customMessage, setCustomMessage] = useState("");
 
   // Fallback for ID persistence
   const savedUser = JSON.parse(localStorage.getItem('user'));
@@ -47,17 +55,26 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     fetchTasks();
   }, [fetchTasks]);
 
-  // WhatsApp Reminder Handler
-  const handleReminder = (number, title) => {
-    if (!number) {
-        alert("Mobile number not found for this person.");
+  // NEW: Logic to open the reminder popup
+  const openReminderModal = (task) => {
+    if (!task.doerId?.whatsappNumber) {
+        alert("Mobile number not found for this staff member.");
         return;
     }
-    const message = `Reminder: The task "${title}" is still pending. Please complete it soon.`;
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(message)}`, '_blank');
+    setSelectedTask(task);
+    setCustomMessage(`Reminder: The task "${task.title}" is still pending. Please update the status.`);
+    setIsModalOpen(true);
   };
 
-  // Force Completion Handler
+  // NEW: Logic to actually send the WhatsApp message from the popup
+  const handleSendWhatsApp = () => {
+    if (!selectedTask) return;
+    const number = selectedTask.doerId.whatsappNumber;
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(customMessage)}`, '_blank');
+    setIsModalOpen(false);
+  };
+
+  // Logic for Force Completion
   const handleForceDone = async (taskId) => {
     if (window.confirm("Are you sure you want to mark this task as Done?")) {
       try {
@@ -124,14 +141,14 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       </div>
 
       {/* Monitoring Table */}
-      <div className="bg-slate-950 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
+      <div className="bg-slate-950 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden relative">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-900/50 border-b border-slate-800 text-left">
                 <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Task Details</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Assigned By</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Assigned To</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Staff Name</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Contact No.</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Deadline</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Actions</th>
@@ -151,13 +168,13 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                     
                     <td className="px-8 py-6">
                         <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
-                           <User size={12} className="text-sky-400" /> {task.assignerId?.name || 'Admin'}
+                           <UserCheck size={12} className="text-emerald-400" /> {task.doerId?.name || 'Staff'}
                         </div>
                     </td>
 
-                    <td className="px-8 py-6">
-                        <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
-                           <UserCheck size={12} className="text-emerald-400" /> {task.doerId?.name || 'Staff'}
+                    <td className="px-8 py-6 text-center">
+                        <div className="inline-flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 text-sky-400 font-black text-xs">
+                           <Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}
                         </div>
                     </td>
 
@@ -183,11 +200,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                       </div>
                     </td>
 
-                    {/* UPDATED: Action Buttons with Text */}
                     <td className="px-8 py-6">
                       <div className="flex justify-end items-center gap-2">
                         <button
-                          onClick={() => handleReminder(task.doerId?.whatsappNumber, task.title)}
+                          onClick={() => openReminderModal(task)}
                           className="flex items-center gap-2 px-4 py-2 bg-sky-500/10 text-sky-400 border border-sky-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-sky-500 hover:text-slate-950 transition-all active:scale-95"
                         >
                           <MessageCircle size={14} /> Send Reminder
@@ -216,6 +232,50 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             </div>
         )}
       </div>
+
+      {/* --- CUSTOM REMINDER MODAL (POPUP) --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl scale-in-center">
+            <div className="px-8 py-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                <div className="flex items-center gap-3">
+                    <MessageSquare size={20} className="text-sky-400" />
+                    <h3 className="text-white font-black text-lg">Send Reminder</h3>
+                </div>
+                <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-white transition-colors">
+                    <X size={24} />
+                </button>
+            </div>
+            
+            <div className="p-8">
+                <div className="mb-6 bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Receiver</div>
+                    <div className="text-white font-bold text-sm flex items-center gap-2">
+                        <UserCheck size={14} className="text-emerald-400" /> {selectedTask?.doerId?.name} 
+                        <span className="text-slate-600 font-medium">({selectedTask?.doerId?.whatsappNumber})</span>
+                    </div>
+                </div>
+
+                <div className="mb-6">
+                    <label className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-2 block ml-1">Your Message</label>
+                    <textarea 
+                        className="w-full h-32 bg-slate-950 border border-slate-800 rounded-2xl p-4 text-slate-200 text-sm focus:border-sky-500 focus:ring-1 focus:ring-sky-500 outline-none transition-all resize-none"
+                        value={customMessage}
+                        onChange={(e) => setCustomMessage(e.target.value)}
+                        placeholder="Type your message here..."
+                    ></textarea>
+                </div>
+
+                <button 
+                    onClick={handleSendWhatsApp}
+                    className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-sky-500/20"
+                >
+                    <MessageCircle size={18} /> Send to WhatsApp
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

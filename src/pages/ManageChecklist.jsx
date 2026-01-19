@@ -112,7 +112,7 @@ const ManageChecklist = ({ tenantId }) => {
           </div>
         </div>
         <button onClick={fetchData} className="group bg-slate-900 hover:bg-slate-800 border border-slate-700 px-6 py-3 rounded-2xl text-slate-300 font-bold text-sm transition-all flex items-center gap-3 active:scale-95">
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-500" /> Sync Registry
+          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-500" /> Refresh
         </button>
       </div>
 

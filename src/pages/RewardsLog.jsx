@@ -85,7 +85,7 @@ const RewardsLog = ({ userId, tenantId }) => {
         </div>
         <div>
           <h2 className="text-white text-3xl font-black tracking-tighter">Rewards Log</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Detailed audit of your performance points and time-bracket bonuses.</p>
+          <p className="text-slate-500 text-sm font-medium mt-1">Point logs view coming soon... </p>
         </div>
       </div>
 

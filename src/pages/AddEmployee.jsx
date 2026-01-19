@@ -193,10 +193,10 @@ const AddEmployee = ({
           <UserPlus size={28} />{" "}
           {isEditing
             ? `Modify Profile: ${formData.name}`
-            : "Provision New Factory Staff"}
+            : "Add New Employee"}
         </h2>
         <p className="text-slate-500 mt-1 text-sm font-medium">
-          Configure authentication, factory roles, and organizational reporting
+          Configure authentication, Company roles, and organizational reporting
           lines.
         </p>
       </div>
@@ -236,7 +236,7 @@ const AddEmployee = ({
             <InputLabel icon={Mail} label="Email Address" />
             <input
               type="email"
-              placeholder="name@factory.com"
+              placeholder="name@company.com"
               value={formData.email}
               required
               className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700"

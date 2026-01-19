@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
 import { 
+  FiUser, FiShield, FiPlus, FiX, FiSave, FiTrash2, FiSettings, FiCheckCircle, FiRefreshCw 
+} from "react-icons/fi";
+import { 
   Clock, 
   Calendar, 
   Save, 
@@ -236,7 +239,7 @@ const Settings = ({ tenantId }) => {
       });
   
       if (response.status === 200) {
-        alert("Factory Configuration Updated!");
+        alert("Updated!");
         await fetchSettings();
       }
     } catch (err) {
@@ -250,7 +253,7 @@ const Settings = ({ tenantId }) => {
   if (loading && holidayList.length === 0) return (
     <div className="flex flex-col items-center justify-center h-[400px] gap-4">
       <RefreshCcw className="animate-spin text-sky-400" size={40} />
-      <span className="text-slate-500 font-black text-[10px] tracking-[0.3em] uppercase leading-none">Accessing Foundation Setup...</span>
+      <span className="text-slate-500 font-black text-[10px] tracking-[0.3em] uppercase leading-none">Accessing Organisation Setup...</span>
     </div>
   );
 
@@ -261,8 +264,8 @@ const Settings = ({ tenantId }) => {
           <LucideSettings className="text-sky-400" size={32} />
         </div>
         <div>
-          <h2 className="text-white text-3xl font-black tracking-tighter">Foundation Setup</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Configure global operational parameters and factory branding.</p>
+          <h2 className="text-white text-3xl font-black tracking-tighter">Organisation Setup</h2>
+          <p className="text-slate-500 text-sm font-medium mt-1">Configure global task management parameters and company branding.</p>
         </div>
       </div>
 
@@ -272,7 +275,7 @@ const Settings = ({ tenantId }) => {
         <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative overflow-hidden group">
            <Building2 size={120} className="absolute -right-10 -top-10 text-sky-500/5 group-hover:scale-110 transition-transform duration-1000" />
            <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8 relative z-10">
-             <ImageIcon size={20} className="text-sky-400" /> 0. Visual Identity
+             <ImageIcon size={20} className="text-sky-400" /> Update Company Name & Logo
            </h3>
            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_auto] gap-8 items-end relative z-10">
               <div className="space-y-2">
@@ -297,7 +300,7 @@ const Settings = ({ tenantId }) => {
         {/* SECTION 1: WORKING HOURS */}
         <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl">
           <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8">
-            <Clock size={20} className="text-sky-400" /> 1. Operational Hours
+            <Clock size={20} className="text-sky-400" />Operational Hours
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
@@ -311,11 +314,29 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
 
+        {/* SECTION 4: HOLIDAY CALENDAR */}
+        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl">
+          <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8"><Calendar size={20} className="text-sky-400" /> Holiday</h3>
+          <div className="flex flex-col md:flex-row gap-4 mb-10">
+            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
+            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
+            <button onClick={addHolidayToList} className="bg-sky-500 hover:bg-sky-400 text-slate-950 px-6 rounded-2xl transition-all shadow-lg flex items-center justify-center"><PlusCircle size={24} /></button>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {Array.isArray(holidayList) && holidayList.map((h, index) => (
+              <div key={index} className="flex justify-between items-center px-6 py-4 bg-slate-950 border border-slate-800/50 rounded-2xl group hover:border-sky-500/20 transition-all">
+                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full bg-sky-500" /><div><span className="font-bold text-slate-100">{h.name}</span><span className="text-[10px] text-slate-600 uppercase ml-4">{h.date ? new Date(h.date).toLocaleDateString() : 'N/A'}</span></div></div>
+                <button onClick={() => removeHoliday(index)} className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18} /></button>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* SECTION 2: PERFORMANCE ENGINE */}
         <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative group/points">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <h3 className="text-white text-xl font-bold flex items-center gap-3">
-              <Trophy size={22} className="text-amber-400" /> 2. Performance Engine
+              <Trophy size={22} className="text-amber-400" />Performance Engine
             </h3>
             <button onClick={() => setPointSettings(prev => ({ ...prev, isActive: !prev.isActive }))} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pointSettings.isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
               Engine {pointSettings.isActive ? 'Active' : 'Offline'}
@@ -360,7 +381,7 @@ const Settings = ({ tenantId }) => {
         <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative overflow-hidden group/badges">
           <Award size={120} className="absolute -right-10 -top-10 text-amber-500/5 group-hover/badges:scale-110 transition-transform duration-1000" />
           <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8 relative z-10">
-            <Medal size={20} className="text-amber-400" /> 3. Achievement Workshop
+            <Medal size={20} className="text-amber-400" /> Achievement Workshop
           </h3>
           <div className="space-y-6 relative z-10">
             {Array.isArray(badgeLibrary) && badgeLibrary.map((badge, index) => (
@@ -415,28 +436,12 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
 
-        {/* SECTION 4: HOLIDAY CALENDAR */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl">
-          <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8"><Calendar size={20} className="text-sky-400" /> 4. Holiday Manifest</h3>
-          <div className="flex flex-col md:flex-row gap-4 mb-10">
-            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
-            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
-            <button onClick={addHolidayToList} className="bg-sky-500 hover:bg-sky-400 text-slate-950 px-6 rounded-2xl transition-all shadow-lg flex items-center justify-center"><PlusCircle size={24} /></button>
-          </div>
-          <div className="grid grid-cols-1 gap-3">
-            {Array.isArray(holidayList) && holidayList.map((h, index) => (
-              <div key={index} className="flex justify-between items-center px-6 py-4 bg-slate-950 border border-slate-800/50 rounded-2xl group hover:border-sky-500/20 transition-all">
-                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full bg-sky-500" /><div><span className="font-bold text-slate-100">{h.name}</span><span className="text-[10px] text-slate-600 uppercase ml-4">{h.date ? new Date(h.date).toLocaleDateString() : 'N/A'}</span></div></div>
-                <button onClick={() => removeHoliday(index)} className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18} /></button>
-              </div>
-            ))}
-          </div>
-        </section>
+        
       </div>
 
       <div className="mt-12 sticky bottom-10 z-50">
         <button onClick={saveSettings} disabled={saving} className={`w-full py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-2xl ${saving ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 active:scale-95 cursor-pointer"}`}>
-            {saving ? <RefreshCcw className="animate-spin" size={22} /> : <Zap size={22} fill="currentColor" />} {saving ? 'Transmitting Factory Update...' : 'Deploy Factory Configuration'}
+            {saving ? <RefreshCcw className="animate-spin" size={22} /> : <Zap size={22} fill="currentColor" />} {saving ? 'Transmitting Factory Update...' : 'Save Updates'}
         </button>
       </div>
     </div>

@@ -149,7 +149,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <RefreshCcw className="animate-spin text-sky-400" size={32} />
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Assembling Your Team...</p>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading...</p>
       </div>
     );
 
@@ -172,7 +172,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
         {/* Task Title */}
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <FileText size={14} className="text-sky-400" /> Task Heading
+            <FileText size={14} className="text-sky-400" /> Task Title
           </label>
           <input
             type="text"
@@ -219,9 +219,49 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
               </select>
             </div>
 
-            <div className="space-y-2 animate-in fade-in duration-500">
+            
+          </div>
+
+          
+        </div>
+
+        {/* Deadline & Priority Grid - UPDATED WITH DATEPICKER */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+              <Calendar size={14} className="text-sky-400" /> Due Date
+            </label>
+            {/* --- NEW DATE TIME PICKER --- */}
+            <DatePicker
+              selected={task.deadline}
+              onChange={(date) => setTask({ ...task, deadline: date })}
+              showTimeSelect
+              minDate={new Date()}
+              dateFormat="dd MMMM, yyyy h:mm aa"
+              customInput={<CustomDateInput />}
+              calendarClassName="work-pilot-dark-calendar"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+              <Flag size={14} className="text-sky-400" /> Priority
+            </label>
+            <select
+              value={task.priority}
+              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold appearance-none cursor-pointer"
+              onChange={(e) => setTask({ ...task, priority: e.target.value })}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-2 animate-in fade-in duration-500">
               <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                <Users size={14} className="text-sky-400" /> Support Team / Helpers
+                <Users size={14} className="text-sky-400" /> Followers
               </label>
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 max-h-[160px] overflow-y-auto space-y-2 scrollbar-hide">
                 {safeEmployees
@@ -247,69 +287,11 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
                   ))}
               </div>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <ShieldCheck size={14} className="text-emerald-400" /> Quality Coordinator
-            </label>
-            <select
-              value={task.coordinatorId}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold appearance-none cursor-pointer"
-              onChange={(e) => setTask({ ...task, coordinatorId: e.target.value })}
-            >
-              <option value="">None (Self-Track)</option>
-              {safeEmployees
-                .filter((emp) => {
-                  const roles = Array.isArray(emp.roles) ? emp.roles : [emp.role];
-                  return roles.some((r) => ["Coordinator", "Admin"].includes(r));
-                })
-                .map((emp) => (
-                  <option key={emp._id} value={emp._id}>{emp.name} ({emp.department})</option>
-                ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Deadline & Priority Grid - UPDATED WITH DATEPICKER */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <Calendar size={14} className="text-sky-400" /> Expected Completion
-            </label>
-            {/* --- NEW DATE TIME PICKER --- */}
-            <DatePicker
-              selected={task.deadline}
-              onChange={(date) => setTask({ ...task, deadline: date })}
-              showTimeSelect
-              minDate={new Date()}
-              dateFormat="dd MMMM, yyyy h:mm aa"
-              customInput={<CustomDateInput />}
-              calendarClassName="work-pilot-dark-calendar"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <Flag size={14} className="text-sky-400" /> Urgency Level
-            </label>
-            <select
-              value={task.priority}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold appearance-none cursor-pointer"
-              onChange={(e) => setTask({ ...task, priority: e.target.value })}
-            >
-              <option value="Low">Low Priority</option>
-              <option value="Medium">Medium Priority</option>
-              <option value="High">High Priority</option>
-              <option value="Urgent">Urgent / Critical</option>
-            </select>
-          </div>
-        </div>
 
         {/* FILE UPLOAD SECTION */}
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <Paperclip size={14} className="text-sky-400" /> Documentation & Blueprint References
+            <Paperclip size={14} className="text-sky-400" /> Documentation & Blueprint References (if any)
           </label>
           <div className="border-2 border-dashed border-slate-800 bg-slate-950/50 p-8 rounded-[2rem] text-center group hover:border-sky-500/50 transition-colors relative">
             <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
@@ -339,8 +321,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
               <RefreshCcw size={20} className={task.isRevisionAllowed ? "animate-spin-slow" : ""} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-200">Revision Protocol</p>
-              <p className="text-xs text-slate-500 font-medium">Allow Doer to request deadline adjustments.</p>
+              <p className="text-sm font-bold text-slate-200">Allow Doer to request due date adjustments.</p>
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -355,7 +336,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
           className="w-full py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(56,189,248,0.2)] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
         >
           {isSubmitting ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} className="group-hover:scale-110 transition-transform" />}
-          {isSubmitting ? "Encrypting & Notifying Team..." : "Initialize Task & Sync WhatsApp"}
+          {isSubmitting ? "Encrypting & Notifying Team..." : "Assign Task"}
         </button>
       </form>
 

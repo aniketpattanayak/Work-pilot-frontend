@@ -147,7 +147,7 @@ const DoerChecklist = ({ doerId }) => {
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[400px] gap-4">
       <RefreshCcw className="animate-spin text-sky-400" size={40} />
-      <p className="text-slate-500 font-black text-[10px] tracking-[0.3em] uppercase">Syncing Board...</p>
+      <p className="text-slate-500 font-black text-[10px] tracking-[0.3em] uppercase">Syncing...</p>
     </div>
   );
 

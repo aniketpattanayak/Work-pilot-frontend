@@ -17,14 +17,17 @@ function App() {
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const savedTenantId = localStorage.getItem('tenantId');
-    const token = localStorage.getItem('token'); // Primary token check
+    const token = localStorage.getItem('token'); 
 
     if (savedUser && savedUser !== "undefined") {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      // If the restored user has the SuperAdmin flag, set auth state
-      if (parsedUser.isSuperAdmin) {
-        setIsSuperAuth(true);
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        if (parsedUser.isSuperAdmin) {
+          setIsSuperAuth(true);
+        }
+      } catch (e) {
+        console.error("Session restore error", e);
       }
     }
     
@@ -43,14 +46,12 @@ function App() {
     localStorage.setItem('tenantId', tId);
   };
 
-  // 3. NEW: HANDLE MASTER LOGIN SUCCESS
-  // This ensures isSuperAuth updates without needing a page refresh
+  // 3. HANDLE MASTER LOGIN SUCCESS
   const handleMasterLoginSuccess = (token, userData) => {
     setIsSuperAuth(true);
     setUser(userData);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
-    // Clear factory ID when entering Master Panel
     localStorage.removeItem('tenantId'); 
   };
 
@@ -70,18 +71,16 @@ function App() {
     <Router>
       <div style={{ background: '#0f172a', minHeight: '100vh' }}>
         <Routes>
-          {/* ROOT DOMAIN: SuperAdmin Area */}
           {(!subdomain || subdomain === "") ? (
             <Route path="/*" element={
               <SuperAdmin 
                 isAuthenticated={isSuperAuth} 
-                onLogin={handleMasterLoginSuccess} // Pass the new success handler
+                onLogin={handleMasterLoginSuccess} 
                 onLogout={handleLogout} 
               />
             } />
           ) : (
             <>
-              {/* SUBDOMAIN AREA: Factory Logic */}
               <Route 
                 path="/login" 
                 element={user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />} 

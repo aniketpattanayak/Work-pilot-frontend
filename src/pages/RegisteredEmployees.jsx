@@ -82,12 +82,12 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
             <Users size={28} className="text-sky-400" />
           </div>
           <div>
-            <h3 className="text-white text-xl font-black tracking-tight m-0">Registered Factory Staff</h3>
+            <h3 className="text-white text-xl font-black tracking-tight m-0">List of Employees</h3>
             <p className="text-slate-500 text-xs font-medium mt-0.5">Directory of authenticated personnel and organizational link states.</p>
           </div>
         </div>
         <div className="bg-slate-950 px-5 py-2 rounded-full border border-slate-800 shadow-inner">
-           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Registry: </span>
+           <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Employee Count: </span>
            <span className="text-sky-400 font-black text-sm">{safeEmployees.length}</span>
         </div>
       </div>
@@ -98,9 +98,9 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
           <thead>
             <tr className="bg-slate-900/80 border-b border-slate-800 font-black text-slate-500 text-[10px] uppercase tracking-widest">
               <th className="px-10 py-5">Staff Identity</th>
-              <th className="px-8 py-5">Communication</th>
-              <th className="px-8 py-5">Access Clearances</th>
-              <th className="px-8 py-5">Organizational Linkage</th>
+              <th className="px-8 py-5">Email & Contact</th>
+              <th className="px-8 py-5">Access Roles</th>
+              <th className="px-8 py-5">Eligible Doer Names</th>
               <th className="px-10 py-5 text-right">Actions</th>
             </tr>
           </thead>

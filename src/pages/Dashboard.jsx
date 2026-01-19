@@ -13,6 +13,7 @@ import RegisteredEmployees from './RegisteredEmployees';
 import ManageChecklist from './ManageChecklist';
 import ChecklistMonitor from './ChecklistMonitor'; 
 
+
 // Task components
 import CreateTask from './CreateTask'; 
 import ManageTasks from './ManageTasks'; 
@@ -266,18 +267,18 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                 <div className="flex items-center gap-2 justify-end">
                     <div className="text-slate-200 text-sm font-black leading-none">{user?.name || sessionUser?.name}</div>
                     
-                    <span 
+                    {/* <span 
                       className="text-[7px] font-black text-slate-950 px-1.5 py-0.5 rounded-sm uppercase tracking-tighter shadow-lg"
                       style={{ backgroundColor: latestBadge ? latestBadge.color : '#fbbf24' }}
                     >
                       {latestBadge ? latestBadge.name : 'Standard Node'}
-                    </span>
+                    </span> */}
                 </div>
-                <div className="inline-block self-end mt-1">
+                {/* <div className="inline-block self-end mt-1">
                     <span className="text-sky-400 text-[9px] font-black uppercase tracking-[0.2em] leading-none bg-sky-500/10 px-2 py-1 rounded border border-sky-500/20">
                       {userRoles[0] || 'Member'}
                     </span>
-                </div>
+                </div> */}
               </div>
               
               <button 
@@ -422,6 +423,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
             <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
             <Route path="tracking" element={<CoordinatorDashboard coordinatorId={userId} />} />
             <Route path="rewards-log" element={<RewardsLog userId={userId} tenantId={currentTenantId} />} />
+            <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
           </Routes>
         </div>
       </div>
