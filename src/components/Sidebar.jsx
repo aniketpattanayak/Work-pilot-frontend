@@ -57,8 +57,8 @@ const Sidebar = ({ roles = [], tenantId }) => {
   const fetchFactoryBranding = useCallback(async () => {
     if (!currentTenantId) return;
     try {
-      setLoadingLogo(true);
-      const res = await axios.get(`/superadmin/settings/${currentTenantId}`);
+      setLoadingLogo(true);// Use the API instance which has the correct base URL
+      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
       if (res.data) {
         setFactoryLogo(res.data.logo || '');
         setCompanyName(res.data.companyName || 'WORK PILOT');

@@ -125,13 +125,20 @@ const Login = ({ onLoginSuccess }) => {
         
         {/* Branding Section */}
         <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-gradient-to-br from-sky-400 to-sky-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(56,189,248,0.2)]">
-            {tenant?.logo ? (
-                <img src={tenant.logo} alt="L" className="w-10 h-10 object-contain brightness-0 invert" />
-            ) : (
-                <Factory className="text-slate-950" size={32} />
-            )}
-          </div>
+          {/* REMOVED brightness-0 invert to show actual logo colors */}
+          <div className="flex items-center justify-center mx-auto mb-8 min-h-[80px]">
+  {tenant?.logo ? (
+    <img 
+      src={tenant?.logo} 
+      alt="Logo" 
+      className="max-w-[180px] max-h-[80px] object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]" 
+    />
+  ) : (
+    <div className="w-20 h-20 bg-sky-500/10 rounded-2xl flex items-center justify-center border border-sky-500/20">
+      <Factory className="text-sky-500" size={40} />
+    </div>
+  )}
+</div>
           <h1 className="text-white text-3xl font-black tracking-tighter mb-2">
             {tenant?.companyName?.toUpperCase() || "WORK PILOT"}
           </h1>

@@ -6,11 +6,11 @@ export const getSubdomain = () => {
   
   // 1. LOCALHOST LOGIC: e.g., "tenant.localhost"
   if (host.includes('localhost')) {
-      if (parts.length >= 2) {
-          // Ignore 'www' if it happens to be used locally
-          if (parts[0].toLowerCase() === 'www') return null;
-          return parts[0]; // Returns "tenant"
-      }
+    
+    if (parts.length >= 2 && parts[parts.length - 1] === 'localhost') {
+        const sub = parts[0].toLowerCase();
+        return sub === 'www' ? null : sub;
+    }
       return null;
   }
 

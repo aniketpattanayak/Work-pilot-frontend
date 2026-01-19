@@ -10,3 +10,48 @@ body {
   background-color: var(--background);
   color: var(--foreground);
 }
+/* Custom Dark Theme for the Calendar Popup */
+.work-pilot-dark-calendar {
+  background-color: #0f172a !important; /* slate-950 */
+  border: 1px solid #1e293b !important; /* slate-800 */
+  border-radius: 1.5rem !important;
+  padding: 1rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  font-family: ui-sans-serif, system-ui, sans-serif !important;
+}
+
+.react-datepicker__header {
+  background-color: #0f172a !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+
+.react-datepicker__current-month, 
+.react-datepicker__day-name {
+  color: #38bdf8 !important; /* sky-400 */
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  font-size: 10px !important;
+}
+
+.react-datepicker__day {
+  color: #94a3b8 !important; /* slate-400 */
+  transition: all 0.2s !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: rgba(56, 189, 248, 0.2) !important;
+  color: #38bdf8 !important;
+  border-radius: 0.75rem !important;
+}
+
+.react-datepicker__day--selected {
+  background-color: #38bdf8 !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  border-radius: 0.75rem !important;
+}
+
+.react-datepicker__day--disabled {
+  color: #1e293b !important;
+}

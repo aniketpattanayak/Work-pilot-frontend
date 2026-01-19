@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import API from '../api/axiosConfig'; // Switched to centralized API instance
+import React, { useState, useEffect, useCallback, forwardRef } from 'react'; // Added forwardRef
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import API from '../api/axiosConfig';
 import { 
   Calendar, 
   User, 
@@ -10,9 +12,18 @@ import {
   Settings2,
   CalendarDays,
   Activity,
-  RefreshCcw
+  RefreshCcw 
 } from 'lucide-react';
-
+const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
+  <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
+    <input
+      value={value}
+      readOnly
+      className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold cursor-pointer placeholder:text-slate-700 shadow-inner"
+    />
+    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 group-hover:text-sky-400 transition-colors pointer-events-none" size={18} />
+  </div>
+));
 const CreateChecklist = ({ tenantId }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,6 +32,7 @@ const CreateChecklist = ({ tenantId }) => {
     description: '',
     doerId: '',
     frequency: 'Daily',
+    startDate: new Date().toISOString().split('T')[0],
     frequencyConfig: {
       dayOfWeek: 0,
       dayOfMonth: 1,
@@ -127,6 +139,7 @@ const CreateChecklist = ({ tenantId }) => {
 
         {/* Assignment & Primary Frequency */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* 1. Operational Doer */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
               <User size={14} className="text-sky-400" /> Operational Doer
@@ -138,27 +151,25 @@ const CreateChecklist = ({ tenantId }) => {
               className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all cursor-pointer font-bold appearance-none"
             >
               <option value="">Select Personnel</option>
-              {/* FIX: Using employees.map safely */}
               {Array.isArray(employees) && employees.map(emp => (
                 <option key={emp._id} value={emp._id}>{emp.name} ({emp.department || 'Staff'})</option>
               ))}
             </select>
           </div>
 
+          {/* 2. Commencement Date (NEW TAILWIND PICKER) */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <Clock size={14} className="text-sky-400" /> Trigger Interval
+              <CalendarDays size={14} className="text-sky-400" /> Commencement Date
             </label>
-            <select 
-              value={formData.frequency} 
-              onChange={(e) => setFormData({...formData, frequency: e.target.value})}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all cursor-pointer font-bold appearance-none"
-            >
-              <option value="Daily">Daily Execution</option>
-              <option value="Weekly">Weekly Cycle</option>
-              <option value="Monthly">Monthly Milestone</option>
-              <option value="Yearly">Annual Review</option>
-            </select>
+            <DatePicker
+              selected={formData.startDate ? new Date(formData.startDate) : new Date()}
+              onChange={(date) => setFormData({...formData, startDate: date.toISOString().split('T')[0]})}
+              minDate={new Date()}
+              dateFormat="dd MMMM, yyyy"
+              customInput={<CustomDateInput />} // Uses our Tailwind component
+              calendarClassName="work-pilot-dark-calendar"
+            />
           </div>
         </div>
 
