@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   Briefcase,
   Users,
-  Activity
+  Activity,
+  ShieldCheck,
 } from "lucide-react";
 
 /**
@@ -296,7 +297,7 @@ const DoerChecklist = ({ doerId }) => {
                         isDueToday ? 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50'
                       }`}
                     >
-                      Initialize
+                      Mark as Done
                     </button>
                   ) : (
                     <span className="inline-flex items-center gap-2 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase bg-background px-5 py-2.5 rounded-xl border border-border shadow-inner whitespace-nowrap">
