@@ -1,6 +1,5 @@
-import API from '../api/axiosConfig';
 import React, { useState } from 'react';
-import axios from 'axios';
+import API from '../api/axiosConfig'; // Using centralized API instance
 import { 
   Calendar, 
   Clock, 
@@ -10,92 +9,106 @@ import {
   RefreshCcw, 
   ChevronRight,
   Send,
-  ClipboardList
+  ClipboardList,
+  Maximize2
 } from 'lucide-react';
 
+/**
+ * TASK CARD: ADAPTIVE MISSION MODULE v1.3
+ * Purpose: Handles individual task interactions for Doers with full theme support.
+ * Logic: Manages status transitions, revision requests, and theme-aware styling.
+ */
 const TaskCard = ({ task, doerId }) => {
   const [remarks, setRemarks] = useState('');
   const [newDate, setNewDate] = useState('');
   const [showReviseForm, setShowReviseForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- COMMAND: SUBMIT RESPONSE PROTOCOL ---
   const handleResponse = async (status) => {
     try {
       setIsSubmitting(true);
-      await axios.post('/tasks/respond', {
+      await API.post('/tasks/respond', {
         taskId: task._id,
         doerId,
         status,
         revisedDeadline: newDate,
         remarks
       });
-      alert(`Task ${status}!`);
-      window.location.reload(); // Logic Preserved: Refresh to update status
+      alert(`Handshake Successful: Task marked as ${status}`);
+      window.location.reload(); 
     } catch (err) {
-      alert(err.response?.data?.message || "Error updating task");
+      alert(err.response?.data?.message || "Protocol Error: Unable to synchronize task state.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Status-based theming
+  /**
+   * STATUS-BASED THEME ENGINE
+   * Returns semantic color tokens based on the current mission state.
+   */
   const getStatusStyles = () => {
     switch (task.status) {
-      case 'Accepted': return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
-      case 'Completed': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-      case 'Pending': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
-      default: return 'bg-slate-800 text-slate-400 border-slate-700';
+      case 'Accepted': return 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20';
+      case 'Completed': return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+      case 'Pending': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+      case 'Verified': return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+      default: return 'bg-background text-slate-500 border-border';
     }
   };
 
   return (
-    <div className="group relative bg-slate-900/40 backdrop-blur-md border border-slate-800/60 p-6 rounded-[2rem] hover:border-sky-500/30 transition-all duration-300 shadow-xl overflow-hidden">
+    <div className="group relative bg-card backdrop-blur-xl border border-border p-6 md:p-8 rounded-[2.5rem] hover:border-primary/40 transition-all duration-500 shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
       
-      {/* Decorative Background Icon */}
-      <ClipboardList size={100} className="absolute -right-6 -bottom-6 text-sky-500/5 transition-transform duration-700 group-hover:scale-110 pointer-events-none" />
+      {/* --- DECORATIVE WATERMARK --- */}
+      <ClipboardList size={120} className="absolute -right-8 -bottom-8 text-primary/5 opacity-0 group-hover:opacity-10 transition-all duration-700 group-hover:scale-110 group-hover:rotate-12 pointer-events-none" />
 
-      {/* Header Area */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 relative z-10">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className={`px-3 py-0.5 rounded-full font-black text-[9px] uppercase tracking-widest border ${getStatusStyles()}`}>
-              {task.status}
+      {/* --- EXECUTIVE HEADER AREA --- */}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-8 relative z-10">
+        <div className="space-y-3 min-w-0">
+          <div className="flex items-center gap-3">
+            <span className={`px-4 py-1 rounded-lg font-black text-[10px] uppercase tracking-[0.2em] border shadow-sm ${getStatusStyles()}`}>
+              {task.status || 'Active Node'}
             </span>
-            <div className="w-1 h-1 rounded-full bg-slate-700" />
-            <span className="text-slate-500 font-bold text-[10px] uppercase tracking-widest">ID: {task._id.slice(-6)}</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-border" />
+            <span className="text-slate-400 dark:text-slate-600 font-black text-[10px] uppercase tracking-widest font-mono">ID: {task._id?.slice(-6).toUpperCase()}</span>
           </div>
-          <h4 className="text-white text-xl font-black tracking-tight leading-tight group-hover:text-sky-400 transition-colors">
-            {task.title}
+          <h4 className="text-foreground text-2xl font-black tracking-tighter leading-tight group-hover:text-primary transition-colors duration-300 uppercase">
+            {task.title || 'Untitled Directive'}
           </h4>
         </div>
         
-        <div className="flex items-center gap-3 bg-slate-950/50 px-4 py-2 rounded-2xl border border-slate-800/40">
-           <Calendar size={14} className="text-sky-400" />
-           <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-500 uppercase leading-none mb-1">Target Deadline</span>
-              <span className="text-xs font-bold text-slate-200 leading-none">
-                {new Date(task.deadline).toLocaleDateString([], { dateStyle: 'medium' })}
+        {/* Deadline Metadata Badge */}
+        <div className="flex items-center gap-4 bg-background p-3 rounded-2xl border border-border shadow-inner group/date transition-all hover:border-primary/20">
+           <div className="bg-primary/10 p-2 rounded-xl">
+              <Calendar size={18} className="text-primary" />
+           </div>
+           <div className="flex flex-col pr-2">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5">Target Deadline</span>
+              <span className="text-xs font-black text-foreground leading-none tracking-tight">
+                {task.deadline ? new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '---'}
               </span>
            </div>
         </div>
       </div>
 
-      {/* Description Body */}
-      <div className="mb-8 relative z-10">
-        <p className="text-slate-400 text-sm leading-relaxed font-medium">
-          {task.description}
+      {/* --- MISSION DESCRIPTION BODY --- */}
+      <div className="mb-10 relative z-10">
+        <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-bold uppercase tracking-tight opacity-90 italic border-l-4 border-primary/20 pl-6 py-1">
+          {task.description || "No tactical instructions provided for this node."}
         </p>
       </div>
 
-      {/* Action Suite (Pending Logic Preserved) */}
+      {/* --- OPERATIONAL ACTION SUITE (For Pending State) --- */}
       {task.status === 'Pending' && (
-        <div className="flex flex-col sm:flex-row gap-3 relative z-10">
+        <div className="flex flex-col sm:flex-row gap-4 relative z-10">
           <button 
             onClick={() => handleResponse('Accepted')} 
             disabled={isSubmitting}
-            className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 cursor-pointer"
+            className="flex-[1.5] bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 font-black text-[11px] uppercase tracking-[0.3em] py-5 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 shadow-2xl shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
           >
-            {isSubmitting ? <RefreshCcw size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+            {isSubmitting ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
             Accept Assignment
           </button>
           
@@ -103,45 +116,48 @@ const TaskCard = ({ task, doerId }) => {
             <button 
               onClick={() => setShowReviseForm(!showReviseForm)} 
               className={`
-                flex-1 font-black text-xs uppercase tracking-widest py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer
-                ${showReviseForm ? 'bg-slate-800 text-slate-200 border border-slate-700' : 'bg-slate-950/50 text-amber-500 border border-amber-500/20 hover:bg-amber-500/10'}
+                flex-1 font-black text-[11px] uppercase tracking-[0.3em] py-5 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer shadow-lg
+                ${showReviseForm 
+                  ? 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-border' 
+                  : 'bg-background text-amber-600 dark:text-amber-500 border border-amber-500/30 hover:bg-amber-500/5'
+                }
               `}
             >
-              <RefreshCcw size={16} className={showReviseForm ? "rotate-180 transition-transform" : ""} />
-              {showReviseForm ? 'Close Request' : 'Request Revision'}
+              <RefreshCcw size={18} className={showReviseForm ? "rotate-180 transition-transform duration-500" : ""} />
+              {showReviseForm ? 'Abort Request' : 'Request Revision'}
             </button>
           )}
         </div>
       )}
 
-      {/* Revision Form (Logic Preserved) */}
+      {/* --- REVISION PROPOSAL FORM --- */}
       {showReviseForm && (
-        <div className="mt-6 p-6 bg-slate-950/80 rounded-2xl border border-amber-500/20 animate-in slide-in-from-top-4 duration-500 relative z-10">
-          <div className="flex items-center gap-2 mb-4 text-amber-500 font-black text-[10px] uppercase tracking-widest">
-            <AlertCircle size={14} /> Schedule Adjustment Proposal
+        <div className="mt-8 p-8 bg-background border border-amber-500/30 rounded-[2rem] animate-in slide-in-from-top-6 duration-500 relative z-10 shadow-inner">
+          <div className="flex items-center gap-3 mb-6 text-amber-600 dark:text-amber-500 font-black text-[11px] uppercase tracking-[0.4em]">
+            <AlertCircle size={16} /> Schedule Adjustment Proposal
           </div>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Proposed New Deadline</label>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 block">Proposed New Deadline</label>
               <div className="relative group">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-sky-400 transition-colors" size={16} />
+                <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
                 <input 
                   type="datetime-local" 
                   onChange={(e) => setNewDate(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-5 py-3 rounded-xl outline-none focus:border-sky-500/50 transition-all font-bold text-xs"
+                  className="w-full bg-card border border-border text-foreground pl-14 pr-6 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm uppercase shadow-sm"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Reason for Adjustment</label>
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 block">Reasoning & Logistics</label>
               <div className="relative group">
-                <MessageSquare className="absolute left-4 top-4 text-slate-700 group-focus-within:text-sky-400 transition-colors" size={16} />
+                <MessageSquare className="absolute left-5 top-5 text-slate-500 group-focus-within:text-primary transition-colors" size={20} />
                 <textarea 
-                  placeholder="Explain why this change is necessary..." 
+                  placeholder="Identify blockers or logistical requirements..." 
                   onChange={(e) => setRemarks(e.target.value)} 
-                  className="w-full bg-slate-900 border border-slate-800 text-white pl-12 pr-5 py-3 rounded-xl outline-none focus:border-sky-500/50 transition-all font-medium text-xs min-h-[80px] resize-none"
+                  className="w-full bg-card border border-border text-foreground pl-14 pr-6 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm min-h-[120px] resize-none uppercase tracking-tight"
                 />
               </div>
             </div>
@@ -149,23 +165,23 @@ const TaskCard = ({ task, doerId }) => {
             <button 
               onClick={() => handleResponse('Revision Requested')} 
               disabled={isSubmitting || !newDate || !remarks}
-              className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-[10px] uppercase tracking-widest py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20"
+              className="w-full bg-primary hover:opacity-90 text-white dark:text-slate-950 font-black text-[11px] uppercase tracking-[0.3em] py-5 rounded-2xl transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-4 shadow-2xl shadow-primary/20"
             >
-              <Send size={14} /> Transmit Request to Assigner
+              <Send size={16} /> Transmit Request to Command
             </button>
           </div>
         </div>
       )}
 
-      {/* Footer Info */}
-      <div className="mt-6 pt-6 border-t border-slate-800/40 flex justify-between items-center relative z-10">
-         <div className="flex items-center gap-2 text-slate-500">
-            <Clock size={12} />
-            <span className="text-[9px] font-black uppercase tracking-widest leading-none">Standard Priority Protocol</span>
+      {/* --- FOOTER PROTOCOL INFO --- */}
+      <div className="mt-8 pt-8 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
+         <div className="flex items-center gap-3 text-slate-400 dark:text-slate-600">
+            <Clock size={16} className="text-primary/40" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] leading-none">Operational Priority Protocol Active</span>
          </div>
          {task.isRevisionAllowed && task.status === 'Pending' && (
-            <div className="flex items-center gap-1.5 text-emerald-500/60 font-black text-[9px] uppercase tracking-widest">
-               <RefreshCcw size={10} /> Revision Enabled
+            <div className="flex items-center gap-2 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/20 text-emerald-600 dark:text-emerald-500 font-black text-[10px] uppercase tracking-widest shadow-inner animate-pulse">
+               <RefreshCcw size={12} /> Revision Node Valid
             </div>
          )}
       </div>

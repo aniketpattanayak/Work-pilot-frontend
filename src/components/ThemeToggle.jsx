@@ -2,39 +2,40 @@ import React, { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 
 const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(true);
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved || 'dark';
+  });
 
   useEffect(() => {
-    // Check local storage or system preference on load
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
     } else {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
+      root.classList.remove('dark');
     }
-  }, []);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (
-    <button 
+    <button
       onClick={toggleTheme}
-      className="p-2.5 rounded-xl transition-all border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-sky-400"
-      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      className="group relative p-3 rounded-2xl bg-card border border-border text-slate-500 dark:text-amber-400 hover:border-primary transition-all duration-500 shadow-sm active:scale-95 overflow-hidden"
+      title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
     >
-      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      <div className="relative w-5 h-5">
+        <div className={`absolute inset-0 transition-all duration-700 ${theme === 'dark' ? 'translate-y-0 opacity-100 rotate-0' : 'translate-y-10 opacity-0 rotate-90'}`}>
+          <Sun size={20} />
+        </div>
+        <div className={`absolute inset-0 transition-all duration-700 ${theme === 'light' ? 'translate-y-0 opacity-100 rotate-0' : '-translate-y-10 opacity-0 -rotate-90'}`}>
+          <Moon size={20} className="text-primary" />
+        </div>
+      </div>
+      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
     </button>
   );
 };

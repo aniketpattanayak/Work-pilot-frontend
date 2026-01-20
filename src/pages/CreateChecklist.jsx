@@ -14,17 +14,23 @@ import {
   Activity,
   RefreshCcw,
   AlignLeft,
-  Repeat
+  Repeat,
+  ChevronRight
 } from 'lucide-react';
 
+/**
+ * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.5
+ * Purpose: Sets up automated, repeating tasks for specific nodes.
+ * UI: Fully responsive and theme-adaptive (Light/Dark).
+ */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
     <input
       value={value}
       readOnly
-      className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold cursor-pointer placeholder:text-slate-700 shadow-inner"
+      className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer placeholder:text-slate-500 shadow-inner"
     />
-    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 group-hover:text-sky-400 transition-colors pointer-events-none" size={18} />
+    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" size={18} />
   </div>
 ));
 
@@ -79,7 +85,7 @@ const CreateChecklist = ({ tenantId }) => {
         ...formData,
         tenantId: currentTenantId
       });
-      alert("Routine Checklist Created Successfully!");
+      alert("Success: Routine Checklist provisioned successfully.");
       setFormData({ 
         taskName: '', 
         description: '', 
@@ -89,75 +95,80 @@ const CreateChecklist = ({ tenantId }) => {
         frequencyConfig: { dayOfWeek: 0, dayOfMonth: 1, month: 0, interval: 1 }
       });
     } catch (err) {
-      alert("Failed: " + (err.response?.data?.message || err.message));
+      alert("Protocol Error: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-10 flex items-center gap-4">
-        <div className="bg-sky-500/10 p-3 rounded-2xl border border-sky-500/20">
-          <Activity className="text-sky-400" size={32} />
+    <div className="w-full max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 selection:bg-primary/30">
+      
+      {/* HEADER SECTION (Responsive) */}
+      <div className="mb-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
+        <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
+          <Activity className="text-primary" size={32} />
         </div>
-        <div>
-          <h2 className="text-white text-3xl font-black tracking-tighter">Add Checklist Task</h2>
-          <p className="text-slate-500 text-sm font-medium">Set up repeating tasks that staff must complete daily, weekly, or monthly.</p>
+        <div className="min-w-0">
+          <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Add Checklist Task</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Set up repeating tasks, that staff must complete daily, weekly, monthly or yearly.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-slate-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-slate-800/60 shadow-2xl space-y-8">
+      <form onSubmit={handleSubmit} className="bg-card backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] border border-border shadow-2xl space-y-8 transition-colors duration-500">
         
-        {/* Task Name */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <CheckCircle2 size={14} className="text-sky-400" /> Task Title
+        {/* Task Name Node */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <CheckCircle2 size={14} className="text-primary" /> Task Title
           </label>
           <input 
             type="text" required 
-            placeholder="e.g. Morning Machine Cleaning"
+            placeholder="e.g. Daily Inventory Synchronization"
             value={formData.taskName} 
             onChange={(e) => setFormData({...formData, taskName: e.target.value})}
-            className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold"
+            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
           />
         </div>
 
-        {/* Description */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <AlignLeft size={14} className="text-sky-400" /> Task Details
+        {/* Task Description Node */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <AlignLeft size={14} className="text-primary" /> Task Details 
           </label>
           <textarea 
             placeholder="Explain what needs to be done..."
             value={formData.description} 
             onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold h-24 resize-none"
+            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold h-32 resize-none shadow-inner placeholder:text-slate-500"
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Assigned To */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <User size={14} className="text-sky-400" /> Doer Name
+          {/* Assigned Node */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+              <User size={14} className="text-primary" />Doer Name
             </label>
-            <select 
-              required value={formData.doerId} 
-              onChange={(e) => setFormData({...formData, doerId: e.target.value})}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all cursor-pointer font-bold appearance-none"
-            >
-              <option value="">Select Staff</option>
-              {employees.map(emp => (
-                <option key={emp._id} value={emp._id}>{emp.name} ({emp.department || 'General'})</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select 
+                required value={formData.doerId} 
+                onChange={(e) => setFormData({...formData, doerId: e.target.value})}
+                className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all cursor-pointer font-bold appearance-none shadow-inner uppercase tracking-tight"
+              >
+                <option value="">Select Staff</option>
+                {employees.map(emp => (
+                  <option key={emp._id} value={emp._id}>{emp.name} — ({emp.department || 'General Sector'})</option>
+                ))}
+              </select>
+              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={20} />
+            </div>
           </div>
 
-          {/* Start Date */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <CalendarDays size={14} className="text-sky-400" /> Start Date
+          {/* Start Date Protocol */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+              <CalendarDays size={14} className="text-primary" /> Start Date
             </label>
             <DatePicker
               selected={new Date(formData.startDate)}
@@ -165,24 +176,25 @@ const CreateChecklist = ({ tenantId }) => {
               minDate={new Date()}
               dateFormat="dd MMMM, yyyy"
               customInput={<CustomDateInput />}
+              calendarClassName="work-pilot-dark-calendar"
             />
           </div>
         </div>
 
-        {/* Frequency Selection */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <Repeat size={14} className="text-sky-400" />Frequency
+        {/* Frequency Logic */}
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <Repeat size={14} className="text-primary" /> Frequency
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {['Daily', 'Weekly', 'Monthly', 'Yearly'].map((freq) => (
               <button
                 key={freq} type="button"
                 onClick={() => setFormData({...formData, frequency: freq})}
-                className={`py-3 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all ${
+                className={`py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm ${
                   formData.frequency === freq 
-                  ? 'bg-sky-500 text-slate-950 border-sky-500' 
-                  : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-600'
+                  ? 'bg-primary text-white dark:text-slate-950 border-primary shadow-primary/20' 
+                  : 'bg-background text-slate-400 border-border hover:border-slate-400'
                 }`}
               >
                 {freq}
@@ -191,72 +203,80 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* DYNAMIC CONFIGURATION BOX */}
-        <div className="bg-slate-950/60 p-8 rounded-3xl border border-sky-500/20 border-dashed relative overflow-hidden group">
-          <Settings2 size={120} className="absolute -right-10 -bottom-10 text-sky-500/5 group-hover:rotate-45 transition-transform duration-1000" />
+        {/* DYNAMIC CONFIGURATION TERMINAL */}
+        <div className="bg-background/80 p-6 sm:p-8 rounded-[2rem] border border-border border-dashed relative overflow-hidden group">
+          <Settings2 size={140} className="absolute -right-12 -bottom-12 text-primary opacity-[0.03] group-hover:rotate-45 transition-transform duration-1000 pointer-events-none" />
           
-          <h4 className="flex items-center gap-2 text-[11px] font-black text-sky-400 uppercase tracking-[0.2em] mb-6 relative z-10">
-            <Info size={16} /> Schedule Settings for {formData.frequency}
+          <h4 className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-8 relative z-10">
+            <Info size={18} /> Schedule setting for: {formData.frequency}
           </h4>
 
           <div className="relative z-10">
             {formData.frequency === 'Weekly' && (
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-400">Select Day of Week:</label>
-                <select 
-                  value={formData.frequencyConfig.dayOfWeek}
-                  onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfWeek: parseInt(e.target.value)}})}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 px-4 py-3 rounded-xl outline-none font-bold"
-                >
-                  {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
-                    <option key={i} value={i}>{day}</option>
-                  ))}
-                </select>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Assigned Operational Day:</label>
+                <div className="relative">
+                  <select 
+                    value={formData.frequencyConfig.dayOfWeek}
+                    onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfWeek: parseInt(e.target.value)}})}
+                    className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black uppercase text-xs appearance-none cursor-pointer"
+                  >
+                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
+                      <option key={i} value={i}>{day}</option>
+                    ))}
+                  </select>
+                  <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={18} />
+                </div>
               </div>
             )}
 
             {formData.frequency === 'Monthly' && (
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-400">Target Day of Month (1-31):</label>
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Iteration Checkpoint (1-31):</label>
                 <input 
                   type="number" min="1" max="31"
                   value={formData.frequencyConfig.dayOfMonth}
                   onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-100 px-4 py-3 rounded-xl outline-none font-bold"
+                  className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner"
                 />
               </div>
             )}
 
             {formData.frequency === 'Daily' && (
-              <div className="flex items-start gap-4 p-4 bg-sky-500/5 rounded-2xl border border-sky-500/10">
-                <Clock className="text-sky-400 shrink-0" size={20} />
-                <p className="text-xs font-bold text-slate-400 leading-relaxed">
-                  This task will reset every day. Staff will see it as soon as the factory opens.
+              <div className="flex items-center gap-5 p-5 bg-primary/5 rounded-2xl border border-primary/10 shadow-inner">
+                <div className="p-3 bg-primary/10 rounded-xl">
+                  <Clock className="text-primary shrink-0" size={24} />
+                </div>
+                <p className="text-xs font-bold text-slate-500 leading-relaxed uppercase tracking-tight">
+                  This task will reset everyday. A staff will see it as soon as the factory opens.
                 </p>
               </div>
             )}
 
             {formData.frequency === 'Yearly' && (
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 space-y-2">
-                  <label className="text-xs font-bold text-slate-400">Month:</label>
-                  <select 
-                    value={formData.frequencyConfig.month}
-                    onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, month: parseInt(e.target.value)}})}
-                    className="w-full bg-slate-900 border border-slate-800 text-slate-100 px-4 py-3 rounded-xl outline-none font-bold"
-                  >
-                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                      <option key={i} value={i}>{m}</option>
-                    ))}
-                  </select>
+              <div className="flex flex-col sm:flex-row gap-6">
+                <div className="flex-1 space-y-4">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Month Selector:</label>
+                  <div className="relative">
+                    <select 
+                      value={formData.frequencyConfig.month}
+                      onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, month: parseInt(e.target.value)}})}
+                      className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black uppercase text-xs appearance-none cursor-pointer"
+                    >
+                      {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                        <option key={i} value={i}>{m}</option>
+                      ))}
+                    </select>
+                    <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={18} />
+                  </div>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <label className="text-xs font-bold text-slate-400">Date:</label>
+                <div className="flex-1 space-y-4">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Calendar Day:</label>
                   <input 
                     type="number" min="1" max="31"
                     value={formData.frequencyConfig.dayOfMonth}
                     onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
-                    className="w-full bg-slate-900 border border-slate-800 text-slate-100 px-4 py-3 rounded-xl outline-none font-bold"
+                    className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner"
                   />
                 </div>
               </div>
@@ -264,14 +284,25 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
+        {/* EXECUTION HANDSHAKE */}
         <button 
           type="submit" disabled={loading}
-          className="w-full py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(56,189,248,0.2)] transition-all flex items-center justify-center gap-3 active:scale-95"
+          className="w-full py-6 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
         >
-          {loading ? <RefreshCcw size={18} className="animate-spin" /> : <PlusCircle size={18} />}
-          Save Routine Work
+          {loading ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} />}
+          Save Routine work
         </button>
       </form>
+      
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background: rgba(148, 163, 184, 0.2); 
+          border-radius: 20px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+      `}</style>
     </div>
   );
 };

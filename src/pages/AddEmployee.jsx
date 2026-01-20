@@ -13,8 +13,14 @@ import {
   User,
   Lock,
   Layers,
+  ChevronRight
 } from "lucide-react";
 
+/**
+ * ADD EMPLOYEE: PERSONNEL PROVISIONING MODULE v1.5
+ * Purpose: Handles multi-role registration and hierarchical mapping.
+ * UI: Fully responsive and theme-adaptive (Light/Dark).
+ */
 const AddEmployee = ({
   tenantId: propTenantId,
   selectedEmployee,
@@ -60,13 +66,12 @@ const AddEmployee = ({
   }, [fetchStaff]);
 
   /**
-   * 2. LOAD DATA (Logic Updated for Doer Default and Array Mapping)
+   * 2. LOAD DATA (Logic Preserved & Robust)
    */
   useEffect(() => {
     if (selectedEmployee) {
       setFormData({
         ...selectedEmployee,
-        // Ensure roles is always an array; fallback to ["Doer"]
         roles: Array.isArray(selectedEmployee.roles)
           ? selectedEmployee.roles.length > 0
             ? selectedEmployee.roles
@@ -88,7 +93,6 @@ const AddEmployee = ({
       });
       setIsEditing(true);
     } else {
-      // RESET: Ensure roles resets to ["Doer"] for new registration
       setFormData({
         name: "",
         department: "",
@@ -104,12 +108,11 @@ const AddEmployee = ({
   }, [selectedEmployee]);
 
   /**
-   * 3. ROLE TOGGLE (Updated: Prevents removing 'Doer' if it's the last role)
+   * 3. LOGIC HANDLERS (Preserved)
    */
   const handleRoleToggle = (role) => {
     const currentRoles = [...formData.roles];
     if (currentRoles.includes(role)) {
-      // Prevent removing if it's the only role
       if (currentRoles.length === 1) return;
       setFormData({
         ...formData,
@@ -134,13 +137,12 @@ const AddEmployee = ({
   };
 
   /**
-   * 4. SUBMIT (Updated: Force 'Doer' if roles array is empty)
+   * 4. SUBMIT HANDSHAKE (Logic Preserved)
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Ensure roles is NEVER empty before sending to server
       const finalRoles = formData.roles.length > 0 ? formData.roles : ["Doer"];
       const submissionData = { ...formData, roles: finalRoles, tenantId };
 
@@ -153,13 +155,12 @@ const AddEmployee = ({
           `/superadmin/employees/${selectedEmployee._id}`,
           submissionData
         );
-        alert("Employee Profile Updated Successfully!");
+        alert("Success: Employee Profile Updated.");
       } else {
         await API.post("/superadmin/add-employee", submissionData);
-        alert("New Employee Registered with Multi-Roles!");
+        alert("Success: New Employee Registered.");
       }
 
-      // RESET STATE: Keep Doer as default
       setFormData({
         name: "",
         department: "",
@@ -173,65 +174,64 @@ const AddEmployee = ({
       setIsEditing(false);
       if (onSuccess) onSuccess();
     } catch (err) {
-      alert("Error: " + (err.response?.data?.message || "Check Connection"));
+      alert("Protocol Error: " + (err.response?.data?.message || "Connection Failed"));
     } finally {
       setLoading(false);
     }
   };
 
-  // Tailwind Version of InputLabel (Preserved)
   const InputLabel = ({ icon: Icon, label }) => (
-    <label className="flex items-center gap-2 text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">
-      <Icon size={14} className="text-sky-400" /> {label}
+    <label className="flex items-center gap-2 text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">
+      <Icon size={14} className="text-primary" /> {label}
     </label>
   );
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-md rounded-3xl border border-slate-800/60 overflow-hidden shadow-2xl animate-in fade-in duration-500">
-      <div className="px-10 py-8 bg-sky-500/5 border-b border-slate-800/60">
-        <h2 className="text-sky-400 m-0 flex items-center gap-3 text-2xl font-black tracking-tight">
-          <UserPlus size={28} />{" "}
+    <div className="bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500">
+      
+      {/* HEADER SECTION (Responsive Scaling) */}
+      <div className="px-6 py-6 sm:px-10 sm:py-8 bg-primary/5 border-b border-border">
+        <h2 className="text-primary m-0 flex items-center gap-3 text-lg sm:text-2xl font-black tracking-tighter uppercase leading-tight">
+          <UserPlus size={24} className="sm:w-7 sm:h-7" />{" "}
           {isEditing
-            ? `Modify Profile: ${formData.name}`
-            : "Add New Employee"}
+            ? `Modify: ${formData.name}`
+            : "Add New Employees "}
         </h2>
-        <p className="text-slate-500 mt-1 text-sm font-medium">
-          Configure authentication, Company roles, and organizational reporting
-          lines.
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-[10px] sm:text-sm font-medium uppercase tracking-tight opacity-80">
+          Configure authentication, company roles and organizational reporting lines
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-10 flex flex-col gap-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} className="p-6 sm:p-10 flex flex-col gap-8">
+        
+        {/* IDENTITY BLOCK */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <div className="flex flex-col">
-            <InputLabel icon={User} label="Full Official Name" />
+            <InputLabel icon={User} label="Full Name" />
             <input
               type="text"
               placeholder="e.g. Rahul Sharma"
               value={formData.name}
               required
-              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700"
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
+              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
           <div className="flex flex-col">
-            <InputLabel icon={Briefcase} label="Department" />
+            <InputLabel icon={Briefcase} label="Sector / Department" />
             <input
               type="text"
-              placeholder="e.g. Quality Control"
+              placeholder="e.g. Operations Control"
               value={formData.department}
               required
-              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700"
-              onChange={(e) =>
-                setFormData({ ...formData, department: e.target.value })
-              }
+              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* COMMUNICATION BLOCK */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <div className="flex flex-col">
             <InputLabel icon={Mail} label="Email Address" />
             <input
@@ -239,50 +239,37 @@ const AddEmployee = ({
               placeholder="name@company.com"
               value={formData.email}
               required
-              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700"
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
+              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
           <div className="flex flex-col">
-            <InputLabel icon={Phone} label="WhatsApp Number" />
+            <InputLabel icon={Phone} label="WhatsApp number" />
             <input
               type="text"
               placeholder="91XXXXXXXXXX"
               value={formData.whatsappNumber}
               required
-              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700"
-              onChange={(e) =>
-                setFormData({ ...formData, whatsappNumber: e.target.value })
-              }
+              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* SECURITY & PERMISSIONS BLOCK */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <div className="flex flex-col">
             <InputLabel
               icon={Lock}
-              label={
-                isEditing
-                  ? "Reset Password (Optional)"
-                  : "System Access Password"
-              }
+              label={isEditing ? "Reset Access Cipher" : "system access password"}
             />
             <input
               type="text"
-              placeholder={
-                isEditing
-                  ? "Leave blank to keep current"
-                  : "Minimum 8 characters"
-              }
+              placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
               value={formData.password}
               required={!isEditing}
-              className="w-full px-5 py-3.5 bg-slate-950 border border-slate-800 text-slate-100 rounded-xl text-sm outline-none focus:border-sky-500/50 transition-all placeholder:text-slate-700 font-mono"
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
+              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
           </div>
           <div className="flex flex-col">
@@ -293,16 +280,16 @@ const AddEmployee = ({
                   key={role}
                   type="button"
                   onClick={() => handleRoleToggle(role)}
-                  className={`px-4 py-2 rounded-xl cursor-pointer text-[10px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${
+                  className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${
                     formData.roles.includes(role)
-                      ? "bg-sky-500/10 border-sky-500/50 text-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.1)]"
-                      : "bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700"
+                      ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
+                      : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
                   }`}
                 >
                   {formData.roles.includes(role) ? (
-                    <CheckSquare size={14} />
+                    <CheckSquare size={14} strokeWidth={3} />
                   ) : (
-                    <Square size={14} />
+                    <Square size={14} strokeWidth={2} />
                   )}{" "}
                   {role}
                 </button>
@@ -311,13 +298,13 @@ const AddEmployee = ({
           </div>
         </div>
 
-        {/* Dynamic Mapping Sections - Preserved with logic fixes */}
+        {/* --- DYNAMIC HIERARCHY MAPPING (Responsive Container) --- */}
         {formData.roles.includes("Assigner") && (
-          <div className="bg-emerald-500/5 p-6 rounded-2xl border border-emerald-500/20 border-l-4 border-l-emerald-500 animate-in slide-in-from-left-4">
-            <h4 className="text-emerald-400 m-0 mb-4 text-[10px] flex items-center gap-2 font-black uppercase tracking-widest">
-              <LinkIcon size={16} /> Doer Authorization (Linkage)
+          <div className="bg-emerald-500/5 p-6 sm:p-8 rounded-[2rem] border border-emerald-500/20 border-l-4 border-l-emerald-500 animate-in slide-in-from-left-4">
+            <h4 className="text-emerald-600 dark:text-emerald-400 m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
+              <LinkIcon size={16} /> Directive Control (Doer Mapping)
             </h4>
-            <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
+            <div className="max-h-[220px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
               {Array.isArray(allEmployees) &&
                 allEmployees
                   .filter((e) => {
@@ -330,41 +317,38 @@ const AddEmployee = ({
                   .map((doer) => (
                     <label
                       key={doer._id}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
+                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
                         formData.managedDoers?.includes(doer._id)
-                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200"
-                          : "bg-slate-950 border-slate-800 text-slate-500"
+                          ? "bg-card border-emerald-500/40 text-foreground"
+                          : "bg-background border-border text-slate-400"
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded accent-emerald-500"
-                        checked={formData.managedDoers?.includes(doer._id)}
-                        onChange={() =>
-                          handleCheckboxChange(doer._id, "managedDoers")
-                        }
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold leading-tight">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-black truncate leading-tight uppercase tracking-tight">
                           {doer.name}
                         </span>
-                        <span className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
-                          {doer.department}
+                        <span className="text-[9px] opacity-60 uppercase font-bold tracking-tighter mt-1">
+                          Sector: {doer.department || 'N/A'}
                         </span>
                       </div>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded accent-emerald-500 shrink-0"
+                        checked={formData.managedDoers?.includes(doer._id)}
+                        onChange={() => handleCheckboxChange(doer._id, "managedDoers")}
+                      />
                     </label>
                   ))}
             </div>
           </div>
         )}
 
-        {(formData.roles.includes("Coordinator") ||
-          formData.roles.includes("Admin")) && (
-          <div className="bg-sky-500/5 p-6 rounded-2xl border border-sky-500/20 border-l-4 border-l-sky-500 animate-in slide-in-from-left-4">
-            <h4 className="text-sky-400 m-0 mb-4 text-[10px] flex items-center gap-2 font-black uppercase tracking-widest">
-              <ShieldCheck size={16} /> Coordinator Tracking Scope
+        {(formData.roles.includes("Coordinator") || formData.roles.includes("Admin")) && (
+          <div className="bg-primary/5 p-6 sm:p-8 rounded-[2rem] border border-primary/20 border-l-4 border-l-primary animate-in slide-in-from-left-4">
+            <h4 className="text-primary m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
+              <ShieldCheck size={16} /> Oversight Tracking Scope
             </h4>
-            <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
+            <div className="max-h-[220px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
               {Array.isArray(allEmployees) &&
                 allEmployees
                   .filter((e) => {
@@ -377,64 +361,63 @@ const AddEmployee = ({
                   .map((assigner) => (
                     <label
                       key={assigner._id}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border transition-all ${
+                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
                         formData.managedAssigners?.includes(assigner._id)
-                          ? "bg-sky-500/10 border-sky-500/30 text-sky-200"
-                          : "bg-slate-950 border-slate-800 text-slate-500"
+                          ? "bg-card border-primary/40 text-foreground"
+                          : "bg-background border-border text-slate-400"
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded accent-sky-500"
-                        checked={formData.managedAssigners?.includes(
-                          assigner._id
-                        )}
-                        onChange={() =>
-                          handleCheckboxChange(assigner._id, "managedAssigners")
-                        }
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold leading-tight">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-black truncate leading-tight uppercase tracking-tight">
                           {assigner.name}
                         </span>
-                        <span className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
-                          {assigner.department}
+                        <span className="text-[9px] opacity-60 uppercase font-bold tracking-tighter mt-1">
+                          Sector: {assigner.department || 'N/A'}
                         </span>
                       </div>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded accent-primary shrink-0"
+                        checked={formData.managedAssigners?.includes(assigner._id)}
+                        onChange={() => handleCheckboxChange(assigner._id, "managedAssigners")}
+                      />
                     </label>
                   ))}
             </div>
           </div>
         )}
 
+        {/* --- EXECUTION BUTTON --- */}
         <button
           type="submit"
           disabled={loading}
-          className={`group relative mt-2 py-5 px-8 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-4 ${
+          className={`group relative mt-4 py-5 px-8 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-xl ${
             loading
-              ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-              : "bg-gradient-to-r from-sky-500 to-sky-600 text-slate-950 hover:shadow-[0_0_30px_rgba(56,189,248,0.3)] active:scale-95 cursor-pointer"
+              ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-sky-500 to-sky-600 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 cursor-pointer"
           }`}
         >
           {loading ? (
             <RefreshCcw className="animate-spin" size={20} />
           ) : (
-            <UserPlus
-              size={20}
-              className="group-hover:scale-110 transition-transform"
-            />
+            <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
           )}
           {isEditing
-            ? "Update Multi-Role Profile"
+            ? "Commit Multi-Role Updates"
             : "Finalize Employee Registration"}
         </button>
       </form>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.2); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background: rgba(148, 163, 184, 0.2); 
+          border-radius: 20px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+          background: var(--color-primary); 
+        }
       `}</style>
     </div>
   );

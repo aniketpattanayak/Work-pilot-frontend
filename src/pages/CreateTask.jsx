@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, forwardRef } from "react"; // Added forwardRef
+import React, { useState, useEffect, useCallback, forwardRef } from "react";
 import API from '../api/axiosConfig'; 
-import DatePicker from "react-datepicker"; // Added DatePicker
-import "react-datepicker/dist/react-datepicker.css"; // Added CSS
+import DatePicker from "react-datepicker"; 
+import "react-datepicker/dist/react-datepicker.css"; 
 import {
   Paperclip,
   X,
@@ -15,19 +15,23 @@ import {
   AlertCircle,
   Flag,
   CalendarDays,
+  ChevronRight
 } from "lucide-react";
 
-// --- CUSTOM INPUT COMPONENT ---
-// This ensures the calendar opens when clicking anywhere on the input field
+/**
+ * CREATE TASK: DIRECTIVE PROVISIONING MODULE v1.5
+ * Purpose: Assigns tactical missions with file support and follower nodes.
+ * UI: Fully responsive and theme-adaptive (Light/Dark).
+ */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
     <input
       value={value}
       readOnly
       placeholder="Select Deadline Date & Time"
-      className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold cursor-pointer placeholder:text-slate-700 shadow-inner"
+      className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer placeholder:text-slate-500 shadow-inner"
     />
-    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 group-hover:text-sky-400 transition-colors pointer-events-none" size={18} />
+    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" size={18} />
   </div>
 ));
 
@@ -38,7 +42,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     doerId: "",
     coordinatorId: "",
     priority: "Medium",
-    deadline: null, // Changed from "" to null for DatePicker compatibility
+    deadline: null, 
     isRevisionAllowed: true,
     coworkers: [],
   });
@@ -106,7 +110,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     formData.append("description", task.description);
     formData.append("doerId", task.doerId);
     formData.append("priority", task.priority);
-    formData.append("deadline", task.deadline.toISOString()); // Ensure ISO string for backend
+    formData.append("deadline", task.deadline.toISOString()); 
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
 
@@ -123,7 +127,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      alert("Task Created Successfully with Support Team!");
+      alert("Success: Task Created Successfully with Support Team!");
 
       setTask({
         title: "",
@@ -147,203 +151,225 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
 
   if (loading)
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <RefreshCcw className="animate-spin text-sky-400" size={32} />
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading...</p>
+      <div className="flex flex-col items-center justify-center h-64 gap-6 bg-transparent">
+        <div className="relative">
+          <RefreshCcw className="animate-spin text-primary" size={40} />
+          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+        </div>
+        <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Loading...</p>
       </div>
     );
 
   const safeEmployees = Array.isArray(employees) ? employees : [];
 
   return (
-    <div className="w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-10 flex items-center gap-4">
-        <div className="bg-sky-500/10 p-3 rounded-2xl border border-sky-500/20">
-          <PlusCircle className="text-sky-400" size={32} />
+    <div className="w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 selection:bg-primary/30">
+      
+      {/* HEADER SECTION (Responsive) */}
+      <div className="mb-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
+        <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
+          <PlusCircle className="text-primary" size={32} />
         </div>
-        <div>
-          <h2 className="text-white text-3xl font-black tracking-tighter">Delegate New Task</h2>
-          <p className="text-slate-500 text-sm font-medium">Assign work, set deadlines, and build your support team.</p>
+        <div className="min-w-0">
+          <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Delegate New Task</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Assign work, set deadlines, and build your support team.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-slate-900/40 backdrop-blur-md p-10 rounded-[2.5rem] border border-slate-800/60 shadow-2xl space-y-8">
+      <form onSubmit={handleSubmit} className="bg-card backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] border border-border shadow-2xl space-y-8 transition-colors duration-500">
         
-        {/* Task Title */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <FileText size={14} className="text-sky-400" /> Task Title
+        {/* Task Title Node */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <FileText size={14} className="text-primary" /> Task Title
           </label>
           <input
             type="text"
             placeholder="What needs to be done?"
             required
             value={task.title}
-            className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold placeholder:text-slate-700"
+            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
             onChange={(e) => setTask({ ...task, title: e.target.value })}
           />
         </div>
 
-        {/* Task Description */}
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <AlertCircle size={14} className="text-sky-400" /> Task Description
+        {/* Task Description Node */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <AlertCircle size={14} className="text-primary" />  Task Description
           </label>
           <textarea
-            placeholder="Provide specific instructions or goals..."
+            placeholder="Provide a specific instructions or goals... "
             value={task.description}
-            className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all min-h-[120px] font-medium placeholder:text-slate-700"
+            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all min-h-[120px] font-medium placeholder:text-slate-500 shadow-inner resize-none"
             onChange={(e) => setTask({ ...task, description: e.target.value })}
           />
         </div>
 
-        {/* Assignment Grid */}
+        {/* Assignment Node Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                <User size={14} className="text-sky-400" /> Primary Doer (Lead)
-              </label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+              <User size={14} className="text-primary" /> Primary Doer (Lead)
+            </label>
+            <div className="relative">
               <select
                 required
                 value={task.doerId}
-                className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold appearance-none cursor-pointer"
+                className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold appearance-none cursor-pointer shadow-inner uppercase tracking-tight"
                 onChange={(e) => setTask({ ...task, doerId: e.target.value })}
               >
-                <option value="">Select Responsible Staff</option>
+                <option value="">-- Select Active Staff --</option>
                 {safeEmployees.map((emp) => (
                   <option key={emp._id} value={emp._id}>
-                    {emp.name} ({emp.department} - {Array.isArray(emp.roles) ? emp.roles.join(", ") : emp.role})
+                    {emp.name} — ({emp.department || 'Sector N/A'})
                   </option>
                 ))}
               </select>
+              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={20} />
             </div>
-
-            
           </div>
 
-          
-        </div>
-
-        {/* Deadline & Priority Grid - UPDATED WITH DATEPICKER */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <Calendar size={14} className="text-sky-400" /> Due Date
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+              <ShieldCheck size={14} className="text-primary" /> Priority
             </label>
-            {/* --- NEW DATE TIME PICKER --- */}
-            <DatePicker
-              selected={task.deadline}
-              onChange={(date) => setTask({ ...task, deadline: date })}
-              showTimeSelect
-              minDate={new Date()}
-              dateFormat="dd MMMM, yyyy h:mm aa"
-              customInput={<CustomDateInput />}
-              calendarClassName="work-pilot-dark-calendar"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-              <Flag size={14} className="text-sky-400" /> Priority
-            </label>
-            <select
-              value={task.priority}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold appearance-none cursor-pointer"
-              onChange={(e) => setTask({ ...task, priority: e.target.value })}
-            >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
+            <div className="relative">
+              <select
+                value={task.priority}
+                className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold appearance-none cursor-pointer shadow-inner uppercase tracking-tight"
+                onChange={(e) => setTask({ ...task, priority: e.target.value })}
+              >
+                <option value="Low">Low Priority</option>
+                <option value="Medium">Medium Priority</option>
+                <option value="High">High Priority</option>
+              </select>
+              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={20} />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2 animate-in fade-in duration-500">
-              <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                <Users size={14} className="text-sky-400" /> Followers
-              </label>
-              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 max-h-[160px] overflow-y-auto space-y-2 scrollbar-hide">
-                {safeEmployees
-                  .filter((e) => e._id !== task.doerId)
-                  .map((emp) => (
-                    <label key={emp._id} className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-xl cursor-pointer transition-colors group/helper">
-                      <input
-                        type="checkbox"
-                        checked={selectedHelpers.some((h) => h.helperId === emp._id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
-                          } else {
-                            setSelectedHelpers(selectedHelpers.filter((h) => h.helperId !== emp._id));
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500 focus:ring-offset-slate-900"
-                      />
-                      <span className="text-xs font-bold text-slate-400 group-hover/helper:text-slate-200 transition-colors">
-                        {emp.name} <span className="text-[10px] text-slate-600">({emp.department})</span>
-                      </span>
-                    </label>
-                  ))}
-              </div>
-            </div>
-
-        {/* FILE UPLOAD SECTION */}
-        <div className="space-y-4">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-            <Paperclip size={14} className="text-sky-400" /> Documentation & Blueprint References (if any)
+        {/* Deadline Protocol */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <Calendar size={14} className="text-primary" /> due date
           </label>
-          <div className="border-2 border-dashed border-slate-800 bg-slate-950/50 p-8 rounded-[2rem] text-center group hover:border-sky-500/50 transition-colors relative">
-            <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-            <div className="flex flex-col items-center gap-2">
-              <Paperclip size={32} className="text-slate-600 group-hover:text-sky-400 transition-colors" />
-              <p className="text-sm font-bold text-slate-400">Click or drag files to attach</p>
-              <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Supports PDF, Images, and Docs</p>
+          <DatePicker
+            selected={task.deadline}
+            onChange={(date) => setTask({ ...task, deadline: date })}
+            showTimeSelect
+            minDate={new Date()}
+            dateFormat="dd MMMM, yyyy h:mm aa"
+            customInput={<CustomDateInput />}
+            calendarClassName="work-pilot-dark-calendar"
+          />
+        </div>
+
+        {/* Support Flock (Followers) */}
+        <div className="space-y-4 animate-in fade-in duration-500">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <Users size={14} className="text-primary" /> Followers
+          </label>
+          <div className="bg-background border border-border rounded-2xl p-4 max-h-[180px] overflow-y-auto space-y-2 custom-scrollbar shadow-inner">
+            {safeEmployees
+              .filter((e) => e._id !== task.doerId)
+              .map((emp) => (
+                <label key={emp._id} className="flex items-center justify-between gap-3 p-3 hover:bg-primary/5 rounded-xl cursor-pointer transition-all group/helper border border-transparent hover:border-primary/20">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-black text-foreground uppercase tracking-tight truncate">
+                      {emp.name}
+                    </span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5">
+                      Sector: {emp.department || 'N/A'}
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={selectedHelpers.some((h) => h.helperId === emp._id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
+                      } else {
+                        setSelectedHelpers(selectedHelpers.filter((h) => h.helperId !== emp._id));
+                      }
+                    }}
+                    className="w-4 h-4 rounded accent-primary bg-background border-border shrink-0"
+                  />
+                </label>
+              ))}
+          </div>
+        </div>
+
+        {/* Blueprint & Reference Attachment Node */}
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
+            <Paperclip size={14} className="text-primary" /> Documentation and Blueprints references
+          </label>
+          <div className="border-2 border-dashed border-border bg-background/50 p-8 rounded-[2rem] text-center group hover:border-primary/40 transition-all relative overflow-hidden">
+            <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" title="" />
+            <div className="flex flex-col items-center gap-3">
+              <div className="p-4 bg-primary/5 rounded-2xl group-hover:scale-110 transition-transform duration-500">
+                <Paperclip size={32} className="text-slate-400 group-hover:text-primary transition-colors" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-foreground uppercase tracking-tight">Synchronize Assets</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Supports PDF, Images, and CAD Docs</p>
+              </div>
             </div>
           </div>
 
           {selectedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap gap-3 mt-4">
               {selectedFiles.map((f, i) => (
-                <div key={i} className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-full flex items-center gap-3 animate-in zoom-in-75 duration-300">
-                  <span className="text-xs font-bold text-slate-300 truncate max-w-[150px]">{f.name}</span>
-                  <button type="button" onClick={() => removeFile(index)} className="text-red-400 hover:text-red-300 transition-colors"><X size={14} /></button>
+                <div key={i} className="bg-background border border-border px-4 py-2.5 rounded-xl flex items-center gap-3 animate-in zoom-in-75 shadow-sm">
+                  <span className="text-[11px] font-black text-foreground uppercase tracking-tight truncate max-w-[150px]">{f.name}</span>
+                  <button type="button" onClick={() => removeFile(i)} className="text-red-500 hover:bg-red-500/10 p-1 rounded-lg transition-all"><X size={14} /></button>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Revision Toggle */}
-        <div className="bg-slate-950/50 border border-slate-800 p-6 rounded-2xl flex items-center justify-between group">
-          <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-lg transition-colors ${task.isRevisionAllowed ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+        {/* Revision Node Logic */}
+        <div className="bg-background border border-border p-6 rounded-2xl flex items-center justify-between group shadow-inner">
+          <div className="flex items-center gap-5">
+            <div className={`p-3 rounded-xl transition-all duration-700 ${task.isRevisionAllowed ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
               <RefreshCcw size={20} className={task.isRevisionAllowed ? "animate-spin-slow" : ""} />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-200">Allow Doer to request due date adjustments.</p>
+              <p className="text-xs sm:text-sm font-black text-foreground uppercase tracking-tight leading-none">Allow doer to request due date adjustments</p>
+              
             </div>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
             <input type="checkbox" checked={task.isRevisionAllowed} onChange={(e) => setTask({ ...task, isRevisionAllowed: e.target.checked })} className="sr-only peer" />
-            <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+            <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
           </label>
         </div>
 
+        {/* EXECUTION HANDSHAKE */}
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black text-sm uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(56,189,248,0.2)] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full py-6 rounded-[2rem] bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4"
         >
-          {isSubmitting ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} className="group-hover:scale-110 transition-transform" />}
-          {isSubmitting ? "Encrypting & Notifying Team..." : "Assign Task"}
+          {isSubmitting ? (
+            <RefreshCcw className="animate-spin" size={20} />
+          ) : (
+            <PlusCircle size={20} className="group-hover:scale-110 transition-transform duration-500" />
+          )}
+          {isSubmitting ? "Encrypting & Notifying Team Nodes..." : "Finalize Mission Assignment"}
         </button>
       </form>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background: rgba(148, 163, 184, 0.2); 
+          border-radius: 20px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin-slow 8s linear infinite; }
       `}</style>

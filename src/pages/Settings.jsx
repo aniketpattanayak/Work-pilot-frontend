@@ -26,35 +26,37 @@ import {
   Target,
   Rocket,
   ShieldCheck,
-  Award
+  Award,
+  ChevronRight
 } from 'lucide-react';
 
+/**
+ * SETTINGS: GLOBAL OPERATIONAL PARAMETERS v1.5
+ * Purpose: Configures factory identity, hours, point mechanics, and achievements.
+ * UI: Fully responsive, dual-theme adaptive (Light/Dark).
+ */
 const Settings = ({ tenantId }) => {
-  // --- EXISTING STATES ---
+  // --- EXISTING STATES (Preserved) ---
   const [hours, setHours] = useState({ opening: '09:00', closing: '18:00' });
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
   const [holidayList, setHolidayList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // --- BRANDING STATES ---
   const [branding, setBranding] = useState({ companyName: '', logoUrl: '' });
   const [selectedLogo, setSelectedLogo] = useState(null);
   const [logoPreview, setLogoPreview] = useState(null);
   const [updatingBranding, setUpdatingBranding] = useState(false);
 
-  // --- POINT SYSTEM STATES ---
   const [pointSettings, setPointSettings] = useState({
     isActive: false,
     brackets: []
   });
 
-  // --- BADGE LIBRARY STATES ---
   const [badgeLibrary, setBadgeLibrary] = useState([]);
 
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
-  // Pre-set Elite Icons for Badge Selection
   const availableIcons = [
     { name: 'Star', icon: <Star size={16} /> },
     { name: 'Trophy', icon: <Trophy size={16} /> },
@@ -76,17 +78,13 @@ const Settings = ({ tenantId }) => {
   ];
 
   /**
-   * 1. FETCH LOGIC
-   * Switched to API instance and added defensive unwrap for AWS readiness.
+   * 1. DATA ACQUISITION PROTOCOL
    */
   const fetchSettings = useCallback(async () => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      // Using API instance instead of raw axios
       const res = await API.get(`/superadmin/settings/${currentTenantId}`);
-      
-      // Safety: Handle if data is nested or flat
       const data = res.data?.settings || res.data;
       
       if (data) {
@@ -104,11 +102,10 @@ const Settings = ({ tenantId }) => {
             brackets: Array.isArray(data.pointSettings.brackets) ? data.pointSettings.brackets : []
           });
         }
-
         setBadgeLibrary(Array.isArray(data.badgeLibrary) ? data.badgeLibrary : []);
       }
     } catch (err) {
-      console.error("Error fetching settings:", err);
+      console.error("Fetch failure:", err);
     } finally {
       setLoading(false);
     }
@@ -118,7 +115,7 @@ const Settings = ({ tenantId }) => {
     fetchSettings();
   }, [fetchSettings]);
 
-  // --- BADGE HANDLERS ---
+  // --- LOGIC HANDLERS (Preserved) ---
   const addBadge = () => {
     setBadgeLibrary(prev => [...prev, {
       name: '',
@@ -139,7 +136,6 @@ const Settings = ({ tenantId }) => {
     setBadgeLibrary(prev => prev.filter((_, i) => i !== index));
   };
 
-  // --- POINT SYSTEM HANDLERS ---
   const addBracket = () => {
     setPointSettings(prev => ({
       ...prev,
@@ -166,7 +162,6 @@ const Settings = ({ tenantId }) => {
     }));
   };
 
-  // --- BRANDING HANDLERS ---
   const handleLogoSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -175,10 +170,6 @@ const Settings = ({ tenantId }) => {
     }
   };
 
-  /**
-   * UPDATED: saveBranding
-   * Removed hardcoded Localhost URL for AWS compatibility.
-   */
   const saveBranding = async () => {
     try {
       setUpdatingBranding(true);
@@ -187,28 +178,25 @@ const Settings = ({ tenantId }) => {
       formData.append('companyName', branding.companyName);
       if (selectedLogo) formData.append('logo', selectedLogo);
 
-      // Pointing to relative path via API instance
       await API.put('/superadmin/update-branding', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      alert("Factory Identity Updated!");
+      alert("Success: Factory Identity updated.");
       fetchSettings();
     } catch (err) {
-      alert("Error updating identity: " + (err.response?.data?.message || err.message));
+      alert("Error: " + (err.response?.data?.message || err.message));
     } finally {
       setUpdatingBranding(false);
     }
   };
 
-  // --- HOLIDAY/HOUR HANDLERS ---
   const addHolidayToList = (e) => {
     if (e) e.preventDefault(); 
     if (newHoliday.name && newHoliday.date) {
       setHolidayList((prevList) => {
-        const exists = prevList.some(h => h.date === newHoliday.date);
-        if (exists) {
-          alert("A holiday already exists on this date.");
+        if (prevList.some(h => h.date === newHoliday.date)) {
+          alert("Conflict: Holiday already scheduled on this date.");
           return prevList;
         }
         return [...prevList, { ...newHoliday }];
@@ -221,15 +209,10 @@ const Settings = ({ tenantId }) => {
     setHolidayList((prevList) => prevList.filter((_, i) => i !== index));
   };
 
-  /**
-   * UPDATED: Global Save Handler
-   * Removed hardcoded Localhost URL.
-   */
   const saveSettings = async () => {
     if (saving) return;
     try {
       setSaving(true);
-      // Using centralized API instance
       const response = await API.put('/superadmin/update-settings', {
         tenantId: currentTenantId,
         officeHours: hours,
@@ -239,211 +222,243 @@ const Settings = ({ tenantId }) => {
       });
   
       if (response.status === 200) {
-        alert("Updated!");
+        alert("Success: Global parameters synchronized.");
         await fetchSettings();
       }
     } catch (err) {
-      console.error("Save Error:", err);
-      alert("Error saving settings: " + (err.response?.data?.message || err.message));
+      alert("Error: " + (err.response?.data?.message || err.message));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading && holidayList.length === 0) return (
-    <div className="flex flex-col items-center justify-center h-[400px] gap-4">
-      <RefreshCcw className="animate-spin text-sky-400" size={40} />
-      <span className="text-slate-500 font-black text-[10px] tracking-[0.3em] uppercase leading-none">Accessing Organisation Setup...</span>
+    <div className="flex flex-col items-center justify-center h-[400px] gap-6 bg-transparent">
+      <div className="relative">
+        <RefreshCcw className="animate-spin text-primary" size={48} />
+        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
+      </div>
+      <span className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.4em] uppercase leading-none">Accessing Control Panel...</span>
     </div>
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto animate-in fade-in duration-700 pb-20">
-      <div className="mb-10 flex items-center gap-4">
-        <div className="bg-sky-500/10 p-3 rounded-2xl border border-sky-500/20 shadow-[0_0_20px_rgba(56,189,248,0.1)]">
-          <LucideSettings className="text-sky-400" size={32} />
+    <div className="w-full max-w-5xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 transition-colors duration-500">
+      
+      {/* HEADER SECTION (Responsive Scaling) */}
+      <div className="mb-12 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+        <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
+          <LucideSettings className="text-primary" size={36} />
         </div>
-        <div>
-          <h2 className="text-white text-3xl font-black tracking-tighter">Organisation Setup</h2>
-          <p className="text-slate-500 text-sm font-medium mt-1">Configure global task management parameters and company branding.</p>
+        <div className="min-w-0">
+          <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none">Organisation Setup</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Configure global task management parameters & company branding. </p>
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-8 md:space-y-12">
         
         {/* SECTION 0: FACTORY IDENTITY */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-           <Building2 size={120} className="absolute -right-10 -top-10 text-sky-500/5 group-hover:scale-110 transition-transform duration-1000" />
-           <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8 relative z-10">
-             <ImageIcon size={20} className="text-sky-400" /> Update Company Name & Logo
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative overflow-hidden group">
+           <Building2 size={160} className="absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
+           <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 relative z-10 uppercase tracking-tight">
+             <ImageIcon size={22} className="text-primary" /> Update company name & logo
            </h3>
            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_auto] gap-8 items-end relative z-10">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Company Name</label>
-                <input type="text" value={branding.companyName} onChange={(e) => setBranding({...branding, companyName: e.target.value})} className="w-full bg-slate-950 border border-slate-800 text-slate-100 px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 transition-all font-bold" />
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Company Name</label>
+                <input type="text" value={branding.companyName} onChange={(e) => setBranding({...branding, companyName: e.target.value})} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm uppercase shadow-inner" />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Logo</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Logo</label>
                 <div className="flex items-center gap-4">
-                  <label className="flex-1 flex items-center justify-center gap-3 cursor-pointer bg-slate-950 border border-slate-800 hover:border-sky-500/40 px-4 py-4 rounded-2xl text-sky-400 font-black uppercase tracking-widest text-xs">
+                  <label className="flex-1 flex items-center justify-center gap-3 cursor-pointer bg-background border border-border hover:border-primary/40 px-5 py-4 rounded-2xl text-primary font-black uppercase tracking-widest text-[10px] shadow-sm transition-all active:scale-95">
                     <UploadCloud size={20} /> Upload <input type="file" hidden onChange={handleLogoSelect} accept="image/*" />
                   </label>
-                  {logoPreview && <div className="w-[58px] h-[58px] bg-white p-1 rounded-xl flex items-center justify-center border border-slate-800 shadow-xl"><img src={logoPreview} alt="Preview" className="max-h-full object-contain" /></div>}
+                  {logoPreview && (
+                    <div className="w-14 h-14 bg-white p-1.5 rounded-xl flex items-center justify-center border border-border shadow-xl shrink-0">
+                      <img src={logoPreview} alt="Handshake Preview" className="max-h-full object-contain" />
+                    </div>
+                  )}
                 </div>
               </div>
-              <button onClick={saveBranding} disabled={updatingBranding} className="bg-sky-500 hover:bg-sky-400 text-slate-950 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 h-[58px] flex items-center gap-2">
-                {updatingBranding ? <RefreshCcw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />} Apply
+              <button onClick={saveBranding} disabled={updatingBranding} className="w-full lg:w-auto bg-primary hover:opacity-90 text-white dark:text-slate-950 px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 h-[56px] flex items-center justify-center gap-3">
+                {updatingBranding ? <RefreshCcw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}  Apply
               </button>
            </div>
         </section>
 
-        {/* SECTION 1: WORKING HOURS */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl">
-          <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8">
-            <Clock size={20} className="text-sky-400" />Operational Hours
+        {/* SECTION 1: WORKING HOURS (Responsive Layout) */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
+            <Clock size={22} className="text-primary" /> Operational Hours
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] ml-1">Opening</label>
-              <input type="time" value={hours.opening} onChange={(e) => setHours(prev => ({...prev, opening: e.target.value}))} className="w-full bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-emerald-500/50 font-bold" />
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.3em] ml-2">Opening</label>
+              <input type="time" value={hours.opening} onChange={(e) => setHours(prev => ({...prev, opening: e.target.value}))} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-red-400 uppercase tracking-[0.2em] ml-1">Closing</label>
-              <input type="time" value={hours.closing} onChange={(e) => setHours(prev => ({...prev, closing: e.target.value}))} className="w-full bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-red-500/50 font-bold" />
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-[0.3em] ml-2">Closing</label>
+              <input type="time" value={hours.closing} onChange={(e) => setHours(prev => ({...prev, closing: e.target.value}))} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
             </div>
           </div>
         </section>
 
-        {/* SECTION 4: HOLIDAY CALENDAR */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl">
-          <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8"><Calendar size={20} className="text-sky-400" /> Holiday</h3>
+        {/* SECTION 4: HOLIDAY CALENDAR (Responsive List) */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
+            <Calendar size={22} className="text-primary" /> Holiday
+          </h3>
           <div className="flex flex-col md:flex-row gap-4 mb-10">
-            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
-            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-slate-950 border border-slate-800 text-white px-6 py-4 rounded-2xl outline-none focus:border-sky-500/50 font-bold" />
-            <button onClick={addHolidayToList} className="bg-sky-500 hover:bg-sky-400 text-slate-950 px-6 rounded-2xl transition-all shadow-lg flex items-center justify-center"><PlusCircle size={24} /></button>
+            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm uppercase shadow-inner" />
+            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
+            <button onClick={addHolidayToList} className="bg-primary hover:opacity-90 text-white dark:text-slate-950 px-8 py-4 md:py-0 rounded-2xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center active:scale-95"><PlusCircle size={24} /></button>
           </div>
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             {Array.isArray(holidayList) && holidayList.map((h, index) => (
-              <div key={index} className="flex justify-between items-center px-6 py-4 bg-slate-950 border border-slate-800/50 rounded-2xl group hover:border-sky-500/20 transition-all">
-                <div className="flex items-center gap-4"><div className="w-1.5 h-1.5 rounded-full bg-sky-500" /><div><span className="font-bold text-slate-100">{h.name}</span><span className="text-[10px] text-slate-600 uppercase ml-4">{h.date ? new Date(h.date).toLocaleDateString() : 'N/A'}</span></div></div>
-                <button onClick={() => removeHoliday(index)} className="p-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={18} /></button>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* SECTION 2: PERFORMANCE ENGINE */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative group/points">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-            <h3 className="text-white text-xl font-bold flex items-center gap-3">
-              <Trophy size={22} className="text-amber-400" />Performance Engine
-            </h3>
-            <button onClick={() => setPointSettings(prev => ({ ...prev, isActive: !prev.isActive }))} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${pointSettings.isActive ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
-              Engine {pointSettings.isActive ? 'Active' : 'Offline'}
-            </button>
-          </div>
-          <div className="space-y-4">
-            {Array.isArray(pointSettings.brackets) && pointSettings.brackets.map((bracket, index) => (
-              <div key={index} className="bg-slate-950 border border-slate-800 rounded-3xl p-6 relative group/bracket animate-in slide-in-from-top-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1fr_1fr] gap-4 items-end">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Bracket Name</label>
-                    <input type="text" value={bracket.label} onChange={(e) => updateBracket(index, 'label', e.target.value)} className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-xl outline-none focus:border-sky-500/50 text-xs font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Max Days</label>
-                    <input type="number" value={bracket.maxDurationDays} onChange={(e) => updateBracket(index, 'maxDurationDays', parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-xl outline-none focus:border-sky-500/50 text-xs font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Unit</label>
-                    <select value={bracket.pointsUnit} onChange={(e) => updateBracket(index, 'pointsUnit', e.target.value)} className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-xl outline-none focus:border-sky-500/50 text-xs font-black uppercase">
-                      <option value="hour">Hourly</option>
-                      <option value="day">Daily</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Bonus (+)</label>
-                    <input type="number" value={bracket.earlyBonus} onChange={(e) => updateBracket(index, 'earlyBonus', parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-800 text-emerald-400 px-4 py-3 rounded-xl outline-none focus:border-emerald-500/50 text-xs font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-red-500 uppercase tracking-widest">Penalty (-)</label>
-                    <input type="number" value={bracket.latePenalty} onChange={(e) => updateBracket(index, 'latePenalty', parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-800 text-red-400 px-4 py-3 rounded-xl outline-none focus:border-red-500/50 text-xs font-bold" />
+              <div key={index} className="flex justify-between items-center px-6 py-4 bg-background border border-border rounded-2xl group hover:border-primary/30 transition-all shadow-sm">
+                <div className="flex items-center gap-5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
+                  <div>
+                    <span className="font-black text-foreground text-sm uppercase tracking-tight">{h.name}</span>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase ml-4 tracking-widest">{h.date ? new Date(h.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '---'}</span>
                   </div>
                 </div>
-                <button onClick={() => removeBracket(index)} className="absolute -top-2 -right-2 bg-red-500/10 text-red-400 p-2 rounded-full border border-red-500/20 opacity-0 group-hover/bracket:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"><Trash2 size={14} /></button>
+                <button onClick={() => removeHoliday(index)} className="p-2 text-slate-400 hover:text-red-500 transition-all active:scale-90"><Trash2 size={18} /></button>
               </div>
             ))}
-            <button onClick={addBracket} className="w-full py-4 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500 hover:text-sky-400 hover:bg-sky-500/5 transition-all flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest"><Plus size={16} /> Add Point Bracket</button>
           </div>
         </section>
 
-        {/* --- SECTION 3: BADGE WORKSHOP --- */}
-        <section className="bg-slate-900/40 backdrop-blur-md rounded-[2.5rem] border border-slate-800/60 p-8 md:p-10 shadow-2xl relative overflow-hidden group/badges">
-          <Award size={120} className="absolute -right-10 -top-10 text-amber-500/5 group-hover/badges:scale-110 transition-transform duration-1000" />
-          <h3 className="text-white text-xl font-bold flex items-center gap-3 mb-8 relative z-10">
-            <Medal size={20} className="text-amber-400" /> Achievement Workshop
+        {/* SECTION 2: PERFORMANCE ENGINE (Responsive Brackets) */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative group/points">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+            <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 uppercase tracking-tight">
+              <Trophy size={22} className="text-amber-500" /> performance Engine 
+            </h3>
+            <button onClick={() => setPointSettings(prev => ({ ...prev, isActive: !prev.isActive }))} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-sm ${pointSettings.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/30' : 'bg-background text-slate-500 border border-border'}`}>
+            Engine {pointSettings.isActive ? 'Online' : 'Offline'}
+            </button>
+          </div>
+          <div className="space-y-6">
+            {Array.isArray(pointSettings.brackets) && pointSettings.brackets.map((bracket, index) => (
+              <div key={index} className="bg-background border border-border rounded-3xl p-6 md:p-8 relative group/bracket animate-in slide-in-from-top-4 shadow-inner">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1fr_1fr] gap-6 items-end">
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Bracket Identity</label>
+                    <input type="text" value={bracket.label} onChange={(e) => updateBracket(index, 'label', e.target.value)} className="w-full bg-card border border-border text-foreground px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 text-xs font-black uppercase" />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Max Duration</label>
+                    <input type="number" value={bracket.maxDurationDays} onChange={(e) => updateBracket(index, 'maxDurationDays', parseInt(e.target.value))} className="w-full bg-card border border-border text-foreground px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 text-xs font-bold" />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Interval Unit</label>
+                    <div className="relative">
+                      <select value={bracket.pointsUnit} onChange={(e) => updateBracket(index, 'pointsUnit', e.target.value)} className="w-full bg-card border border-border text-foreground px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 text-xs font-black uppercase appearance-none cursor-pointer">
+                        <option value="hour">Hourly Cycle</option>
+                        <option value="day">Daily Cycle</option>
+                      </select>
+                      <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-primary pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest ml-1">Early Bonus (+)</label>
+                    <input type="number" value={bracket.earlyBonus} onChange={(e) => updateBracket(index, 'earlyBonus', parseInt(e.target.value))} className="w-full bg-card border border-border text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-emerald-500/10 text-xs font-black shadow-sm" />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-red-600 dark:text-red-500 uppercase tracking-widest ml-1">Late Penalty (-)</label>
+                    <input type="number" value={bracket.latePenalty} onChange={(e) => updateBracket(index, 'latePenalty', parseInt(e.target.value))} className="w-full bg-card border border-border text-red-600 dark:text-red-400 px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-red-500/10 text-xs font-black shadow-sm" />
+                  </div>
+                </div>
+                <button onClick={() => removeBracket(index)} className="absolute -top-3 -right-3 bg-card text-red-500 p-2.5 rounded-full border border-border shadow-xl hover:bg-red-500 hover:text-white transition-all active:scale-90"><Trash2 size={16} /></button>
+              </div>
+            ))}
+            <button onClick={addBracket} className="w-full py-5 border-2 border-dashed border-border rounded-3xl text-slate-400 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.3em] active:scale-[0.99]"><Plus size={18} /> Append Point Bracket</button>
+          </div>
+        </section>
+
+        {/* --- SECTION 3: BADGE WORKSHOP (Responsive Grid) --- */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative overflow-hidden group/badges">
+          <Award size={160} className="absolute -right-16 -top-16 text-amber-500 opacity-[0.03] group-hover/badges:scale-110 transition-transform duration-1000 pointer-events-none" />
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight relative z-10">
+            <Medal size={22} className="text-amber-500" /> Achievement work shop
           </h3>
           <div className="space-y-6 relative z-10">
             {Array.isArray(badgeLibrary) && badgeLibrary.map((badge, index) => (
-              <div key={index} className="bg-slate-950/80 border border-slate-800 rounded-[2rem] p-6 group/badge relative hover:border-amber-500/20 transition-all">
-                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr_1fr_auto] gap-6 items-center">
-                  <div className="flex flex-col items-center gap-2">
+              <div key={index} className="bg-background border border-border rounded-[2rem] p-6 md:p-8 group/badge relative hover:border-amber-500/30 transition-all shadow-inner">
+                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr_1.5fr_auto] gap-8 items-center">
+                  <div className="flex flex-col items-center gap-3">
                     <div 
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-2xl transition-all border border-white/10"
-                      style={{ backgroundColor: `${badge.color}15`, border: `1px solid ${badge.color}30`, boxShadow: `0 0 20px ${badge.color}15` }}
+                      className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-2xl transition-all border border-white/10 dark:border-white/5"
+                      style={{ backgroundColor: `${badge.color}15`, boxShadow: `0 0 30px ${badge.color}15` }}
                     >
                       {React.cloneElement(availableIcons.find(i => i.name === badge.iconName)?.icon || <Star />, { 
-                        size: 32, 
+                        size: 36, 
                         color: badge.color,
-                        style: { filter: `drop-shadow(0 0 8px ${badge.color}60)` }
+                        style: { filter: `drop-shadow(0 0 10px ${badge.color}80)` }
                       })}
                     </div>
-                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Preview</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">Node Preview</span>
                   </div>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Badge Identity</label>
-                      <input type="text" placeholder="e.g. Master Weaver" value={badge.name} onChange={(e) => updateBadge(index, 'name', e.target.value)} className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 text-xs font-bold" />
+                  
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Badge Codename</label>
+                      <input type="text" placeholder="e.g. Master Weaver" value={badge.name} onChange={(e) => updateBadge(index, 'name', e.target.value)} className="w-full bg-card border border-border text-foreground px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-amber-500/10 text-xs font-black uppercase tracking-tight" />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Unlock Points</label>
-                      <input type="number" value={badge.pointThreshold} onChange={(e) => updateBadge(index, 'pointThreshold', parseInt(e.target.value))} className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3 rounded-xl outline-none focus:border-amber-500/50 text-xs font-bold" />
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Threshold (Tokens)</label>
+                      <input type="number" value={badge.pointThreshold} onChange={(e) => updateBadge(index, 'pointThreshold', parseInt(e.target.value))} className="w-full bg-card border border-border text-foreground px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-amber-500/10 text-xs font-black shadow-sm" />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Choose Icon</label>
-                    <div className="grid grid-cols-5 gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800">
+
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Icon Handshake</label>
+                    <div className="grid grid-cols-5 sm:grid-cols-3 gap-2 bg-card p-3 rounded-2xl border border-border shadow-inner">
                       {availableIcons.map(icon => (
-                        <button key={icon.name} onClick={() => updateBadge(index, 'iconName', icon.name)} className={`p-2 rounded-lg transition-all flex items-center justify-center ${badge.iconName === icon.name ? 'bg-amber-500 text-slate-950' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}>{icon.icon}</button>
+                        <button key={icon.name} onClick={() => updateBadge(index, 'iconName', icon.name)} className={`p-2.5 rounded-lg transition-all flex items-center justify-center ${badge.iconName === icon.name ? 'bg-amber-500 text-white dark:text-slate-950 shadow-lg' : 'text-slate-400 hover:text-foreground hover:bg-background'}`}>{icon.icon}</button>
                       ))}
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">Signatory Color</label>
-                    <div className="flex gap-2 bg-slate-900 p-2 rounded-xl border border-slate-800 h-[52px] items-center px-4">
+
+                  <div className="space-y-3">
+                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Thermal Signatory Color</label>
+                    <div className="flex flex-wrap gap-3 bg-card p-3 rounded-2xl border border-border h-[68px] items-center px-5 shadow-inner">
                       {eliteColors.map(color => (
-                        <button key={color.hex} onClick={() => updateBadge(index, 'color', color.hex)} className={`w-6 h-6 rounded-full transition-transform hover:scale-125 ${badge.color === color.hex ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}`} style={{ backgroundColor: color.hex }} />
+                        <button key={color.hex} onClick={() => updateBadge(index, 'color', color.hex)} className={`w-7 h-7 rounded-full transition-transform hover:scale-125 ${badge.color === color.hex ? 'ring-2 ring-primary ring-offset-4 ring-offset-background shadow-lg' : 'opacity-40 hover:opacity-100'}`} style={{ backgroundColor: color.hex }} />
                       ))}
                     </div>
                   </div>
-                  <button onClick={() => removeBadge(index)} className="p-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"><Trash2 size={18} /></button>
+
+                  <button onClick={() => removeBadge(index)} className="p-4 text-red-500 hover:bg-red-500/10 rounded-[1.5rem] transition-all active:scale-90 flex items-center justify-center border border-transparent hover:border-red-500/20"><Trash2 size={20} /></button>
                 </div>
               </div>
             ))}
-            <button onClick={addBadge} className="w-full py-6 border-2 border-dashed border-slate-800 rounded-[2rem] text-slate-500 hover:text-amber-400 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.2em] group">
-              <Plus size={20} className="group-hover:rotate-90 transition-transform" /> Create New Achievement
+            <button onClick={addBadge} className="w-full py-8 border-2 border-dashed border-border rounded-[2.5rem] text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-4 text-xs font-black uppercase tracking-[0.3em] group active:scale-[0.99]">
+              <Plus size={24} className="group-hover:rotate-90 transition-transform duration-500" /> Engineer New Achievement Node
             </button>
           </div>
         </section>
-
-        
       </div>
 
-      <div className="mt-12 sticky bottom-10 z-50">
-        <button onClick={saveSettings} disabled={saving} className={`w-full py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-2xl ${saving ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 active:scale-95 cursor-pointer"}`}>
-            {saving ? <RefreshCcw className="animate-spin" size={22} /> : <Zap size={22} fill="currentColor" />} {saving ? 'Transmitting Factory Update...' : 'Save Updates'}
+      {/* STICKY EXECUTION FOOTER */}
+      <div className="mt-12 sticky bottom-6 md:bottom-10 z-[100] px-2">
+        <button onClick={saveSettings} disabled={saving} className={`w-full py-6 rounded-[2.5rem] font-black text-xs sm:text-sm uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${saving ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white dark:text-slate-950 active:scale-95 cursor-pointer shadow-emerald-500/20"}`}>
+            {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Zap size={24} fill="currentColor" />} {saving ? 'TRANSMITTING FACTORY TELEMETRY...' : 'COMMIT GLOBAL UPDATES'}
         </button>
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { 
+          background: rgba(148, 163, 184, 0.2); 
+          border-radius: 20px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+      `}</style>
     </div>
   );
 };

@@ -13,7 +13,6 @@ function App() {
   
   const subdomain = getSubdomain();
 
-  // 1. RESTORE SESSION ON REFRESH
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const savedTenantId = localStorage.getItem('tenantId');
@@ -23,22 +22,16 @@ function App() {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-        if (parsedUser.isSuperAdmin) {
-          setIsSuperAuth(true);
-        }
+        if (parsedUser.isSuperAdmin) setIsSuperAuth(true);
       } catch (e) {
         console.error("Session restore error", e);
       }
     }
     
-    if (savedTenantId) {
-      setTenantId(savedTenantId);
-    }
-    
+    if (savedTenantId) setTenantId(savedTenantId);
     setIsLoading(false);
   }, []);
 
-  // 2. HANDLE FACTORY LOGIN SUCCESS
   const handleLoginSuccess = (userData, tId) => {
     setUser(userData);
     setTenantId(tId);
@@ -46,7 +39,6 @@ function App() {
     localStorage.setItem('tenantId', tId);
   };
 
-  // 3. HANDLE MASTER LOGIN SUCCESS
   const handleMasterLoginSuccess = (token, userData) => {
     setIsSuperAuth(true);
     setUser(userData);
@@ -64,12 +56,12 @@ function App() {
   };
 
   if (isLoading) {
-    return <div style={{ background: '#0f172a', height: '100vh' }}></div>;
+    return <div className="h-screen bg-background animate-pulse"></div>;
   }
 
   return (
     <Router>
-      <div style={{ background: '#0f172a', minHeight: '100vh' }}>
+      <div className="min-h-screen bg-background text-foreground selection:bg-primary/30 transition-colors duration-500">
         <Routes>
           {(!subdomain || subdomain === "") ? (
             <Route path="/*" element={
