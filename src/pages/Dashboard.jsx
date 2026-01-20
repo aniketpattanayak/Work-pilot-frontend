@@ -181,9 +181,13 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
         fixed inset-y-0 left-0 z-[200] transform transition-transform duration-500 lg:relative lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <Sidebar roles={userRoles} activeTab={activeTab} onNavigate={handleNavigate} />
-        
-        
+        {/* FIXED: Passing onLogout to Sidebar child */}
+        <Sidebar 
+          roles={userRoles} 
+          activeTab={activeTab} 
+          onNavigate={handleNavigate} 
+          onLogout={onLogout} 
+        />
       </div>
       
       <div className="flex-1 flex flex-col relative overflow-y-auto custom-scrollbar transition-all duration-500">
@@ -234,10 +238,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                 <div className="text-foreground text-xs md:text-sm font-black leading-none uppercase tracking-tight">
                   {user?.name || sessionUser?.name}
                 </div>
-                
               </div>
-              
-  
             </div>
           </div>
         </header>
@@ -328,7 +329,6 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
               </div>
             } />
 
-            {/* ROUTE DEFINITIONS PRESERVED */}
             <Route path="employees" element={
               <div className="flex flex-col gap-10">
                 <div className="bg-card p-2 rounded-[2.5rem] border border-border shadow-2xl">

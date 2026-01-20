@@ -9,32 +9,31 @@ import {
   Settings, 
   Eye, 
   ClipboardList, 
-  UserCog,
-  LayoutList,
-  Activity,
-  ChevronRight,
-  RefreshCcw,
-  ShieldCheck,
-  Trophy,
-  History as HistoryIcon,
-  Star,
-  Medal,
-  Flame,
-  Target,
-  Rocket,
-  ShieldCheck as ShieldCheckIcon,
-  Award,
-  Zap,
-  Menu,
-  X,
-  LogOut // Added for logout functionality
+  UserCog, 
+  LayoutList, 
+  Activity, 
+  ChevronRight, 
+  RefreshCcw, 
+  ShieldCheck, 
+  Trophy, 
+  History as HistoryIcon, 
+  Star, 
+  Medal, 
+  Flame, 
+  Target, 
+  Rocket, 
+  ShieldCheck as ShieldCheckIcon, 
+  Award, 
+  Zap, 
+  Menu, 
+  X, 
+  LogOut 
 } from 'lucide-react';
 
 /**
  * SIDEBAR: ADAPTIVE NAVIGATION COMMAND
  * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * FIXED: Footer forced high-contrast colors.
- * ADDED: Integrated Logout functionality.
+ * FIXED: Logout functionality explicitly linked to the onLogout prop.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -160,7 +159,6 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
           </div>
         )}
         
-        {/* ROLE BADGES */}
         <div className="flex flex-wrap gap-1.5">
           {safeRoles.length > 0 ? safeRoles.map((r, i) => (
             <span key={i} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 shadow-sm">
@@ -266,7 +264,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       </nav>
 
       {/* LOGOUT ACTION */}
-      <div className="px-3 py-4 border-t border-border/50">
+      <div className="px-3 py-4 border-t border-border/50 mt-auto bg-card">
         <button
           onClick={onLogout}
           className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all duration-300 font-semibold group"
@@ -276,8 +274,6 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         </button>
       </div>
       
-      
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
