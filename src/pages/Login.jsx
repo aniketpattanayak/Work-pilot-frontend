@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import API from '../api/axiosConfig'; // Switched to centralized API instance
+import API from '../api/axiosConfig'; 
 import { useNavigate } from 'react-router-dom';
 import { getSubdomain } from '../utils/subdomain';
 import { 
@@ -9,17 +9,21 @@ import {
   LogIn, 
   RefreshCcw, 
   AlertTriangle, 
-  Factory 
+  Factory,
+  Eye,     // Added for password visibility
+  EyeOff   // Added for password visibility
 } from 'lucide-react';
 
 /**
- * LOGIN: SECURE TERMINAL ENTRY v1.5
+ * LOGIN: SECURE TERMINAL ENTRY v1.6
  * Purpose: Authenticates personnel for specific tenant nodes.
  * UI: Fully responsive and theme-adaptive (Light/Dark).
+ * Updated: Password visibility toggle integration.
  */
 const Login = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Visibility State
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,16 +168,25 @@ const Login = ({ onLoginSuccess }) => {
           </div>
 
           <div className="space-y-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Access Cipher</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Password</label>
             <div className="relative group">
               <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} // Dynamic Type Toggle
                 placeholder="••••••••" 
                 required
-                className="w-full bg-background border border-border text-foreground pl-14 pr-6 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700 tracking-widest"
+                className="w-full bg-background border border-border text-foreground pl-14 pr-14 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700 tracking-widest"
                 onChange={(e) => setPassword(e.target.value)} 
               />
+              {/* Visibility Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors focus:outline-none"
+                title={showPassword ? "Hide Password" : "Show Password"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
@@ -193,7 +206,7 @@ const Login = ({ onLoginSuccess }) => {
 
         <div className="mt-12 pt-8 border-t border-border/50 text-center">
             <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] leading-relaxed">
-                Multi-Tenant Protocol v1.5.0<br/>
+                Multi-Tenant Protocol v1.6.0<br/>
                 <span className="opacity-60 font-bold">Encrypted Node Handshake Active</span>
             </p>
         </div>
