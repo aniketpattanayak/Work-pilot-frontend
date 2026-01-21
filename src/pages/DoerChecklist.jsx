@@ -362,7 +362,7 @@ const DoerChecklist = ({ doerId }) => {
                 className="w-full py-6 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4"
               >
                 {uploading ? <RefreshCcw className="animate-spin" size={20} /> : <CheckCircle size={20} />}
-                {uploading ? "Transmitting Evidence..." : "Finalize Mission Handshake"}
+                {uploading ? "Transmitting Evidence..." : "Submit"}
               </button>
             </form>
             
