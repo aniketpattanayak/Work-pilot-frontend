@@ -27,13 +27,14 @@ import {
   Zap, 
   Menu, 
   X, 
-  LogOut 
+  LogOut,
+  LifeBuoy // New: Added for Support/Raise Ticket
 } from 'lucide-react';
 
 /**
- * SIDEBAR: ADAPTIVE NAVIGATION COMMAND
+ * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.6
  * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * FIXED: Logout functionality explicitly linked to the onLogout prop.
+ * Updated: Integrated Support Ticketing category for all personnel.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     return () => window.removeEventListener('brandingUpdated', fetchFactoryBranding);
   }, [fetchFactoryBranding]);
 
+  // CATEGORY DEFINITIONS
   const categories = [
     {
       label: 'Main',
@@ -107,6 +109,13 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
         { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
+      ]
+    },
+    {
+      // NEW CATEGORY: SUPPORT SYSTEM
+      label: 'Support',
+      items: [
+        { name: 'Raise Ticket', icon: <LifeBuoy />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
       ]
     }
   ];

@@ -21,6 +21,9 @@ import CoordinatorDashboard from './CoordinatorDashboard';
 import CreateChecklist from './CreateChecklist'; 
 import RewardsLog from './RewardsLog';
 
+// Support System Imports
+import RaiseTicket from './RaiseTicket'; 
+
 // Icons
 import { 
   User, LogOut, Layout, Trophy, Medal, Star, Zap, Flame, Target, 
@@ -29,9 +32,9 @@ import {
 } from 'lucide-react';
 
 /**
- * DASHBOARD: GLOBAL OPERATIONAL COMMAND v1.6
+ * DASHBOARD: GLOBAL OPERATIONAL COMMAND v1.7
  * Fully Responsive | Multi-Tenant | Dual-Theme (Light/Dark)
- * UPDATED: Admin-only access for Global Leaderboard.
+ * UPDATED: Added Support Ticketing route integration.
  */
 const Dashboard = ({ user, tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -357,6 +360,9 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                 </div>
               </div>
             } />
+
+            {/* Support System Integration */}
+            <Route path="raise-ticket" element={<RaiseTicket userId={userId} tenantId={currentTenantId} />} />
 
             <Route path="factory-settings" element={<SettingsPage tenantId={currentTenantId} />} />
             <Route path="mapping" element={<CoordinatorMapping tenantId={currentTenantId} />} />
