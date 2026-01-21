@@ -29,8 +29,9 @@ import {
 } from 'lucide-react';
 
 /**
- * DASHBOARD: GLOBAL OPERATIONAL COMMAND v1.5
+ * DASHBOARD: GLOBAL OPERATIONAL COMMAND v1.6
  * Fully Responsive | Multi-Tenant | Dual-Theme (Light/Dark)
+ * UPDATED: Admin-only access for Global Leaderboard.
  */
 const Dashboard = ({ user, tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -49,6 +50,9 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   const userRoles = user?.roles || sessionUser?.roles || 
                    (user?.role ? [user.role] : []) || 
                    (sessionUser?.role ? [sessionUser.role] : []) || [];
+
+  // Determine if user has Administrative clearance
+  const isAdmin = userRoles.some(role => role.toLowerCase() === 'admin');
 
   const badgeIconMap = {
     Star, Trophy, Medal, Zap, ShieldCheck, Flame, Target, Rocket, Award
@@ -181,7 +185,6 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
         fixed inset-y-0 left-0 z-[200] transform transition-transform duration-500 lg:relative lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        {/* FIXED: Passing onLogout to Sidebar child */}
         <Sidebar 
           roles={userRoles} 
           activeTab={activeTab} 
@@ -324,8 +327,8 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                   </div>
                 </div>
 
-                {/* RANKINGS */}
-                <PerformanceLeaderboard />
+                {/* RANKINGS: Restricted to Admin Access */}
+                {isAdmin && <PerformanceLeaderboard />}
               </div>
             } />
 
@@ -381,6 +384,11 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
           background: var(--color-primary);
         }
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+          50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
+        }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
     </div>
   );
