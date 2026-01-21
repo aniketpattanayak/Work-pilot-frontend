@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, forwardRef } from "react";
+import React, { useState, useEffect, useCallback, forwardRef, useRef } from "react";
 import API from '../api/axiosConfig'; 
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
@@ -15,12 +15,13 @@ import {
   AlertCircle,
   Flag,
   CalendarDays,
-  ChevronRight
+  ChevronRight,
+  Search
 } from "lucide-react";
 
 /**
- * CREATE TASK: DIRECTIVE PROVISIONING MODULE v1.5
- * Purpose: Assigns tactical missions with file support and follower nodes.
+ * CREATE TASK: DIRECTIVE PROVISIONING MODULE v1.6
+ * UPDATED: Integrated Searchable Doer Dropdown & Follower Filtering.
  * UI: Fully responsive and theme-adaptive (Light/Dark).
  */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
@@ -47,26 +48,39 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     coworkers: [],
   });
 
+  // Search & UI States
+  const [doerSearch, setDoerSearch] = useState('');
+  const [followerSearch, setFollowerSearch] = useState('');
+  const [showDoerDropdown, setShowDoerDropdown] = useState(false);
+  const doerDropdownRef = useRef(null);
+
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [employees, setEmployees] = useState(initialEmployees || []);
-  const [loading, setLoading] = useState(
-    !initialEmployees || initialEmployees.length === 0
-  );
+  const [loading, setLoading] = useState(!initialEmployees || initialEmployees.length === 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedHelpers, setSelectedHelpers] = useState([]);
 
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
   const sessionUser = JSON.parse(localStorage.getItem("user"));
-  const currentAssignerId = assignerId || sessionUser?._id || sessionUser?.id;
+  const currentAssignerId = assignerId || sessionUser?._id || sessionUser?._id;
+
+  // Handle outside click for Doer dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (doerDropdownRef.current && !doerDropdownRef.current.contains(event.target)) {
+        setShowDoerDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchMyTeam = useCallback(async () => {
     if (!currentAssignerId) return;
     try {
       setLoading(true);
       const res = await API.get(`/tasks/authorized-staff/${currentAssignerId}`);
-      const data = Array.isArray(res.data) 
-        ? res.data 
-        : (res.data?.doers || res.data?.data || []);
+      const data = Array.isArray(res.data) ? res.data : (res.data?.doers || res.data?.data || []);
       setEmployees(data);
     } catch (err) {
       console.error("Error loading team:", err);
@@ -85,6 +99,22 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     }
   }, [currentAssignerId, initialEmployees, fetchMyTeam]);
 
+  // Filtering Logic
+  const filteredDoers = employees.filter(emp => 
+    emp.name.toLowerCase().includes(doerSearch.toLowerCase())
+  );
+
+  const filteredFollowers = employees.filter(emp => 
+    emp._id !== task.doerId && 
+    emp.name.toLowerCase().includes(followerSearch.toLowerCase())
+  );
+
+  const handleSelectDoer = (emp) => {
+    setTask({ ...task, doerId: emp._id });
+    setDoerSearch(emp.name);
+    setShowDoerDropdown(false);
+  };
+
   const handleFileChange = (e) => {
     setSelectedFiles([...selectedFiles, ...Array.from(e.target.files)]);
   };
@@ -95,12 +125,8 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!currentTenantId || !currentAssignerId) {
-      return alert("Error: Assigner Session not found. Please refresh the page.");
-    }
-    if (!task.deadline) {
-      return alert("Please select a completion deadline.");
-    }
+    if (!task.doerId) return alert("Please search and select a Primary Doer (Lead).");
+    if (!task.deadline) return alert("Please select a completion deadline.");
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -114,58 +140,40 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
 
-    if (task.coordinatorId) {
-      formData.append("coordinatorId", task.coordinatorId);
-    }
-
-    selectedFiles.forEach((file) => {
-      formData.append("taskFiles", file);
-    });
+    if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
+    selectedFiles.forEach((file) => formData.append("taskFiles", file));
 
     try {
       await API.post("/tasks/create", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
-      alert("Success: Task Created Successfully with Support Team!");
-
-      setTask({
-        title: "",
-        description: "",
-        doerId: "",
-        coordinatorId: "",
-        priority: "Medium",
-        deadline: null,
-        isRevisionAllowed: true,
-        coworkers: [],
-      });
+      alert("Success: Mission Assigned Successfully!");
+      setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, coworkers: [] });
       setSelectedFiles([]);
-      setSelectedHelpers([]); 
+      setSelectedHelpers([]);
+      setDoerSearch('');
+      setFollowerSearch('');
     } catch (err) {
-      console.error("Frontend Error:", err);
       alert("Error: " + (err.response?.data?.error || "Task Creation Failed"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-6 bg-transparent">
-        <div className="relative">
-          <RefreshCcw className="animate-spin text-primary" size={40} />
-          <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-        </div>
-        <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Loading...</p>
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-6 bg-transparent">
+      <div className="relative">
+        <RefreshCcw className="animate-spin text-primary" size={40} />
+        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
       </div>
-    );
-
-  const safeEmployees = Array.isArray(employees) ? employees : [];
+      <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Synchronizing Nodes...</p>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 selection:bg-primary/30">
       
-      {/* HEADER SECTION (Responsive) */}
+      {/* HEADER SECTION */}
       <div className="mb-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
         <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
           <PlusCircle className="text-primary" size={32} />
@@ -178,56 +186,63 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
 
       <form onSubmit={handleSubmit} className="bg-card backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] border border-border shadow-2xl space-y-8 transition-colors duration-500">
         
-        {/* Task Title Node */}
+        {/* Task Title */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <FileText size={14} className="text-primary" /> Task Title
           </label>
           <input
-            type="text"
-            placeholder="What needs to be done?"
-            required
+            type="text" placeholder="What needs to be done?" required
             value={task.title}
             className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
             onChange={(e) => setTask({ ...task, title: e.target.value })}
           />
         </div>
 
-        {/* Task Description Node */}
+        {/* Task Description */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <AlertCircle size={14} className="text-primary" />  Task Description
           </label>
           <textarea
-            placeholder="Provide a specific instructions or goals... "
+            placeholder="Provide specific instructions or goals... "
             value={task.description}
             className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all min-h-[120px] font-medium placeholder:text-slate-500 shadow-inner resize-none"
             onChange={(e) => setTask({ ...task, description: e.target.value })}
           />
         </div>
 
-        {/* Assignment Node Selection */}
+        {/* SEARCHABLE PRIMARY DOER SELECTION */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-3">
+          <div className="space-y-3 relative" ref={doerDropdownRef}>
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
               <User size={14} className="text-primary" /> Primary Doer (Lead)
             </label>
-            <div className="relative">
-              <select
-                required
-                value={task.doerId}
-                className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold appearance-none cursor-pointer shadow-inner uppercase tracking-tight"
-                onChange={(e) => setTask({ ...task, doerId: e.target.value })}
-              >
-                <option value="">-- Select Active Staff --</option>
-                {safeEmployees.map((emp) => (
-                  <option key={emp._id} value={emp._id}>
-                    {emp.name} — ({emp.department || 'Sector N/A'})
-                  </option>
-                ))}
-              </select>
-              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={20} />
+            <div className="relative group">
+              <input 
+                type="text"
+                placeholder="Search staff by name..."
+                value={doerSearch}
+                onFocus={() => setShowDoerDropdown(true)}
+                onChange={(e) => { setDoerSearch(e.target.value); setShowDoerDropdown(true); }}
+                className={`w-full bg-background border ${task.doerId ? 'border-emerald-500/50' : 'border-border'} text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold shadow-inner uppercase text-xs`}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              {doerSearch && (
+                <button type="button" onClick={() => { setDoerSearch(''); setTask({...task, doerId: ''}); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"><X size={16} /></button>
+              )}
             </div>
+
+            {showDoerDropdown && (
+              <div className="absolute z-[100] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar">
+                {filteredDoers.map(emp => (
+                  <div key={emp._id} onClick={() => handleSelectDoer(emp)} className="px-6 py-4 hover:bg-primary/10 cursor-pointer flex flex-col border-b border-border/50 last:border-0 transition-colors">
+                    <span className="text-xs font-black text-foreground uppercase tracking-tight">{emp.name}</span>
+                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{emp.department || 'General Sector'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -265,38 +280,41 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
           />
         </div>
 
-        {/* Support Flock (Followers) */}
+        {/* SEARCHABLE FOLLOWERS */}
         <div className="space-y-4 animate-in fade-in duration-500">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-            <Users size={14} className="text-primary" /> Followers
-          </label>
+          <div className="flex justify-between items-center px-1">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
+              <Users size={14} className="text-primary" /> Support Followers
+            </label>
+            <div className="relative w-48">
+               <input 
+                 type="text"
+                 placeholder="Filter list..."
+                 value={followerSearch}
+                 onChange={(e) => setFollowerSearch(e.target.value)}
+                 className="w-full bg-background border border-border text-[10px] font-bold px-8 py-2 rounded-full outline-none focus:border-primary transition-all"
+               />
+               <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
+          </div>
           <div className="bg-background border border-border rounded-2xl p-4 max-h-[180px] overflow-y-auto space-y-2 custom-scrollbar shadow-inner">
-            {safeEmployees
-              .filter((e) => e._id !== task.doerId)
-              .map((emp) => (
-                <label key={emp._id} className="flex items-center justify-between gap-3 p-3 hover:bg-primary/5 rounded-xl cursor-pointer transition-all group/helper border border-transparent hover:border-primary/20">
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-black text-foreground uppercase tracking-tight truncate">
-                      {emp.name}
-                    </span>
-                    <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5">
-                      Sector: {emp.department || 'N/A'}
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={selectedHelpers.some((h) => h.helperId === emp._id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
-                      } else {
-                        setSelectedHelpers(selectedHelpers.filter((h) => h.helperId !== emp._id));
-                      }
-                    }}
-                    className="w-4 h-4 rounded accent-primary bg-background border-border shrink-0"
-                  />
-                </label>
-              ))}
+            {filteredFollowers.map((emp) => (
+              <label key={emp._id} className="flex items-center justify-between gap-3 p-3 hover:bg-primary/5 rounded-xl cursor-pointer transition-all group/helper border border-transparent hover:border-primary/20">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-black text-foreground uppercase tracking-tight truncate">{emp.name}</span>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter mt-0.5">Sector: {emp.department || 'N/A'}</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={selectedHelpers.some((h) => h.helperId === emp._id)}
+                  onChange={(e) => {
+                    if (e.target.checked) { setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]); } 
+                    else { setSelectedHelpers(selectedHelpers.filter((h) => h.helperId !== emp._id)); }
+                  }}
+                  className="w-4 h-4 rounded accent-primary bg-background border-border shrink-0"
+                />
+              </label>
+            ))}
           </div>
         </div>
 
@@ -331,14 +349,13 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
         </div>
 
         {/* Revision Node Logic */}
-        <div className="bg-background border border-border p-6 rounded-2xl flex items-center justify-between group shadow-inner">
+        <div className="bg-background border border-border p-6 rounded-2xl flex items-center justify-between group shadow-inner transition-colors duration-500">
           <div className="flex items-center gap-5">
             <div className={`p-3 rounded-xl transition-all duration-700 ${task.isRevisionAllowed ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-red-500/10 text-red-600 dark:text-red-400"}`}>
               <RefreshCcw size={20} className={task.isRevisionAllowed ? "animate-spin-slow" : ""} />
             </div>
             <div>
               <p className="text-xs sm:text-sm font-black text-foreground uppercase tracking-tight leading-none">Allow doer to request due date adjustments</p>
-              
             </div>
           </div>
           <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -353,11 +370,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
           disabled={isSubmitting}
           className="w-full py-6 rounded-[2rem] bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4"
         >
-          {isSubmitting ? (
-            <RefreshCcw className="animate-spin" size={20} />
-          ) : (
-            <PlusCircle size={20} className="group-hover:scale-110 transition-transform duration-500" />
-          )}
+          {isSubmitting ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} className="group-hover:scale-110 transition-transform duration-500" />}
           {isSubmitting ? "Encrypting & Notifying Team Nodes..." : "Finalize Mission Assignment"}
         </button>
       </form>

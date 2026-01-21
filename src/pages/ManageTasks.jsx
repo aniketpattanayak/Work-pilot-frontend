@@ -156,7 +156,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         <RefreshCcw className="animate-spin text-primary" size={48} />
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
       </div>
-      <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Accessing Task Vault...</p>
+      <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Loading...</p>
     </div>
   );
 

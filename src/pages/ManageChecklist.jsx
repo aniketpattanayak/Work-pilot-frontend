@@ -116,7 +116,7 @@ const ManageChecklist = ({ tenantId }) => {
         <RefreshCcw className="animate-spin text-primary" size={40} />
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
       </div>
-      <p className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.4em] uppercase leading-none">Accessing Routine Registry...</p>
+      <p className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.4em] uppercase leading-none">Loading...</p>
     </div>
   );
 

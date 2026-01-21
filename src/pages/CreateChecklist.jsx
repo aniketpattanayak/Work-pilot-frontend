@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, forwardRef } from 'react';
+import React, { useState, useEffect, useCallback, forwardRef, useRef } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import API from '../api/axiosConfig';
@@ -15,12 +15,14 @@ import {
   RefreshCcw,
   AlignLeft,
   Repeat,
-  ChevronRight
+  ChevronRight,
+  Search,
+  X
 } from 'lucide-react';
 
 /**
- * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.6
- * UPDATED: Support for Quarterly and Half-Yearly frequencies.
+ * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.8
+ * UPDATED: Real-time Searchable Doer Selection.
  * UI: Fully responsive and theme-adaptive (Light/Dark).
  */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
@@ -37,6 +39,12 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
 const CreateChecklist = ({ tenantId }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // Search States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
   const [formData, setFormData] = useState({
     taskName: '',
     description: '',
@@ -52,6 +60,17 @@ const CreateChecklist = ({ tenantId }) => {
   });
 
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchEmployees = useCallback(async () => {
     if (!currentTenantId) return;
@@ -77,8 +96,26 @@ const CreateChecklist = ({ tenantId }) => {
     fetchEmployees();
   }, [fetchEmployees]);
 
+  // Filter employees based on search
+  const filteredEmployees = employees.filter(emp => 
+    emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSelectEmployee = (emp) => {
+    setFormData({ ...formData, doerId: emp._id });
+    setSearchTerm(emp.name);
+    setShowDropdown(false);
+  };
+
+  const clearSelection = () => {
+    setFormData({ ...formData, doerId: '' });
+    setSearchTerm('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.doerId) return alert("Please search and select a valid staff member.");
+    
     setLoading(true);
     try {
       await API.post('/tasks/create-checklist', {
@@ -94,6 +131,7 @@ const CreateChecklist = ({ tenantId }) => {
         startDate: new Date().toISOString().split('T')[0],
         frequencyConfig: { dayOfWeek: 0, dayOfMonth: 1, month: 0, interval: 1 }
       });
+      setSearchTerm('');
     } catch (err) {
       alert("Protocol Error: " + (err.response?.data?.message || err.message));
     } finally {
@@ -104,20 +142,20 @@ const CreateChecklist = ({ tenantId }) => {
   return (
     <div className="w-full max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 selection:bg-primary/30">
       
-      {/* HEADER SECTION (Responsive) */}
+      {/* HEADER SECTION */}
       <div className="mb-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
         <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
           <Activity className="text-primary" size={32} />
         </div>
         <div className="min-w-0">
           <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Add Checklist Task</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Set up repeating tasks that staff must complete daily, weekly, monthly, quarterly, or yearly.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Assign automated tasks to your team with smart search.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-card backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] border border-border shadow-2xl space-y-8 transition-colors duration-500">
         
-        {/* Task Name Node */}
+        {/* Task Name */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <CheckCircle2 size={14} className="text-primary" /> Task Title
@@ -131,7 +169,7 @@ const CreateChecklist = ({ tenantId }) => {
           />
         </div>
 
-        {/* Task Description Node */}
+        {/* Task Description */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <AlignLeft size={14} className="text-primary" /> Task Details 
@@ -145,24 +183,58 @@ const CreateChecklist = ({ tenantId }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Assigned Node */}
-          <div className="space-y-3">
+          
+          {/* SEARCHABLE DOER SELECTION */}
+          <div className="space-y-3 relative" ref={dropdownRef}>
             <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-              <User size={14} className="text-primary" />Doer Name
+              <User size={14} className="text-primary" /> Search & Select Doer
             </label>
-            <div className="relative">
-              <select 
-                required value={formData.doerId} 
-                onChange={(e) => setFormData({...formData, doerId: e.target.value})}
-                className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all cursor-pointer font-bold appearance-none shadow-inner uppercase tracking-tight"
-              >
-                <option value="">Select Staff</option>
-                {employees.map(emp => (
-                  <option key={emp._id} value={emp._id}>{emp.name} — ({emp.department || 'General Sector'})</option>
-                ))}
-              </select>
-              <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={20} />
+            <div className="relative group">
+              <input 
+                type="text"
+                placeholder="Type name to search..."
+                value={searchTerm}
+                onFocus={() => setShowDropdown(true)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowDropdown(true);
+                }}
+                className={`w-full bg-background border ${formData.doerId ? 'border-emerald-500/50' : 'border-border'} text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner`}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors" size={18} />
+              
+              {searchTerm && (
+                <button 
+                  type="button"
+                  onClick={clearSelection}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                >
+                  <X size={16} className="text-slate-400" />
+                </button>
+              )}
             </div>
+
+            {/* Dropdown Menu */}
+            {showDropdown && (
+              <div className="absolute z-[100] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
+                {filteredEmployees.length > 0 ? (
+                  filteredEmployees.map(emp => (
+                    <div 
+                      key={emp._id}
+                      onClick={() => handleSelectEmployee(emp)}
+                      className="px-6 py-4 hover:bg-primary/10 cursor-pointer border-b border-border/50 last:border-0 flex flex-col transition-colors"
+                    >
+                      <span className="text-sm font-black text-foreground uppercase tracking-tight">{emp.name}</span>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{emp.department || 'General Sector'}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-6 py-8 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">
+                    No matching staff found
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Start Date Protocol */}
@@ -181,7 +253,7 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* Frequency Logic UPDATED */}
+        {/* Frequency Logic */}
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <Repeat size={14} className="text-primary" /> Frequency
@@ -203,7 +275,7 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* DYNAMIC CONFIGURATION TERMINAL UPDATED */}
+        {/* DYNAMIC CONFIGURATION TERMINAL */}
         <div className="bg-background/80 p-6 sm:p-8 rounded-[2rem] border border-border border-dashed relative overflow-hidden group">
           <Settings2 size={140} className="absolute -right-12 -bottom-12 text-primary opacity-[0.03] group-hover:rotate-45 transition-transform duration-1000 pointer-events-none" />
           
@@ -230,7 +302,6 @@ const CreateChecklist = ({ tenantId }) => {
               </div>
             )}
 
-            {/* Combined Logic for Monthly, Quarterly, and Half-Yearly */}
             {['Monthly', 'Quarterly', 'Half-Yearly'].includes(formData.frequency) && (
               <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Iteration Checkpoint (1-31):</label>

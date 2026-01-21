@@ -113,7 +113,7 @@ const CoordinatorMapping = ({ tenantId }) => {
         <RefreshCcw className="animate-spin text-primary" size={56} />
         <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-pulse"></div>
       </div>
-      <p className="text-slate-400 dark:text-slate-500 font-black text-[11px] tracking-[0.5em] uppercase leading-none">Syncing Hierarchy...</p>
+      <p className="text-slate-400 dark:text-slate-500 font-black text-[11px] tracking-[0.5em] uppercase leading-none">Loading...</p>
     </div>
   );
 

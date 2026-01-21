@@ -1,14 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
-import { Trash2, Pencil, Users, ShieldCheck, Briefcase, Mail, Info, UserCheck, Phone } from 'lucide-react';
+import { 
+  Trash2, 
+  Pencil, 
+  Users, 
+  ShieldCheck, 
+  Briefcase, 
+  Mail, 
+  Info, 
+  UserCheck, 
+  Phone, 
+  Search, 
+  Filter,
+  X 
+} from 'lucide-react';
 
 /**
- * REGISTERED EMPLOYEES: PERSONNEL DIRECTORY v1.5
- * Purpose: Provides a themed, responsive ledger of authenticated staff nodes.
- * UI: Fully adaptive Light/Dark support with mobile-optimized horizontal scrolling.
+ * REGISTERED EMPLOYEES: PERSONNEL DIRECTORY v1.6
+ * Purpose: Provides a themed, responsive ledger with real-time Search and Role filtering.
+ * UI: Fully adaptive Light/Dark support with high-end industrial filtering suite.
  */
 const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
-  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('All');
+
+  const rolesList = ['All', 'Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'];
+
   /**
    * UPDATED: Unified Delete Protocol (Preserved Logic)
    */
@@ -76,11 +93,26 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
 
   const safeEmployees = Array.isArray(employees) ? employees : [];
 
+  /**
+   * FILTER ENGINE: Real-time search and role isolation
+   */
+  const filteredEmployees = safeEmployees.filter(emp => {
+    const matchesSearch = 
+      (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (emp.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (emp.department || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const empRoles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
+    const matchesRole = selectedRole === 'All' || empRoles.includes(selectedRole);
+
+    return matchesSearch && matchesRole;
+  });
+
   return (
     <div className="mt-8 bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border shadow-2xl overflow-hidden animate-in fade-in duration-700 transition-colors duration-500">
       
       {/* --- TABLE HEADER SECTION --- */}
-      <div className="px-6 py-6 sm:px-10 sm:py-8 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      <div className="px-6 py-6 sm:px-10 sm:py-8 border-b border-border flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
         <div className="flex items-center gap-4">
           <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shrink-0 shadow-sm">
             <Users size={28} className="text-primary" />
@@ -94,26 +126,67 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
             </p>
           </div>
         </div>
-        <div className="bg-background px-5 py-2 rounded-full border border-border shadow-inner flex items-center gap-3">
-           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Employee count: </span>
-           <span className="text-primary font-black text-sm sm:text-base">{safeEmployees.length}</span>
+        <div className="flex items-center gap-4 w-full xl:w-auto">
+            <div className="bg-background px-5 py-2 rounded-full border border-border shadow-inner flex items-center gap-3">
+               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Filtered Results: </span>
+               <span className="text-primary font-black text-sm sm:text-base">{filteredEmployees.length}</span>
+            </div>
+        </div>
+      </div>
+
+      {/* --- FILTER & SEARCH TOOLBAR --- */}
+      <div className="p-4 sm:p-6 bg-background/30 border-b border-border flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Search Box */}
+          <div className="relative flex-1 group">
+            <input 
+              type="text"
+              placeholder="Search by Name, Email, or Department..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-background border border-border text-foreground pl-12 pr-10 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
+            />
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors" />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500">
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Role Tabs */}
+          <div className="flex flex-wrap gap-2 p-1.5 bg-card border border-border rounded-2xl overflow-x-auto custom-scrollbar shadow-inner">
+            {rolesList.map(role => (
+              <button
+                key={role}
+                onClick={() => setSelectedRole(role)}
+                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 ${
+                  selectedRole === role 
+                  ? 'bg-primary text-white dark:text-slate-950 shadow-lg shadow-primary/20' 
+                  : 'text-slate-500 hover:bg-background hover:text-foreground'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       
       {/* --- RESPONSIVE DATA TABLE --- */}
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full border-collapse text-left min-w-[900px]">
+        <table className="w-full border-collapse text-left min-w-[1000px]">
           <thead>
             <tr className="bg-background/50 border-b border-border font-black text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-[0.25em]">
               <th className="px-10 py-5">Staff Identity</th>
               <th className="px-8 py-5">Emails & Contacts </th>
               <th className="px-8 py-5">Access Roles</th>
-              <th className="px-8 py-5">Eligible Doer names</th>
+              <th className="px-8 py-5">Authority Scope</th>
               <th className="px-10 py-5 text-right pr-12">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {safeEmployees.map(emp => {
+            {filteredEmployees.map(emp => {
                const empRoles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : ['Node']);
                
                return (
@@ -198,10 +271,20 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees }) => {
       </div>
 
       {/* EMPTY STATE HANDLER */}
-      {safeEmployees.length === 0 && (
+      {filteredEmployees.length === 0 && (
         <div className="p-24 text-center flex flex-col items-center gap-6 opacity-30 grayscale transition-colors">
-            <Info size={56} className="text-primary" />
-            <p className="font-black text-[10px] uppercase tracking-[0.5em] text-slate-500">Registry Database Offline / Empty</p>
+            <Search size={56} className="text-primary" />
+            <p className="font-black text-[10px] uppercase tracking-[0.5em] text-slate-500">
+              {searchTerm || selectedRole !== 'All' 
+                ? 'No staff matches your current filter scope' 
+                : 'Registry Database Offline / Empty'
+              }
+            </p>
+            {(searchTerm || selectedRole !== 'All') && (
+              <button onClick={() => { setSearchTerm(''); setSelectedRole('All'); }} className="text-primary text-[10px] font-black uppercase tracking-widest underline underline-offset-4">
+                Clear all filters
+              </button>
+            )}
         </div>
       )}
 

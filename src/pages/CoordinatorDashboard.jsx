@@ -15,13 +15,15 @@ import {
   Phone,
   MessageSquare,
   Layers,
-  ChevronRight
+  ChevronRight,
+  ClipboardList, // New: Added for Checklist identification
+  Target // New: Added for Delegation identification
 } from "lucide-react";
 
 /**
- * COORDINATOR DASHBOARD: OPERATIONAL OVERSIGHT v1.5
- * Purpose: Track staff work progress and take action with adaptive theme support.
- * UI: Responsive headings and theme-aware cards/modals.
+ * COORDINATOR DASHBOARD: OPERATIONAL OVERSIGHT v1.6
+ * Purpose: Track both Delegation Tasks & Routine Checklists with tactical oversight.
+ * UI: Unified ledger with type-specific badges and theme-adaptive support.
  */
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [tasks, setTasks] = useState([]);
@@ -37,7 +39,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const coordinatorId = propCoordId || savedUser?._id || savedUser?.id;
 
   /**
-   * DATA ACQUISITION: Defensively fetching operational telemetry.
+   * DATA ACQUISITION: Fetching unified operational telemetry (Delegations + Checklists).
    */
   const fetchTasks = useCallback(async () => {
     if (!coordinatorId) {
@@ -47,6 +49,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     try {
       setLoading(true);
       const res = await API.get(`/tasks/coordinator/${coordinatorId}`);
+      // Backend now returns a combined, normalized array
       const data = Array.isArray(res.data) ? res.data : (res.data?.tasks || res.data?.data || []);
       setTasks(data);
     } catch (err) {
@@ -68,7 +71,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         return;
     }
     setSelectedTask(task);
-    setCustomMessage(`Reminder: The task "${task.title}" is still pending. Please update the status.`);
+    // Dynamic message based on task type
+    setCustomMessage(`Reminder: The ${task.taskType} "${task.title}" is still pending. Please update the status.`);
     setIsModalOpen(true);
   };
 
@@ -87,10 +91,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         await API.put(`/tasks/respond`, {
           taskId,
           status: 'Completed',
-          remarks: "Marked as Done by Coordinator.",
+          remarks: "Marked as Done by Coordinator (Tactical Override).",
           doerId: coordinatorId 
         });
-        alert("Success: Task state synchronized to Completed.");
+        alert("Success: Task state synchronized.");
         fetchTasks();
       } catch (err) {
         alert("Action failed: Protocol error.");
@@ -104,18 +108,19 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         <RefreshCcw className="animate-spin text-primary" size={40} />
         <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
       </div>
-      <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Loading...</p>
+      <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Loading Unified Telemetry...</p>
     </div>
   );
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const pendingCount = safeTasks.filter(t => t.status === 'Pending').length;
-  const completedCount = safeTasks.filter(t => t.status === 'Completed').length;
+  // Updated filters to include 'Active' for Checklists
+  const pendingCount = safeTasks.filter(t => t.status === 'Pending' || t.status === 'Active').length;
+  const completedCount = safeTasks.filter(t => t.status === 'Completed' || t.status === 'Verified').length;
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30">
       
-      {/* HEADER SECTION: Responsive Scaling */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
         <div className="flex items-center gap-4">
           <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-inner">
@@ -125,7 +130,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             <h2 className="text-foreground text-xl md:text-3xl font-black tracking-tighter uppercase leading-none truncate">
               Coordinator Dashboard
             </h2>
-            <p className="text-slate-500 dark:text-slate-400 text-[10px] md:text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Track staff work progress and take tactical action.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-[10px] md:text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Oversight for Delegation Tasks & Routine Checklists.</p>
           </div>
         </div>
         <button 
@@ -136,49 +141,59 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         </button>
       </div>
 
-      {/* STATS QUICK VIEW: Adaptive Grid */}
+      {/* STATS QUICK VIEW */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10">
         <div className="bg-card p-6 md:p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-5 text-primary group-hover:scale-110 transition-transform"><Layers size={60} /></div>
-            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Total Tasks</span>
-            <div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{safeTasks.length} <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">task</span></div>
+            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Total Mission Items</span>
+            <div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{safeTasks.length} <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nodes</span></div>
         </div>
         <div className="bg-card p-6 md:p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:scale-110 transition-transform"><Clock size={60} /></div>
-            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Pending works</span>
+            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Pending / Overdue</span>
             <div className="text-3xl md:text-4xl font-black text-red-600 dark:text-red-500 mt-2 tracking-tighter">{pendingCount} <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Active</span></div>
         </div>
         <div className="bg-card p-6 md:p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-500 group-hover:scale-110 transition-transform"><CheckCircle2 size={60} /></div>
-            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Ready for check </span>
-            <div className="text-3xl md:text-4xl font-black text-emerald-600 dark:text-emerald-500 mt-2 tracking-tighter">{completedCount} <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Ready</span></div>
+            <span className="text-slate-500 dark:text-slate-400 text-[9px] font-black uppercase tracking-[0.3em]">Ready for Verification </span>
+            <div className="text-3xl md:text-4xl font-black text-emerald-600 dark:text-emerald-500 mt-2 tracking-tighter">{completedCount} <span className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Closed</span></div>
         </div>
       </div>
 
-      {/* MONITORING TERMINAL: Responsive Table */}
+      {/* MONITORING TERMINAL */}
       <div className="bg-card rounded-[1.5rem] md:rounded-[2.5rem] border border-border shadow-2xl overflow-hidden relative transition-colors duration-500">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full border-collapse text-left min-w-[900px]">
+          <table className="w-full border-collapse text-left min-w-[1000px]">
             <thead>
               <tr className="bg-background/50 border-b border-border">
+                <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
                 <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Task Details</th>
                 <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Staff Name</th>
-                <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact Number</th>
-                <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">deadline</th>
+                <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
+                <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Deadline</th>
                 <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
                 <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {safeTasks.map((task) => {
+                const isChecklist = task.taskType === 'Checklist';
+                const isPending = task.status === "Pending" || task.status === "Active";
                 const isVerified = Array.isArray(task.history) && task.history.some((h) => h.action.includes("Coordinator"));
-                const isPending = task.status === "Pending";
 
                 return (
                   <tr key={task._id} className="hover:bg-primary/[0.02] dark:hover:bg-primary/[0.05] transition-all duration-300 group">
                     <td className="px-8 py-6">
+                        <div className={`p-2 rounded-lg w-fit ${isChecklist ? 'bg-amber-500/10 text-amber-600' : 'bg-sky-500/10 text-sky-600'}`}>
+                           {isChecklist ? <ClipboardList size={18} /> : <Target size={18} />}
+                        </div>
+                    </td>
+                    
+                    <td className="px-8 py-6">
                       <div className="text-sm font-black text-foreground mb-1 uppercase tracking-tight truncate max-w-[200px]">{task.title}</div>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest font-mono">ID: {task._id?.slice(-6).toUpperCase() || 'N/A'}</div>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest font-mono">
+                         {isChecklist ? `Freq: ${task.frequency}` : `ID: ${task._id?.slice(-6).toUpperCase()}`}
+                      </div>
                     </td>
                     
                     <td className="px-8 py-6">
@@ -221,7 +236,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                           onClick={() => openReminderModal(task)}
                           className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white dark:hover:text-slate-950 transition-all active:scale-90 shadow-sm"
                         >
-                          <MessageCircle size={14} /> Send Reminder
+                          <MessageCircle size={14} /> Reminder
                         </button>
 
                         {task.status !== "Completed" && task.status !== "Verified" && (
@@ -243,7 +258,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         {safeTasks.length === 0 && (
             <div className="p-20 text-center flex flex-col items-center gap-4 opacity-30 grayscale transition-colors">
                 <ShieldCheck size={56} className="text-primary" />
-                <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">No task found in tracking</p>
+                <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">No telemetry found in tracking scope</p>
             </div>
         )}
       </div>
