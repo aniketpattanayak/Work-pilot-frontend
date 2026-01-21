@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 
 /**
- * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.5
- * Purpose: Sets up automated, repeating tasks for specific nodes.
+ * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.6
+ * UPDATED: Support for Quarterly and Half-Yearly frequencies.
  * UI: Fully responsive and theme-adaptive (Light/Dark).
  */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
@@ -111,7 +111,7 @@ const CreateChecklist = ({ tenantId }) => {
         </div>
         <div className="min-w-0">
           <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Add Checklist Task</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Set up repeating tasks, that staff must complete daily, weekly, monthly or yearly.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Set up repeating tasks that staff must complete daily, weekly, monthly, quarterly, or yearly.</p>
         </div>
       </div>
 
@@ -181,13 +181,13 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* Frequency Logic */}
+        {/* Frequency Logic UPDATED */}
         <div className="space-y-4">
           <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
             <Repeat size={14} className="text-primary" /> Frequency
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {['Daily', 'Weekly', 'Monthly', 'Yearly'].map((freq) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map((freq) => (
               <button
                 key={freq} type="button"
                 onClick={() => setFormData({...formData, frequency: freq})}
@@ -203,7 +203,7 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* DYNAMIC CONFIGURATION TERMINAL */}
+        {/* DYNAMIC CONFIGURATION TERMINAL UPDATED */}
         <div className="bg-background/80 p-6 sm:p-8 rounded-[2rem] border border-border border-dashed relative overflow-hidden group">
           <Settings2 size={140} className="absolute -right-12 -bottom-12 text-primary opacity-[0.03] group-hover:rotate-45 transition-transform duration-1000 pointer-events-none" />
           
@@ -230,7 +230,8 @@ const CreateChecklist = ({ tenantId }) => {
               </div>
             )}
 
-            {formData.frequency === 'Monthly' && (
+            {/* Combined Logic for Monthly, Quarterly, and Half-Yearly */}
+            {['Monthly', 'Quarterly', 'Half-Yearly'].includes(formData.frequency) && (
               <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Iteration Checkpoint (1-31):</label>
                 <input 
@@ -239,6 +240,9 @@ const CreateChecklist = ({ tenantId }) => {
                   onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
                   className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner"
                 />
+                <p className="text-[9px] text-slate-500 font-bold uppercase mt-2 ml-1 italic">
+                  * Task will trigger on this day every {formData.frequency.toLowerCase()} interval.
+                </p>
               </div>
             )}
 

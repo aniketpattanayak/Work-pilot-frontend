@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import API from '../api/axiosConfig'; // Centralized API instance for AWS compatibility
+import API from '../api/axiosConfig'; 
 import { 
   Trash2, 
   Edit3, 
@@ -12,13 +12,15 @@ import {
   CheckCircle2, 
   Clock, 
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Filter
 } from 'lucide-react';
 
 /**
- * MANAGE CHECKLIST: RECURRING PROTOCOL ORCHESTRATOR v1.5
- * Purpose: Reconfigures active factory routines with full theme adaptivity.
- * UI: Responsive table with high-end industrial typography.
+ * MANAGE CHECKLIST: RECURRING PROTOCOL ORCHESTRATOR v1.6
+ * Purpose: Reconfigures active factory routines with full search and multi-filter suite.
+ * UI: Responsive table with high-end industrial typography and dynamic filtering.
  */
 const ManageChecklist = ({ tenantId }) => {
   const [checklists, setChecklists] = useState([]);
@@ -27,11 +29,14 @@ const ManageChecklist = ({ tenantId }) => {
   const [editingId, setEditingId] = useState(null); 
   const [editData, setEditData] = useState({ doerId: '', taskName: '' });
 
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [activeTab, setActiveTab] = useState('All');
 
-  /**
-   * DATA ACQUISITION: Defensively synchronizing routine telemetry.
-   */
+  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -44,7 +49,6 @@ const ManageChecklist = ({ tenantId }) => {
       const empDataRaw = Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || empRes.data?.data || []);
 
       setChecklists(checkData);
-      
       setEmployees(empDataRaw.filter(e => {
         const roles = Array.isArray(e.roles) ? e.roles : [e.role || ''];
         return roles.some(r => r === 'Doer' || r === 'Admin');
@@ -61,6 +65,20 @@ const ManageChecklist = ({ tenantId }) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Derived Logic: Filtering Engine
+  const filteredChecklists = checklists.filter(item => {
+    const matchesSearch = 
+      item.taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.doerId?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesTab = activeTab === 'All' || item.frequency === activeTab;
+    
+    const matchesDate = !selectedDate || (item.nextDueDate && 
+      new Date(item.nextDueDate).toDateString() === new Date(selectedDate).toDateString());
+
+    return matchesSearch && matchesTab && matchesDate;
+  });
 
   const handleEditClick = (item) => {
     setEditingId(item._id);
@@ -105,8 +123,8 @@ const ManageChecklist = ({ tenantId }) => {
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30">
       
-      {/* HEADER: Adaptive Spacing */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-8">
         <div className="flex items-center gap-5">
           <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
             <ClipboardList className="text-primary" size={32} />
@@ -116,12 +134,62 @@ const ManageChecklist = ({ tenantId }) => {
             <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Reconfigure active factory checklists and triggers.</p>
           </div>
         </div>
-        <button onClick={fetchData} className="group bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl hover:shadow-primary/5">
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> refresh
-        </button>
+        <div className="flex items-center gap-3 w-full xl:w-auto">
+          <button onClick={fetchData} className="flex-1 xl:flex-none group bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
+            <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> refresh
+          </button>
+        </div>
       </div>
 
-      {/* Grid Table Header: Hidden on small screens for mobile-ready card view */}
+      {/* FILTER BAR SUITE */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-card p-6 rounded-[2.5rem] border border-border shadow-xl">
+        {/* Search Engine */}
+        <div className="relative group">
+          <input 
+            type="text"
+            placeholder="Search by task or staff name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-background border border-border text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
+          />
+          <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors" />
+        </div>
+
+        {/* Date Filter */}
+        <div className="relative group">
+          <input 
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full bg-background border border-border text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer shadow-inner uppercase text-xs"
+          />
+          <Calendar size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" />
+          {selectedDate && (
+            <button onClick={() => setSelectedDate('')} className="absolute right-6 top-1/2 -translate-y-1/2 text-red-500 hover:scale-110 transition-transform">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* FREQUENCY TABS */}
+      <div className="flex flex-wrap gap-2 mb-8 bg-card/50 p-2 rounded-[2rem] border border-border overflow-hidden">
+        {frequencyTabs.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 ${
+              activeTab === tab 
+              ? 'bg-primary text-white dark:text-slate-950 shadow-lg shadow-primary/20' 
+              : 'text-slate-400 hover:text-foreground hover:bg-background'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid Table Header: Hidden on small screens */}
       <div className="hidden lg:grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-10 py-6 bg-card backdrop-blur-xl rounded-t-[2.5rem] border border-border font-black text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center shadow-lg">
         <div>Task Designation</div>
         <div>Assigned Person</div>
@@ -132,7 +200,7 @@ const ManageChecklist = ({ tenantId }) => {
 
       {/* DATA TERMINAL: Responsive List */}
       <div className="flex flex-col bg-background lg:bg-card border border-border rounded-[1.5rem] lg:rounded-b-[2.5rem] lg:rounded-t-none overflow-hidden shadow-2xl transition-colors duration-500">
-        {Array.isArray(checklists) && checklists.map(item => {
+        {filteredChecklists.map(item => {
           const isEditing = editingId === item._id;
           return (
             <div key={item._id} className={`flex flex-col lg:grid lg:grid-cols-[2fr_1.5fr_1fr_1fr_1fr] items-center px-6 py-6 lg:px-10 lg:py-7 border-b border-border last:border-0 group transition-all duration-300 ${isEditing ? 'bg-primary/[0.03] dark:bg-primary/[0.05]' : 'hover:bg-primary/[0.02] dark:hover:bg-primary/[0.05]'}`}>
@@ -207,14 +275,15 @@ const ManageChecklist = ({ tenantId }) => {
           );
         })}
 
-        {/* EMPTY STATE: Adaptive Illustration */}
-        {(!checklists || checklists.length === 0) && !loading && (
-          <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-30 grayscale transition-colors">
+        {/* EMPTY STATE */}
+        {(filteredChecklists.length === 0) && !loading && (
+          <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-30 grayscale transition-colors text-center px-6">
             <div className="relative">
-              <ClipboardList size={80} className="text-primary" />
-              <div className="absolute -bottom-2 -right-2 bg-background p-1.5 rounded-full border border-border"><AlertCircle size={20} className="text-primary" /></div>
+              <Search size={80} className="text-primary" />
+              <div className="absolute -bottom-2 -right-2 bg-background p-1.5 rounded-full border border-border"><Filter size={20} className="text-primary" /></div>
             </div>
-            <p className="font-black text-[10px] uppercase tracking-[0.5em] text-slate-500">No active routine found</p>
+            <p className="font-black text-[10px] uppercase tracking-[0.5em] text-slate-500">No routines match your current filters</p>
+            <button onClick={() => { setSearchTerm(''); setActiveTab('All'); setSelectedDate(''); }} className="text-primary text-[10px] font-black uppercase tracking-widest underline decoration-2 underline-offset-4">Reset all filters</button>
           </div>
         )}
       </div>
