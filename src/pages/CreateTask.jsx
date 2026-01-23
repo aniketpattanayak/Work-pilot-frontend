@@ -371,7 +371,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
           className="w-full py-6 rounded-[2rem] bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4"
         >
           {isSubmitting ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} className="group-hover:scale-110 transition-transform duration-500" />}
-          {isSubmitting ? "Encrypting & Notifying Team Nodes..." : "Finalize Mission Assignment"}
+          {isSubmitting ? "Encrypting & Notifying Team Nodes..." : "Create Deligate task"}
         </button>
       </form>
 

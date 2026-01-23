@@ -97,7 +97,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       items: [
         { name: 'Create Checklist', icon: <LayoutList />, roles: ['Admin'] },
         { name: 'Manage Checklist', icon: <ClipboardList />, roles: ['Admin'] },
-        { name: 'My Checklist', icon: <ListTodo />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'My Checklist', icon: <ListTodo />, roles: [] },
         { name: 'Checklist Monitor', icon: <Activity />, roles: ['Admin', 'Coordinator'] },
       ]
     },
