@@ -11,29 +11,23 @@ import {
   ClipboardList, 
   CheckCircle2, 
   Clock, 
-  AlertCircle,
-  ChevronRight,
   Search,
-  Filter,
-  ChevronDown,
-  ChevronUp,
+  Building2,
   FileText,
   Target,
-  Users,
-  BarChart3
+  ChevronDown
 } from 'lucide-react';
 
 /**
- * MANAGE CHECKLIST v2.2
- * Purpose: Manage recurring tasks with clean layout
- * Updated: Smart task name truncation
+ * MANAGE CHECKLIST v4.5
+ * Purpose: Professional Excel-Style Management Ledger.
+ * Layout: Strict High-Density Grid, Dark Fonts, Dropdown Timeline.
  */
 const ManageChecklist = ({ tenantId }) => {
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null); 
-  const [expandedId, setExpandedId] = useState(null);
   const [editData, setEditData] = useState({ doerId: '', taskName: '', description: '' });
 
   // Filter States
@@ -44,23 +38,31 @@ const ManageChecklist = ({ tenantId }) => {
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
-  // Helper function to truncate task names intelligently
-  const truncateTaskName = (name, maxLength = 30) => {
-    if (!name) return '';
-    if (name.length <= maxLength) return name;
+  /**
+   * EXCEL LOGIC: CALCULATE FUTURE SCHEDULE
+   */
+  const getNextFiveDates = (startDate, frequency) => {
+    if (!startDate) return [];
+    const dates = [];
+    let current = new Date(startDate);
     
-    // Find the first word break after maxLength
-    const truncated = name.substring(0, maxLength);
-    const lastSpaceIndex = truncated.lastIndexOf(' ');
-    
-    // If there's a space, cut there; otherwise cut at maxLength
-    if (lastSpaceIndex > 10) {
-      return name.substring(0, lastSpaceIndex) + '...';
+    for (let i = 0; i < 5; i++) {
+      dates.push(new Date(current).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
+      
+      if (frequency === 'Daily') current.setDate(current.getDate() + 1);
+      else if (frequency === 'Weekly') current.setDate(current.getDate() + 7);
+      else if (frequency === 'Monthly') current.setMonth(current.getMonth() + 1);
+      else if (frequency === 'Quarterly') current.setMonth(current.getMonth() + 3);
+      else if (frequency === 'Half-Yearly') current.setMonth(current.getMonth() + 6);
+      else if (frequency === 'Yearly') current.setFullYear(current.getFullYear() + 1);
+      else break;
     }
-    
-    return truncated + '...';
+    return dates;
   };
 
+  /**
+   * DATA ACQUISITION
+   */
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -80,7 +82,6 @@ const ManageChecklist = ({ tenantId }) => {
     } catch (err) {
       console.error("Fetch error:", err);
       setChecklists([]);
-      setEmployees([]);
     } finally {
       setLoading(false);
     }
@@ -90,13 +91,16 @@ const ManageChecklist = ({ tenantId }) => {
     fetchData();
   }, [fetchData]);
 
+  /**
+   * FILTER ENGINE
+   */
   const filteredChecklists = checklists.filter(item => {
     const matchesSearch = 
       item.taskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.doerId?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (item.doerId?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.doerId?.department || "").toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesTab = activeTab === 'All' || item.frequency === activeTab;
-    
     const matchesDate = !selectedDate || (item.nextDueDate && 
       new Date(item.nextDueDate).toDateString() === new Date(selectedDate).toDateString());
 
@@ -117,7 +121,7 @@ const ManageChecklist = ({ tenantId }) => {
     e.stopPropagation();
     try {
       await API.put(`/tasks/checklist-update/${id}`, editData);
-      alert("Success: Task updated successfully.");
+      alert("Success: Ledger updated.");
       setEditingId(null);
       fetchData();
     } catch (err) {
@@ -125,337 +129,220 @@ const ManageChecklist = ({ tenantId }) => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Authorize permanent deletion of this recurring protocol?")) return;
-
+  const handleDelete = async (id, taskName, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(`Delete "${taskName}" from Registry?`)) return;
     try {
-        // Must point to the '/tasks/checklist/' endpoint
         await API.delete(`/tasks/checklist/${id}`);
-        alert("Success: Checklist purged.");
-        fetchChecklists(); // Refresh the list
+        fetchData(); 
     } catch (err) {
-        console.error(err);
-        alert("Action failed: Node deletion error."); // This is the error you were seeing
+        alert("Node deletion error.");
     }
-};
-
-  const getMonthlyStats = (history) => {
-    if (!Array.isArray(history)) return 0;
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    return history.filter(log => {
-      const isDone = log.action === 'Completed' || log.action === 'Administrative Completion';
-      const logDate = new Date(log.timestamp);
-      return isDone && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
-    }).length;
   };
 
   if (loading) return (
-    <div className="flex flex-col justify-center items-center h-[400px] gap-6 bg-transparent">
-      <div className="relative">
-        <RefreshCcw className="animate-spin text-primary" size={40} />
-        <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full animate-pulse" />
-      </div>
-      <p className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.4em] uppercase">Loading...</p>
+    <div className="flex flex-col justify-center items-center h-[400px] gap-4">
+      <RefreshCcw className="animate-spin text-primary" size={50} />
+      <p className="text-slate-950 font-black text-sm tracking-[0.4em] uppercase">Opening Ledger...</p>
     </div>
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 pb-20 px-4 selection:bg-primary/30">
       
-      {/* HEADER */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-8">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
         <div className="flex items-center gap-5">
-          <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
-            <ClipboardList className="text-primary" size={32} />
+          <div className="bg-slate-950 p-4 rounded-xl shadow-lg">
+            <ClipboardList className="text-white" size={32} />
           </div>
           <div>
-            <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Manage Daily Tasks</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-3 opacity-80">View and edit recurring work schedules</p>
+            <h2 className="text-slate-950 text-3xl font-black tracking-tighter uppercase leading-none">Task Registry</h2>
+            <p className="text-slate-600 text-sm font-bold uppercase tracking-widest mt-1">Master High-Density Operational Grid</p>
           </div>
         </div>
-        <button onClick={fetchData} className="group bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center gap-3 active:scale-95 shadow-xl">
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        <button onClick={fetchData} className="bg-white hover:bg-slate-50 border-2 border-slate-950 px-8 py-3 rounded-xl text-slate-950 font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-md active:scale-95">
+          <RefreshCcw size={18} /> Sync Data
         </button>
       </div>
 
-      {/* FILTERS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-card p-6 rounded-[2.5rem] border border-border shadow-xl">
-        <div className="relative group">
+      {/* SEARCH & FILTERS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 bg-slate-50 p-6 rounded-[2.5rem] border-2 border-slate-200">
+        <div className="relative">
           <input 
             type="text"
-            placeholder="Search by task or person name..."
+            placeholder="Filter by Task, Personnel, or Dept..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-background border border-border text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-400 shadow-inner"
+            className="w-full bg-white border-2 border-slate-200 text-slate-950 px-12 py-3 rounded-2xl outline-none focus:border-slate-950 transition-all font-black text-sm"
           />
-          <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors" />
+          <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
         </div>
 
-        <div className="relative group">
+        <div className="relative">
           <input 
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full bg-background border border-border text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer shadow-inner uppercase text-xs"
+            className="w-full bg-white border-2 border-slate-200 text-slate-950 px-12 py-3 rounded-2xl outline-none font-black text-xs uppercase"
           />
-          <Calendar size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" />
-          {selectedDate && (
-            <button onClick={() => setSelectedDate('')} className="absolute right-6 top-1/2 -translate-y-1/2 text-red-500 hover:scale-110 transition-transform">
-              <X size={16} />
+          <Calendar size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        <div className="flex bg-white p-1 rounded-2xl border-2 border-slate-200 overflow-x-auto custom-scrollbar">
+          {frequencyTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${
+                activeTab === tab ? 'bg-slate-950 text-white' : 'text-slate-400 hover:text-slate-950'
+              }`}
+            >
+              {tab}
             </button>
-          )}
+          ))}
         </div>
       </div>
 
-      {/* FREQUENCY TABS */}
-      <div className="flex flex-wrap gap-2 mb-8 bg-card/50 p-2 rounded-[2rem] border border-border">
-        {frequencyTabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 ${
-              activeTab === tab 
-              ? 'bg-primary text-primary-foreground shadow-lg' 
-              : 'text-slate-400 dark:text-slate-500 hover:text-foreground hover:bg-background'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* STRICT EXCEL GRID TABLE */}
+      <div className="bg-white border-2 border-slate-200 rounded-[1.5rem] shadow-2xl overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[1500px]">
+            <thead>
+              <tr className="bg-slate-100 border-b-2 border-slate-200 text-xs font-black text-slate-950 uppercase tracking-widest">
+                <th className="px-5 py-5 border-r border-slate-200 text-center w-20">NO.</th>
+                <th className="px-5 py-5 border-r border-slate-200">TASK IDENTITY</th>
+                <th className="px-5 py-5 border-r border-slate-200">DEPT.</th>
+                <th className="px-5 py-5 border-r border-slate-200">PERSONNEL</th>
+                <th className="px-5 py-5 border-r border-slate-200 min-w-[400px]">OPERATIONAL DESCRIPTION</th>
+                <th className="px-5 py-5 border-r border-slate-200">CYCLE</th>
+                <th className="px-5 py-5 border-r border-slate-200">FUTURE SCHEDULE</th>
+                <th className="px-5 py-5 text-right pr-10">GRID ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-slate-200">
+              {filteredChecklists.map((item, index) => {
+                const isEditing = editingId === item._id;
+                const schedule = getNextFiveDates(item.nextDueDate, item.frequency);
 
-      {/* TABLE HEADER */}
-      <div className="hidden lg:flex items-center px-10 py-6 bg-card backdrop-blur-xl rounded-t-[2.5rem] border border-border font-black text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-[0.25em] shadow-lg">
-        <div className="flex-[2]">Task Name</div>
-        <div className="flex-[1.5]">Assigned To</div>
-        <div className="flex-1">Schedule</div>
-        <div className="flex-1">Next Due</div>
-        <div className="w-16 text-center"></div>
-        <div className="flex-1 text-right">Actions</div>
-      </div>
+                return (
+                  <tr key={item._id} className={`transition-all ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
+                    
+                    {/* ID */}
+                    <td className="px-5 py-4 border-r border-slate-200 text-center text-xs font-black text-slate-400">
+                      {String(index + 1).padStart(2, '0')}
+                    </td>
 
-      {/* TASK LIST */}
-      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-[1.5rem] lg:rounded-b-[2.5rem] lg:rounded-t-none overflow-hidden shadow-2xl">
-        {filteredChecklists.map(item => {
-          const isEditing = editingId === item._id;
-          const isExpanded = expandedId === item._id;
-          const monthlyCount = getMonthlyStats(item.history);
-          const displayName = truncateTaskName(item.taskName);
-
-          return (
-            <div key={item._id} className="border-b border-border last:border-0">
-              {/* MAIN ROW */}
-              <div 
-                className={`flex items-center px-6 py-6 lg:px-10 lg:py-7 gap-4 transition-all ${
-                  !isEditing ? 'cursor-pointer' : ''
-                } ${isExpanded ? 'bg-primary/[0.03] dark:bg-primary/[0.05]' : 'hover:bg-primary/[0.02] dark:hover:bg-primary/[0.05]'} group`}
-                onClick={() => !isEditing && setExpandedId(isExpanded ? null : item._id)}
-              >
-                
-                {isEditing ? (
-                  <>
-                    {/* EDIT MODE */}
-                    <div className="flex-[2]">
-                      <input 
-                        type="text" 
-                        value={editData.taskName} 
-                        onChange={(e) => setEditData({...editData, taskName: e.target.value})} 
-                        className="w-full bg-background border border-primary text-foreground px-5 py-3 rounded-xl text-sm font-black uppercase tracking-tight outline-none focus:ring-4 focus:ring-primary/10 shadow-inner" 
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    
-                    <div className="flex-[1.5]">
-                      <select 
-                        value={editData.doerId} 
-                        onChange={(e) => setEditData({...editData, doerId: e.target.value})} 
-                        className="w-full bg-background border border-primary text-foreground px-5 py-3 rounded-xl text-xs font-black uppercase tracking-tight outline-none cursor-pointer shadow-inner"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {employees.map(emp => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
-                      </select>
-                    </div>
-                    
-                    <div className="hidden lg:block flex-1 text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest">
-                      {item.frequency}
-                    </div>
-                    
-                    <div className="hidden lg:block flex-1 text-slate-500 dark:text-slate-400 text-xs font-bold">
-                      {item.nextDueDate ? new Date(item.nextDueDate).toLocaleDateString('en-IN', {day: '2-digit', month: 'short'}) : 'Not Set'}
-                    </div>
-                    
-                    <div className="hidden lg:block w-16"></div>
-                    
-                    <div className="flex gap-3 flex-1 justify-end">
-                      <button onClick={(e) => handleUpdate(item._id, e)} className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90">
-                        <Save size={18} />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-xl border border-border hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90">
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* VIEW MODE */}
-                    <div className="flex items-center gap-4 flex-[2] min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
-                        <CheckCircle2 size={18} className="text-primary" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="font-black text-foreground tracking-tight text-sm lg:text-base uppercase block" title={item.taskName}>
-                          {displayName}
+                    {/* TASK NAME */}
+                    <td className="px-5 py-4 border-r border-slate-200">
+                      {isEditing ? (
+                        <input 
+                          value={editData.taskName} 
+                          onChange={(e) => setEditData({...editData, taskName: e.target.value})}
+                          className="w-full border-2 border-slate-950 p-2 rounded font-black text-sm uppercase text-slate-950"
+                        />
+                      ) : (
+                        <span className="font-black text-slate-950 text-sm uppercase leading-tight block">
+                          {item.taskName}
                         </span>
-                        {item.taskName.length > 30 && (
-                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest block mt-1">
-                            Click to view full name
-                          </span>
+                      )}
+                    </td>
+
+                    {/* DEPARTMENT */}
+                    <td className="px-5 py-4 border-r border-slate-200">
+                       <span className="text-xs font-black uppercase text-slate-950 whitespace-nowrap">
+                         {item.doerId?.department || 'OPERATIONS'}
+                       </span>
+                    </td>
+
+                    {/* PERSONNEL */}
+                    <td className="px-5 py-4 border-r border-slate-200">
+                      {isEditing ? (
+                        <select 
+                          value={editData.doerId} 
+                          onChange={(e) => setEditData({...editData, doerId: e.target.value})}
+                          className="w-full border-2 border-slate-950 p-2 rounded font-black text-xs uppercase"
+                        >
+                          {employees.map(emp => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
+                        </select>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 rounded bg-slate-950 flex items-center justify-center"><User size={12} className="text-white" /></div>
+                           <span className="text-slate-950 font-black text-sm uppercase whitespace-nowrap">{item.doerId?.name || 'UNMAPPED'}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* DESCRIPTION */}
+                    <td className="px-5 py-4 border-r border-slate-200">
+                      {isEditing ? (
+                        <textarea 
+                          value={editData.description} 
+                          onChange={(e) => setEditData({...editData, description: e.target.value})}
+                          className="w-full border-2 border-slate-950 p-2 rounded text-sm font-bold text-slate-950 h-20"
+                        />
+                      ) : (
+                        <p className="text-slate-950 text-sm font-bold leading-relaxed italic">
+                          {item.description || "Operational briefings not provided."}
+                        </p>
+                      )}
+                    </td>
+
+                    {/* FREQUENCY */}
+                    <td className="px-5 py-4 border-r border-slate-200 text-center">
+                      <span className="text-slate-950 text-[10px] font-black uppercase tracking-widest border-2 border-slate-950 px-3 py-1 rounded">
+                        {item.frequency}
+                      </span>
+                    </td>
+
+                    {/* EXCEL DROPDOWN TIMELINE */}
+                    <td className="px-5 py-4 border-r border-slate-200">
+                       <div className="relative group">
+                          <select className="w-full bg-slate-100 border-2 border-slate-300 text-slate-950 font-black text-xs uppercase px-4 py-2 rounded-lg appearance-none cursor-pointer hover:border-slate-950 transition-all">
+                             {schedule.map((date, dIdx) => (
+                               <option key={dIdx} className="font-bold py-2">
+                                 {dIdx === 0 ? `→ ${date}` : `• ${date}`}
+                               </option>
+                             ))}
+                          </select>
+                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-950 pointer-events-none group-hover:scale-110 transition-transform" />
+                       </div>
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td className="px-5 py-4 text-right pr-10">
+                      <div className="flex justify-end gap-3">
+                        {isEditing ? (
+                          <>
+                            <button onClick={(e) => handleUpdate(item._id, e)} className="p-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-lg"><Save size={18} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-3 bg-slate-200 text-slate-950 rounded-lg"><X size={18} /></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={(e) => handleEditClick(item, e)} className="p-3 bg-slate-900 text-white rounded-lg hover:bg-black transition-all"><Edit3 size={16} /></button>
+                            <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-3 bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-md"><Trash2 size={16} /></button>
+                          </>
                         )}
                       </div>
-                    </div>
-                    
-                    <div className="hidden lg:flex items-center gap-3 flex-[1.5] min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-background flex items-center justify-center border border-border shadow-inner shrink-0">
-                        <User size={12} className="text-primary/60" />
-                      </div>
-                      <span className="text-slate-600 dark:text-slate-400 font-black text-xs uppercase tracking-tight truncate">
-                        {item.doerId?.name || 'Not Assigned'}
-                      </span>
-                    </div>
-
-                    <div className="hidden lg:flex items-center gap-2 flex-1">
-                      <Clock size={14} className="text-primary/40 shrink-0" />
-                      <span className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest">{item.frequency}</span>
-                    </div>
-                    
-                    <div className="hidden lg:flex items-center gap-2 flex-1 min-w-0">
-                      <Calendar size={14} className="text-primary/40 shrink-0" />
-                      <span className="text-slate-500 dark:text-slate-400 text-[11px] font-black tracking-tight truncate">
-                        {item.nextDueDate ? new Date(item.nextDueDate).toLocaleDateString('en-IN', {day: '2-digit', month: 'short'}) : 'Not Set'}
-                      </span>
-                    </div>
-
-                    <div className="hidden lg:flex justify-center w-16 shrink-0">
-                      {isExpanded ? <ChevronUp size={20} className="text-primary" /> : <ChevronDown size={20} className="text-slate-400 group-hover:text-primary transition-colors" />}
-                    </div>
-
-                    <div className="flex gap-3 flex-1 justify-end opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
-                      <button onClick={(e) => handleEditClick(item, e)} className="p-3 bg-primary/5 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all active:scale-90 shrink-0">
-                        <Edit3 size={18} />
-                      </button>
-                      <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-3 bg-red-500/5 text-red-500 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90 shrink-0">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* EXPANDED DETAILS */}
-              {isExpanded && !isEditing && (
-                <div className="bg-background/80 dark:bg-slate-950/40 p-6 lg:p-10 border-t border-border animate-in slide-in-from-top-4 duration-500">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                    {/* LEFT COLUMN */}
-                    <div className="space-y-6">
-                      <h5 className="text-primary font-black text-[10px] uppercase tracking-widest mb-6">Task Information</h5>
-                      
-                      <div className="bg-card p-6 rounded-3xl border border-border shadow-lg space-y-5">
-                        <div className="border-b border-border pb-4">
-                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest block mb-3">Full Task Name:</span>
-                          <span className="text-foreground font-black text-sm uppercase tracking-tight leading-relaxed block">{item.taskName}</span>
-                        </div>
-                        
-                        {item.description && (
-                          <div className="border-b border-border pb-4">
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest block mb-2">Description:</span>
-                            <p className="text-foreground text-sm leading-relaxed">{item.description}</p>
-                          </div>
-                        )}
-                        
-                        <div className="flex justify-between border-b border-border pb-4">
-                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Assigned To:</span>
-                          <span className="text-foreground font-black text-xs uppercase tracking-tight">{item.doerId?.name || 'Not Assigned'}</span>
-                        </div>
-                        
-                        <div className="flex justify-between border-b border-border pb-4">
-                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Frequency:</span>
-                          <span className="text-primary font-black text-xs uppercase tracking-tight">{item.frequency}</span>
-                        </div>
-                        
-                        <div className="flex justify-between border-b border-border pb-4">
-                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Next Due:</span>
-                          <span className="text-foreground font-black text-xs">
-                            {item.nextDueDate ? new Date(item.nextDueDate).toLocaleDateString('en-IN', {weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'}) : 'Not Set'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex justify-between">
-                          <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Last Done:</span>
-                          <span className="text-foreground font-black text-xs">
-                            {item.lastCompleted ? new Date(item.lastCompleted).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'Not Done Yet'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT COLUMN */}
-                    <div className="space-y-6">
-                      <h5 className="text-primary font-black text-[10px] uppercase tracking-widest mb-6">Performance Stats</h5>
-                      
-                      <div className="bg-card p-6 rounded-3xl border border-border shadow-lg space-y-5">
-                        <div className="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <BarChart3 size={20} className="text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">This Month:</span>
-                          </div>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-black text-2xl tracking-tighter">{monthlyCount}</span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/20 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <Target size={20} className="text-primary" />
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Status:</span>
-                          </div>
-                          <span className={`font-black text-xs uppercase tracking-widest px-3 py-1 rounded-lg ${
-                            item.status === 'Active' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                          }`}>
-                            {item.status || 'Active'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <FileText size={20} className="text-slate-400" />
-                            <span className="text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">Total Records:</span>
-                          </div>
-                          <span className="text-foreground font-black text-xl tracking-tighter">{item.history?.length || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* EMPTY STATE */}
-        {filteredChecklists.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-30 text-center px-6">
-            <Search size={80} className="text-primary" />
-            <p className="font-black text-[10px] uppercase tracking-[0.5em] text-slate-500 dark:text-slate-400">No tasks match your filters</p>
-            <button 
-              onClick={() => { setSearchTerm(''); setActiveTab('All'); setSelectedDate(''); }} 
-              className="text-primary text-[10px] font-black uppercase tracking-widest underline decoration-2 underline-offset-4 hover:opacity-70 transition-opacity"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #000; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        
+        /* Rigid Excel Grid Simulation */
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #cbd5e1; }
+        thead th { background-color: #f8fafc; border-bottom: 2px solid #000; }
+      `}</style>
     </div>
   );
 };

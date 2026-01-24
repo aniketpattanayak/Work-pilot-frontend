@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import API from '../api/axiosConfig';
 import { 
   ShieldCheck, 
@@ -25,14 +25,15 @@ import {
 } from "lucide-react";
 
 /**
- * COORDINATOR DASHBOARD v2.0
+ * COORDINATOR DASHBOARD v2.1
  * Purpose: Track Delegation Tasks & Routine Checklists with multi-instance support
- * Updated: Shows pending dates separately in expandable rows
+ * Updated: Added filtering tabs for Pending, Upcoming, and Completed tasks
  */
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
+  const [activeTab, setActiveTab] = useState('Pending'); // New filter state
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -120,6 +121,47 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     fetchTasks();
   }, [fetchTasks]);
 
+  /**
+   * TACTICAL FILTER LOGIC
+   * Categorizes tasks based on status and dates
+   */
+  const filteredTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tasks.filter(task => {
+      const isDone = task.status === 'Completed' || task.status === 'Verified';
+      
+      if (activeTab === 'Completed') return isDone;
+
+      if (activeTab === 'Pending') {
+        if (isDone) return false;
+        const deadline = new Date(task.deadline || task.nextDueDate);
+        deadline.setHours(0, 0, 0, 0);
+        
+        // Checklist is pending if it has past/today instances
+        if (task.taskType === 'Checklist') {
+          return getPendingInstances(task).length > 0;
+        }
+        // Delegation is pending if deadline is today or past
+        return deadline <= today;
+      }
+
+      if (activeTab === 'Upcoming') {
+        if (isDone) return false;
+        const deadline = new Date(task.deadline || task.nextDueDate);
+        deadline.setHours(0, 0, 0, 0);
+
+        if (task.taskType === 'Checklist') {
+          return getPendingInstances(task).length === 0 && deadline > today;
+        }
+        return deadline > today;
+      }
+
+      return true;
+    });
+  }, [tasks, activeTab]);
+
   const openReminderModal = (task) => {
     if (!task.doerId?.whatsappNumber) {
       alert("Mobile number not found for this staff member.");
@@ -139,7 +181,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
   const handleMarkDone = async (task, instanceDate = null) => {
     if (task.taskType === 'Checklist' && instanceDate) {
-      // Mark checklist instance as done
       const formData = new FormData();
       formData.append("checklistId", task._id);
       formData.append("instanceDate", instanceDate);
@@ -161,7 +202,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         setIsSubmitting(false);
       }
     } else {
-      // Mark delegation task as done
       if (window.confirm("Are you sure you want to mark this task as Done?")) {
         try {
           await API.post("/tasks/coordinator-force-done", {
@@ -190,7 +230,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   );
 
   const safeTasks = Array.isArray(tasks) ? tasks : [];
-  const pendingCount = safeTasks.filter(t => t.status === 'Pending' || t.status === 'Active').length;
+  const pendingCount = safeTasks.filter(t => (t.status === 'Pending' || t.status === 'Active') && (t.taskType !== 'Checklist' || getPendingInstances(t).length > 0)).length;
   const completedCount = safeTasks.filter(t => t.status === 'Completed' || t.status === 'Verified').length;
 
   return (
@@ -236,6 +276,23 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         </div>
       </div>
 
+      {/* FILTER TABS */}
+      <div className="flex flex-wrap gap-2 mb-6 bg-card/50 p-2 rounded-3xl border border-border w-fit">
+        {['Pending', 'Upcoming', 'Completed'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+              activeTab === tab 
+                ? 'bg-primary text-white shadow-lg' 
+                : 'text-slate-500 hover:text-foreground hover:bg-background'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
       {/* TASK LIST */}
       <div className="bg-card rounded-[1.5rem] md:rounded-[2.5rem] border border-border shadow-2xl overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
@@ -252,7 +309,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {safeTasks.map((task) => {
+              {filteredTasks.map((task) => {
                 const isChecklist = task.taskType === 'Checklist';
                 const instances = isChecklist ? getPendingInstances(task) : [];
                 const isExpanded = expandedTaskId === task._id;
@@ -320,14 +377,16 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                             </button>
                           )}
                           
-                          <button
-                            onClick={() => openReminderModal(task)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all active:scale-90"
-                          >
-                            <MessageCircle size={14} /> Remind
-                          </button>
+                          {activeTab !== 'Completed' && (
+                            <button
+                              onClick={() => openReminderModal(task)}
+                              className="flex items-center gap-2 px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all active:scale-90"
+                            >
+                              <MessageCircle size={14} /> Remind
+                            </button>
+                          )}
 
-                          {!hasPendingInstances && task.status !== "Completed" && task.status !== "Verified" && (
+                          {!isChecklist && task.status !== "Completed" && task.status !== "Verified" && (
                             <button
                               onClick={() => handleMarkDone(task)}
                               className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-90"
@@ -416,10 +475,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             </tbody>
           </table>
         </div>
-        {safeTasks.length === 0 && (
+        {filteredTasks.length === 0 && (
           <div className="p-20 text-center flex flex-col items-center gap-4 opacity-30">
             <ShieldCheck size={56} className="text-primary" />
-            <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">No tasks found</p>
+            <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">No tasks found in {activeTab}</p>
           </div>
         )}
       </div>

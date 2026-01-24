@@ -17,22 +17,25 @@ import {
   Repeat,
   ChevronRight,
   Search,
-  X
+  X,
+  ShieldCheck,
+  Check,
+  Hash
 } from 'lucide-react';
 
 /**
- * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v1.8
- * UPDATED: Real-time Searchable Doer Selection.
- * UI: Fully responsive and theme-adaptive (Light/Dark).
+ * CREATE CHECKLIST: RECURRING PROTOCOL PROVISIONING v2.7
+ * UI: High-Contrast industrial theme with large dark fonts.
+ * LOGIC: Multi-select Week/Month, Single-select Quarterly/Half-Yearly.
  */
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
     <input
       value={value}
       readOnly
-      className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer placeholder:text-slate-500 shadow-inner"
+      className="w-full bg-background border-2 border-slate-200 text-slate-950 px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-slate-950 transition-all font-black cursor-pointer shadow-inner"
     />
-    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" size={18} />
+    <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-slate-950 transition-colors pointer-events-none" size={20} />
   </div>
 ));
 
@@ -40,7 +43,6 @@ const CreateChecklist = ({ tenantId }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // Search States
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -52,16 +54,15 @@ const CreateChecklist = ({ tenantId }) => {
     frequency: 'Daily',
     startDate: new Date().toISOString().split('T')[0],
     frequencyConfig: {
-      dayOfWeek: 0,
-      dayOfMonth: 1,
-      month: 0,
-      interval: 1
+      daysOfWeek: [], 
+      daysOfMonth: [], // For Multi-select (Monthly)
+      dayOfMonth: 1,   // For Single-select (Quarterly/Half-Yearly)
+      month: 0
     }
   });
 
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -77,26 +78,21 @@ const CreateChecklist = ({ tenantId }) => {
     try {
       const res = await API.get(`/superadmin/employees/${currentTenantId}`);
       const rawData = Array.isArray(res.data) ? res.data : (res.data?.employees || res.data?.data || []);
-      
       const filtered = rawData.filter(emp => {
         const rolesArr = Array.isArray(emp.roles) ? emp.roles : [];
         const roleStr = emp.role || "";
         return rolesArr.some(r => r.toLowerCase() === 'doer' || r.toLowerCase() === 'admin') ||
                roleStr.toLowerCase() === 'doer' || roleStr.toLowerCase() === 'admin';
       });
-
       setEmployees(filtered);
     } catch (err) {
-      console.error("Error fetching employees:", err);
+      console.error("Staff fetch failure:", err);
       setEmployees([]);
     }
   }, [currentTenantId]);
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
 
-  // Filter employees based on search
   const filteredEmployees = employees.filter(emp => 
     emp.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -112,135 +108,125 @@ const CreateChecklist = ({ tenantId }) => {
     setSearchTerm('');
   };
 
+  const toggleDayOfWeek = (dayIndex) => {
+    const currentDays = [...formData.frequencyConfig.daysOfWeek];
+    const index = currentDays.indexOf(dayIndex);
+    if (index > -1) currentDays.splice(index, 1);
+    else currentDays.push(dayIndex);
+    setFormData({ ...formData, frequencyConfig: { ...formData.frequencyConfig, daysOfWeek: currentDays.sort() } });
+  };
+
+  const toggleDateOfMonth = (date) => {
+    const currentDates = [...formData.frequencyConfig.daysOfMonth];
+    const index = currentDates.indexOf(date);
+    if (index > -1) currentDates.splice(index, 1);
+    else currentDates.push(date);
+    setFormData({ ...formData, frequencyConfig: { ...formData.frequencyConfig, daysOfMonth: currentDates.sort((a,b) => a - b) } });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.doerId) return alert("Please search and select a valid staff member.");
+    if (!formData.doerId) return alert("Please map a valid staff member.");
     
+    if (formData.frequency === 'Weekly' && formData.frequencyConfig.daysOfWeek.length === 0) {
+        return alert("Select at least one day for weekly schedule.");
+    }
+    if (formData.frequency === 'Monthly' && formData.frequencyConfig.daysOfMonth.length === 0) {
+        return alert("Select at least one date for monthly schedule.");
+    }
+
     setLoading(true);
     try {
-      await API.post('/tasks/create-checklist', {
-        ...formData,
-        tenantId: currentTenantId
-      });
-      alert("Success: Routine Checklist provisioned successfully.");
+      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId });
+      alert("Success: Recurring Protocol initialized.");
       setFormData({ 
-        taskName: '', 
-        description: '', 
-        doerId: '', 
-        frequency: 'Daily',
+        taskName: '', description: '', doerId: '', frequency: 'Daily',
         startDate: new Date().toISOString().split('T')[0],
-        frequencyConfig: { dayOfWeek: 0, dayOfMonth: 1, month: 0, interval: 1 }
+        frequencyConfig: { daysOfWeek: [], daysOfMonth: [], dayOfMonth: 1, month: 0 }
       });
       setSearchTerm('');
     } catch (err) {
-      alert("Protocol Error: " + (err.response?.data?.message || err.message));
+      alert("System Error: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 selection:bg-primary/30">
+    <div className="w-full max-w-5xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30">
       
-      {/* HEADER SECTION */}
-      <div className="mb-10 flex flex-col md:flex-row items-center gap-5 text-center md:text-left">
-        <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
-          <Activity className="text-primary" size={32} />
+      {/* HEADER - UPDATED TEXT */}
+      <div className="mb-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+        <div className="bg-slate-950 p-6 rounded-[2.5rem] shadow-2xl shrink-0">
+          <Activity className="text-white" size={36} />
         </div>
         <div className="min-w-0">
-          <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none">Add Checklist Task</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Assign automated tasks to your team with smart search.</p>
+          <h2 className="text-slate-950 text-3xl md:text-4xl font-black tracking-tighter uppercase leading-none">Initialize Checklist Directive</h2>
+          <p className="text-slate-500 text-base font-bold uppercase tracking-widest mt-2 opacity-90">Provision master recurring work schedules for the operational ledger.</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-card backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] border border-border shadow-2xl space-y-8 transition-colors duration-500">
+      <form onSubmit={handleSubmit} className="bg-white p-8 sm:p-14 rounded-[4rem] border-2 border-slate-200 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] space-y-14">
         
-        {/* Task Name */}
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-            <CheckCircle2 size={14} className="text-primary" /> Task Title
+        {/* TASK IDENTITY */}
+        <div className="space-y-5">
+          <label className="flex items-center gap-3 text-xs font-black text-slate-950 uppercase tracking-[0.4em] ml-1">
+            <CheckCircle2 size={18} className="text-primary" /> Task Name
           </label>
           <input 
             type="text" required 
-            placeholder="e.g. Daily Inventory Synchronization"
+            placeholder="e.g. Master Production Synchronization Log"
             value={formData.taskName} 
             onChange={(e) => setFormData({...formData, taskName: e.target.value})}
-            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner"
+            className="w-full bg-slate-50 border-2 border-slate-200 text-slate-950 px-8 py-6 rounded-[2rem] outline-none focus:border-slate-950 transition-all font-black placeholder:text-slate-400 text-xl shadow-inner"
           />
         </div>
 
-        {/* Task Description */}
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-            <AlignLeft size={14} className="text-primary" /> Task Details 
+        {/* TECHNICAL BRIEFING */}
+        <div className="space-y-5">
+          <label className="flex items-center gap-3 text-xs font-black text-slate-950 uppercase tracking-[0.4em] ml-1">
+            <AlignLeft size={18} className="text-primary" /> Task Description 
           </label>
           <textarea 
-            placeholder="Explain what needs to be done..."
+            placeholder="Define mandatory execution parameters and technical checkpoints..."
             value={formData.description} 
             onChange={(e) => setFormData({...formData, description: e.target.value})}
-            className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold h-32 resize-none shadow-inner placeholder:text-slate-500"
+            className="w-full bg-slate-50 border-2 border-slate-200 text-slate-950 px-8 py-6 rounded-[2rem] outline-none focus:border-slate-950 transition-all font-bold h-48 resize-none shadow-inner text-lg"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* SEARCHABLE DOER SELECTION */}
-          <div className="space-y-3 relative" ref={dropdownRef}>
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-              <User size={14} className="text-primary" /> Search & Select Doer
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          {/* PERSONNEL SEARCH */}
+          <div className="space-y-5 relative" ref={dropdownRef}>
+            <label className="flex items-center gap-3 text-xs font-black text-slate-950 uppercase tracking-[0.4em] ml-1">
+              <User size={18} className="text-primary" /> Doer Name
             </label>
             <div className="relative group">
               <input 
-                type="text"
-                placeholder="Type name to search..."
-                value={searchTerm}
-                onFocus={() => setShowDropdown(true)}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setShowDropdown(true);
-                }}
-                className={`w-full bg-background border ${formData.doerId ? 'border-emerald-500/50' : 'border-border'} text-foreground px-12 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold placeholder:text-slate-500 shadow-inner`}
+                type="text" placeholder="Search staff database..."
+                value={searchTerm} onFocus={() => setShowDropdown(true)}
+                onChange={(e) => { setSearchTerm(e.target.value); setShowDropdown(true); }}
+                className={`w-full bg-slate-50 border-2 ${formData.doerId ? 'border-emerald-500' : 'border-slate-200'} text-slate-950 px-14 py-5 rounded-[2rem] outline-none focus:border-slate-950 transition-all font-black text-lg shadow-inner`}
               />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors" size={18} />
-              
-              {searchTerm && (
-                <button 
-                  type="button"
-                  onClick={clearSelection}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                >
-                  <X size={16} className="text-slate-400" />
-                </button>
-              )}
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
+              {searchTerm && <button type="button" onClick={clearSelection} className="absolute right-6 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-200 rounded-full"><X size={20} /></button>}
             </div>
-
-            {/* Dropdown Menu */}
             {showDropdown && (
-              <div className="absolute z-[100] w-full mt-2 bg-card border border-border rounded-2xl shadow-2xl max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in zoom-in-95 duration-200">
-                {filteredEmployees.length > 0 ? (
-                  filteredEmployees.map(emp => (
-                    <div 
-                      key={emp._id}
-                      onClick={() => handleSelectEmployee(emp)}
-                      className="px-6 py-4 hover:bg-primary/10 cursor-pointer border-b border-border/50 last:border-0 flex flex-col transition-colors"
-                    >
-                      <span className="text-sm font-black text-foreground uppercase tracking-tight">{emp.name}</span>
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{emp.department || 'General Sector'}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-6 py-8 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">
-                    No matching staff found
+              <div className="absolute z-[100] w-full mt-4 bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-[0_30px_60px_rgba(0,0,0,0.2)] max-h-72 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-4">
+                {filteredEmployees.length > 0 ? filteredEmployees.map(emp => (
+                  <div key={emp._id} onClick={() => handleSelectEmployee(emp)} className="px-10 py-6 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 flex flex-col transition-all">
+                    <span className="text-base font-black text-slate-950 uppercase tracking-tight">{emp.name}</span>
+                    <span className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">{emp.department || 'Operations'}</span>
                   </div>
-                )}
+                )) : <div className="px-10 py-12 text-center text-slate-400 text-sm font-black uppercase tracking-widest">Personnel Registry Empty</div>}
               </div>
             )}
           </div>
 
-          {/* Start Date Protocol */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-              <CalendarDays size={14} className="text-primary" /> Start Date
+          {/* START DATE */}
+          <div className="space-y-5">
+            <label className="flex items-center gap-3 text-xs font-black text-slate-950 uppercase tracking-[0.4em] ml-1">
+              <CalendarDays size={18} className="text-primary" /> Start Date
             </label>
             <DatePicker
               selected={new Date(formData.startDate)}
@@ -248,25 +234,22 @@ const CreateChecklist = ({ tenantId }) => {
               minDate={new Date()}
               dateFormat="dd MMMM, yyyy"
               customInput={<CustomDateInput />}
-              calendarClassName="work-pilot-dark-calendar"
             />
           </div>
         </div>
 
-        {/* Frequency Logic */}
-        <div className="space-y-4">
-          <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">
-            <Repeat size={14} className="text-primary" /> Frequency
+        {/* FREQUENCY SELECTION */}
+        <div className="space-y-8">
+          <label className="flex items-center gap-3 text-xs font-black text-slate-950 uppercase tracking-[0.4em] ml-1">
+            <Repeat size={18} className="text-primary" /> Frequency
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map((freq) => (
               <button
                 key={freq} type="button"
                 onClick={() => setFormData({...formData, frequency: freq})}
-                className={`py-4 rounded-2xl border font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-sm ${
-                  formData.frequency === freq 
-                  ? 'bg-primary text-white dark:text-slate-950 border-primary shadow-primary/20' 
-                  : 'bg-background text-slate-400 border-border hover:border-slate-400'
+                className={`py-6 rounded-[1.8rem] border-2 font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg ${
+                  formData.frequency === freq ? 'bg-slate-950 text-white border-slate-950' : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-950 hover:text-slate-950'
                 }`}
               >
                 {freq}
@@ -275,83 +258,102 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* DYNAMIC CONFIGURATION TERMINAL */}
-        <div className="bg-background/80 p-6 sm:p-8 rounded-[2rem] border border-border border-dashed relative overflow-hidden group">
-          <Settings2 size={140} className="absolute -right-12 -bottom-12 text-primary opacity-[0.03] group-hover:rotate-45 transition-transform duration-1000 pointer-events-none" />
-          
-          <h4 className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-8 relative z-10">
-            <Info size={18} /> Schedule setting for: {formData.frequency}
+        {/* DYNAMIC TUNING TERMINAL */}
+        <div className="bg-slate-50 p-10 sm:p-16 rounded-[4rem] border-2 border-slate-200 border-dashed relative overflow-hidden transition-all">
+          <h4 className="flex items-center gap-4 text-xs font-black text-slate-950 uppercase tracking-[0.4em] mb-14 relative z-10">
+            <Settings2 size={24} className="text-primary" /> Frequency Configuration: {formData.frequency}
           </h4>
 
           <div className="relative z-10">
+            {/* WEEKLY MULTI-SELECT */}
             {formData.frequency === 'Weekly' && (
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Assigned Operational Day:</label>
-                <div className="relative">
-                  <select 
-                    value={formData.frequencyConfig.dayOfWeek}
-                    onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfWeek: parseInt(e.target.value)}})}
-                    className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black uppercase text-xs appearance-none cursor-pointer"
-                  >
-                    {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, i) => (
-                      <option key={i} value={i}>{day}</option>
-                    ))}
-                  </select>
-                  <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={18} />
+              <div className="space-y-10">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Map Operational Days (Multi-Selection Authorized):</label>
+                <div className="flex flex-wrap gap-5">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                    <button
+                      key={day} type="button"
+                      onClick={() => toggleDayOfWeek(i)}
+                      className={`w-20 h-20 rounded-[1.5rem] font-black text-base uppercase transition-all flex items-center justify-center border-2 ${
+                        formData.frequencyConfig.daysOfWeek.includes(i)
+                        ? 'bg-slate-950 text-white border-slate-950 shadow-2xl scale-110'
+                        : 'bg-white text-slate-400 border-slate-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
-            {['Monthly', 'Quarterly', 'Half-Yearly'].includes(formData.frequency) && (
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Iteration Checkpoint (1-31):</label>
-                <input 
-                  type="number" min="1" max="31"
-                  value={formData.frequencyConfig.dayOfMonth}
-                  onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
-                  className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner"
-                />
-                <p className="text-[9px] text-slate-500 font-bold uppercase mt-2 ml-1 italic">
-                  * Task will trigger on this day every {formData.frequency.toLowerCase()} interval.
-                </p>
+            {/* MONTHLY MULTI-SELECT */}
+            {formData.frequency === 'Monthly' && (
+              <div className="space-y-10">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Map Calendar Dates (Multi-Selection Authorized):</label>
+                <div className="grid grid-cols-7 sm:grid-cols-10 gap-3">
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((date) => (
+                    <button
+                      key={date} type="button"
+                      onClick={() => toggleDateOfMonth(date)}
+                      className={`aspect-square rounded-[1.2rem] font-black text-sm transition-all flex items-center justify-center border-2 ${
+                        formData.frequencyConfig.daysOfMonth.includes(date)
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xl scale-110'
+                        : 'bg-white text-slate-400 border-slate-200'
+                      }`}
+                    >
+                      {date}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* QUARTERLY / HALF-YEARLY: RESTORED SINGLE INPUT */}
+            {['Quarterly', 'Half-Yearly'].includes(formData.frequency) && (
+              <div className="space-y-10">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Iteration Execution Point (Day 1-31):</label>
+                <div className="relative group">
+                    <input 
+                    type="number" min="1" max="31"
+                    value={formData.frequencyConfig.dayOfMonth}
+                    onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
+                    className="w-full bg-white border-2 border-slate-200 text-slate-950 px-10 py-7 rounded-[2rem] outline-none focus:border-slate-950 transition-all font-black text-2xl shadow-inner"
+                    />
+                    <Hash size={24} className="absolute right-10 top-1/2 -translate-y-1/2 text-slate-200 group-hover:text-primary transition-colors" />
+                </div>
+                <p className="text-xs text-slate-500 font-bold uppercase italic">* System will trigger a mission on this date every {formData.frequency.toLowerCase()} interval.</p>
               </div>
             )}
 
             {formData.frequency === 'Daily' && (
-              <div className="flex items-center gap-5 p-5 bg-primary/5 rounded-2xl border border-primary/10 shadow-inner">
-                <div className="p-3 bg-primary/10 rounded-xl">
-                  <Clock className="text-primary shrink-0" size={24} />
-                </div>
-                <p className="text-xs font-bold text-slate-500 leading-relaxed uppercase tracking-tight">
-                  This task will reset everyday. A staff will see it as soon as the factory opens.
-                </p>
+              <div className="flex items-center gap-8 p-10 bg-white rounded-[3rem] border-2 border-slate-200 shadow-sm">
+                <div className="p-6 bg-emerald-500/10 rounded-[2rem]"><Clock className="text-emerald-600" size={40} /></div>
+                <p className="text-sm font-black text-slate-700 uppercase leading-relaxed tracking-widest">Active Daily Synchronization Node engaged.</p>
               </div>
             )}
 
             {formData.frequency === 'Yearly' && (
-              <div className="flex flex-col sm:flex-row gap-6">
-                <div className="flex-1 space-y-4">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Month Selector:</label>
-                  <div className="relative">
-                    <select 
-                      value={formData.frequencyConfig.month}
-                      onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, month: parseInt(e.target.value)}})}
-                      className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black uppercase text-xs appearance-none cursor-pointer"
-                    >
-                      {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                        <option key={i} value={i}>{m}</option>
-                      ))}
-                    </select>
-                    <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 rotate-90 pointer-events-none" size={18} />
-                  </div>
+              <div className="flex flex-col sm:flex-row gap-10">
+                <div className="flex-1 space-y-5">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Registry Audit Month:</label>
+                  <select 
+                    value={formData.frequencyConfig.month}
+                    onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, month: parseInt(e.target.value)}})}
+                    className="w-full bg-white border-2 border-slate-200 text-slate-950 px-8 py-6 rounded-[2rem] outline-none font-black uppercase text-base appearance-none cursor-pointer"
+                  >
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                      <option key={i} value={i}>{m}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex-1 space-y-4">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Calendar Day:</label>
+                <div className="flex-1 space-y-5">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Audit Calendar Date:</label>
                   <input 
                     type="number" min="1" max="31"
                     value={formData.frequencyConfig.dayOfMonth}
                     onChange={(e) => setFormData({...formData, frequencyConfig: {...formData.frequencyConfig, dayOfMonth: parseInt(e.target.value)}})}
-                    className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner"
+                    className="w-full bg-white border-2 border-slate-200 text-slate-950 px-8 py-6 rounded-[2rem] outline-none font-black text-xl shadow-inner"
                   />
                 </div>
               </div>
@@ -362,22 +364,12 @@ const CreateChecklist = ({ tenantId }) => {
         {/* EXECUTION HANDSHAKE */}
         <button 
           type="submit" disabled={loading}
-          className="w-full py-6 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+          className="w-full py-10 rounded-[3rem] bg-slate-950 hover:bg-black text-white font-black text-sm sm:text-base uppercase tracking-[0.5em] shadow-[0_30px_70px_rgba(0,0,0,0.3)] transition-all flex items-center justify-center gap-8 active:scale-[0.98] disabled:opacity-50"
         >
-          {loading ? <RefreshCcw className="animate-spin" size={20} /> : <PlusCircle size={20} />}
-          Save Routine work
+          {loading ? <RefreshCcw className="animate-spin" size={32} /> : <ShieldCheck size={32} />}
+          Create Checklist task
         </button>
       </form>
-      
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-          background: rgba(148, 163, 184, 0.2); 
-          border-radius: 20px; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
-      `}</style>
     </div>
   );
 };
