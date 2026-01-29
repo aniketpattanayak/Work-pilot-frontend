@@ -21,19 +21,20 @@ import {
   Calendar,
   Upload,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Search // Added Search Icon
 } from "lucide-react";
 
 /**
- * COORDINATOR DASHBOARD v2.1
- * Purpose: Track Delegation Tasks & Routine Checklists with multi-instance support
- * Updated: Added filtering tabs for Pending, Upcoming, and Completed tasks
+ * COORDINATOR DASHBOARD v2.5
+ * Purpose: Track Delegation Tasks & Routine Checklists with Global Search & Multi-instance support
  */
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const [activeTab, setActiveTab] = useState('Pending'); // New filter state
+  const [activeTab, setActiveTab] = useState('Pending'); 
+  const [searchTerm, setSearchTerm] = useState(""); // Added Search State
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,45 +123,54 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   }, [fetchTasks]);
 
   /**
-   * TACTICAL FILTER LOGIC
-   * Categorizes tasks based on status and dates
+   * TACTICAL FILTER & SEARCH LOGIC
+   * Categorizes tasks based on status, dates, and search keywords
    */
   const filteredTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const term = searchTerm.toLowerCase().trim();
 
     return tasks.filter(task => {
+      // 1. Check Tab Category
       const isDone = task.status === 'Completed' || task.status === 'Verified';
-      
-      if (activeTab === 'Completed') return isDone;
+      let matchesTab = false;
 
-      if (activeTab === 'Pending') {
-        if (isDone) return false;
-        const deadline = new Date(task.deadline || task.nextDueDate);
-        deadline.setHours(0, 0, 0, 0);
-        
-        // Checklist is pending if it has past/today instances
-        if (task.taskType === 'Checklist') {
-          return getPendingInstances(task).length > 0;
+      if (activeTab === 'Completed') matchesTab = isDone;
+      else if (activeTab === 'Pending') {
+        if (!isDone) {
+          const deadline = new Date(task.deadline || task.nextDueDate);
+          deadline.setHours(0, 0, 0, 0);
+          if (task.taskType === 'Checklist') {
+            matchesTab = getPendingInstances(task).length > 0;
+          } else {
+            matchesTab = deadline <= today;
+          }
         }
-        // Delegation is pending if deadline is today or past
-        return deadline <= today;
+      } else if (activeTab === 'Upcoming') {
+        if (!isDone) {
+          const deadline = new Date(task.deadline || task.nextDueDate);
+          deadline.setHours(0, 0, 0, 0);
+          if (task.taskType === 'Checklist') {
+            matchesTab = getPendingInstances(task).length === 0 && deadline > today;
+          } else {
+            matchesTab = deadline > today;
+          }
+        }
       }
 
-      if (activeTab === 'Upcoming') {
-        if (isDone) return false;
-        const deadline = new Date(task.deadline || task.nextDueDate);
-        deadline.setHours(0, 0, 0, 0);
+      if (!matchesTab) return false;
 
-        if (task.taskType === 'Checklist') {
-          return getPendingInstances(task).length === 0 && deadline > today;
-        }
-        return deadline > today;
-      }
+      // 2. Check Search Term (Name, Dept, Title)
+      if (term === "") return true;
 
-      return true;
+      const titleMatch = (task.title || "").toLowerCase().includes(term);
+      const nameMatch = (task.doerId?.name || "").toLowerCase().includes(term);
+      const deptMatch = (task.doerId?.department || "").toLowerCase().includes(term);
+
+      return titleMatch || nameMatch || deptMatch;
     });
-  }, [tasks, activeTab]);
+  }, [tasks, activeTab, searchTerm]);
 
   const openReminderModal = (task) => {
     if (!task.doerId?.whatsappNumber) {
@@ -257,6 +267,28 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         </button>
       </div>
 
+      {/* SEARCH BAR TERMINAL */}
+      <div className="mb-6 relative group">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <Search size={20} className="text-slate-400 group-focus-within:text-primary transition-colors" />
+        </div>
+        <input 
+          type="text"
+          placeholder="Search by Personnel Name, Department, or Task Title..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-card border border-border pl-12 pr-10 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all shadow-inner"
+        />
+        {searchTerm && (
+          <button 
+            onClick={() => setSearchTerm("")}
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-red-500 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
       {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10">
         <div className="bg-card p-6 md:p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
@@ -333,8 +365,13 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                       </td>
                       
                       <td className="px-8 py-6">
-                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-black text-[11px] uppercase tracking-tight">
-                          <UserCheck size={14} className="text-emerald-500" /> {task.doerId?.name || 'Not Assigned'}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-black text-[11px] uppercase tracking-tight">
+                            <UserCheck size={14} className="text-emerald-500" /> {task.doerId?.name || 'Not Assigned'}
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">
+                            Dept: {task.doerId?.department || 'N/A'}
+                          </div>
                         </div>
                       </td>
 
@@ -478,7 +515,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         {filteredTasks.length === 0 && (
           <div className="p-20 text-center flex flex-col items-center gap-4 opacity-30">
             <ShieldCheck size={56} className="text-primary" />
-            <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">No tasks found in {activeTab}</p>
+            <p className="text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">No matches found for "{searchTerm}" in {activeTab}</p>
           </div>
         )}
       </div>
