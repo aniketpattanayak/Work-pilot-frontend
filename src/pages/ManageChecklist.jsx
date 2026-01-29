@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig'; 
 import { 
   Trash2, 
@@ -19,13 +19,15 @@ import {
 } from 'lucide-react';
 
 /**
- * MANAGE CHECKLIST v4.5
+ * MANAGE CHECKLIST v4.8
  * Purpose: Professional Excel-Style Management Ledger.
  * Layout: Strict High-Density Grid, Dark Fonts, Dropdown Timeline.
+ * Updated: Future schedule anchors to TODAY and respects custom weekends/holidays.
  */
 const ManageChecklist = ({ tenantId }) => {
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [tenantSettings, setTenantSettings] = useState(null); // Added to store weekend/holiday config
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null); 
   const [editData, setEditData] = useState({ doerId: '', taskName: '', description: '' });
@@ -39,23 +41,54 @@ const ManageChecklist = ({ tenantId }) => {
   const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
   /**
-   * EXCEL LOGIC: CALCULATE FUTURE SCHEDULE
+   * TACTICAL TIMELINE ENGINE
+   * Logic: Starts from TODAY and finds the next 5 valid operational days.
+   * Skips Admin-defined weekends and holidays.
    */
-  const getNextFiveDates = (startDate, frequency) => {
-    if (!startDate) return [];
+  const getNextFiveDates = (frequency) => {
     const dates = [];
-    let current = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const weekends = tenantSettings?.weekends || [0]; // Fetch custom weekends (Default Sun)
+    const holidays = tenantSettings?.holidays || [];
+
+    const isNonWorkingDay = (date) => {
+      const dateStr = date.toISOString().split('T')[0];
+      const isWeekend = weekends.includes(date.getDay()); 
+      const isHoliday = holidays.some(h => new Date(h.date).toISOString().split('T')[0] === dateStr);
+      return isWeekend || isHoliday;
+    };
+
+    let pointer = new Date(today);
     
-    for (let i = 0; i < 5; i++) {
-      dates.push(new Date(current).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }));
-      
-      if (frequency === 'Daily') current.setDate(current.getDate() + 1);
-      else if (frequency === 'Weekly') current.setDate(current.getDate() + 7);
-      else if (frequency === 'Monthly') current.setMonth(current.getMonth() + 1);
-      else if (frequency === 'Quarterly') current.setMonth(current.getMonth() + 3);
-      else if (frequency === 'Half-Yearly') current.setMonth(current.getMonth() + 6);
-      else if (frequency === 'Yearly') current.setFullYear(current.getFullYear() + 1);
-      else break;
+    // Safety loop: Find exactly 5 valid working instances
+    while (dates.length < 5) {
+      if (!isNonWorkingDay(pointer)) {
+        dates.push(new Date(pointer).toLocaleDateString('en-IN', { 
+          day: '2-digit', month: 'short', year: 'numeric' 
+        }));
+      }
+
+      // Progression based on industrial frequency
+      if (frequency === 'Daily') {
+        pointer.setDate(pointer.getDate() + 1);
+      } else if (frequency === 'Weekly') {
+        pointer.setDate(pointer.getDate() + 7);
+      } else if (frequency === 'Monthly') {
+        pointer.setMonth(pointer.getMonth() + 1);
+      } else if (frequency === 'Quarterly') {
+        pointer.setMonth(pointer.getMonth() + 3);
+      } else if (frequency === 'Half-Yearly') {
+        pointer.setMonth(pointer.getMonth() + 6);
+      } else if (frequency === 'Yearly') {
+        pointer.setFullYear(pointer.getFullYear() + 1);
+      } else {
+        pointer.setDate(pointer.getDate() + 1);
+      }
+
+      // Safety break to prevent browser infinite loops (max look-ahead 5 years)
+      if (pointer.getFullYear() > today.getFullYear() + 5) break;
     }
     return dates;
   };
@@ -66,9 +99,11 @@ const ManageChecklist = ({ tenantId }) => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [checkRes, empRes] = await Promise.all([
+      // Fetching checklists, employees, and tenant settings (for weekends) in parallel
+      const [checkRes, empRes, settingsRes] = await Promise.all([
         API.get(`/tasks/checklist-all/${currentTenantId}`).catch(() => ({ data: [] })),
-        API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+        API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] })),
+        API.get(`/superadmin/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
 
       const checkData = Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []);
@@ -79,6 +114,10 @@ const ManageChecklist = ({ tenantId }) => {
         const roles = Array.isArray(e.roles) ? e.roles : [e.role || ''];
         return roles.some(r => r === 'Doer' || r === 'Admin');
       }));
+
+      // Persist the factory configuration for weekend/holiday logic
+      setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
+
     } catch (err) {
       console.error("Fetch error:", err);
       setChecklists([]);
@@ -158,7 +197,7 @@ const ManageChecklist = ({ tenantId }) => {
           </div>
           <div>
             <h2 className="text-slate-950 text-3xl font-black tracking-tighter uppercase leading-none">Task Registry</h2>
-            <p className="text-slate-600 text-sm font-bold uppercase tracking-widest mt-1">Master High-Density Operational Grid</p>
+            <p className="text-slate-600 text-sm font-bold uppercase tracking-widest mt-1">Master High-Density Operational Grid (Today: {new Date().toDateString()})</p>
           </div>
         </div>
         <button onClick={fetchData} className="bg-white hover:bg-slate-50 border-2 border-slate-950 px-8 py-3 rounded-xl text-slate-950 font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-md active:scale-95">
@@ -216,14 +255,15 @@ const ManageChecklist = ({ tenantId }) => {
                 <th className="px-5 py-5 border-r border-slate-200">PERSONNEL</th>
                 <th className="px-5 py-5 border-r border-slate-200 min-w-[400px]">OPERATIONAL DESCRIPTION</th>
                 <th className="px-5 py-5 border-r border-slate-200">CYCLE</th>
-                <th className="px-5 py-5 border-r border-slate-200">FUTURE SCHEDULE</th>
+                <th className="px-5 py-5 border-r border-slate-200">FUTURE SCHEDULE (FROM TODAY)</th>
                 <th className="px-5 py-5 text-right pr-10">GRID ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y-2 divide-slate-200">
               {filteredChecklists.map((item, index) => {
                 const isEditing = editingId === item._id;
-                const schedule = getNextFiveDates(item.nextDueDate, item.frequency);
+                // Updated: Calculation starts from Today and skips non-working days
+                const schedule = getNextFiveDates(item.frequency);
 
                 return (
                   <tr key={item._id} className={`transition-all ${isEditing ? 'bg-amber-50' : 'hover:bg-slate-50'}`}>
@@ -295,15 +335,15 @@ const ManageChecklist = ({ tenantId }) => {
                       </span>
                     </td>
 
-                    {/* EXCEL DROPDOWN TIMELINE */}
+                    {/* EXCEL DROPDOWN TIMELINE (ANCHORED TO TODAY) */}
                     <td className="px-5 py-4 border-r border-slate-200">
                        <div className="relative group">
-                          <select className="w-full bg-slate-100 border-2 border-slate-300 text-slate-950 font-black text-xs uppercase px-4 py-2 rounded-lg appearance-none cursor-pointer hover:border-slate-950 transition-all">
-                             {schedule.map((date, dIdx) => (
+                          <select className="w-full bg-slate-100 border-2 border-slate-300 text-slate-950 font-black text-[11px] uppercase px-4 py-2 rounded-lg appearance-none cursor-pointer hover:border-slate-950 transition-all">
+                             {schedule.length > 0 ? schedule.map((date, dIdx) => (
                                <option key={dIdx} className="font-bold py-2">
-                                 {dIdx === 0 ? `→ ${date}` : `• ${date}`}
+                                 {dIdx === 0 ? `TODAY → ${date}` : `NEXT → ${date}`}
                                </option>
-                             ))}
+                             )) : <option>Registry Synced</option>}
                           </select>
                           <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-950 pointer-events-none group-hover:scale-110 transition-transform" />
                        </div>

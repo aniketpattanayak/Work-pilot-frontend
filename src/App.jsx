@@ -3,8 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import SuperAdmin from './pages/SuperAdmin';
+// NEW: Import ReviewMeeting to ensure the component is registered
+import ReviewMeeting from './pages/ReviewMeeting'; 
 import { getSubdomain } from './utils/subdomain';
 
+/**
+ * CORE APPLICATION ROUTER v1.7
+ * Purpose: Global state management and top-level route distribution.
+ */
 function App() {
   const [user, setUser] = useState(null);
   const [tenantId, setTenantId] = useState(null);
@@ -78,6 +84,11 @@ function App() {
                 element={user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={handleLoginSuccess} />} 
               />
 
+              {/**
+               * DASHBOARD PARENT ROUTE
+               * This route catches all /dashboard/... paths and passes them 
+               * to the Dashboard layout component.
+               */}
               <Route 
                 path="/dashboard/*" 
                 element={

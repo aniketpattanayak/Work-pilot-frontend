@@ -27,17 +27,19 @@ import {
   Rocket,
   ShieldCheck,
   Award,
-  ChevronRight
+  ChevronRight,
+  Coffee // Icon for Weekends
 } from 'lucide-react';
 
 /**
- * SETTINGS: GLOBAL OPERATIONAL PARAMETERS v1.5
- * Purpose: Configures factory identity, hours, point mechanics, and achievements.
+ * SETTINGS: GLOBAL OPERATIONAL PARAMETERS v2.1
+ * Purpose: Configures identity, hours, weekends, point mechanics, and achievements.
  * UI: Fully responsive, dual-theme adaptive (Light/Dark).
  */
 const Settings = ({ tenantId }) => {
-  // --- EXISTING STATES (Preserved) ---
+  // --- STATE MANAGEMENT ---
   const [hours, setHours] = useState({ opening: '09:00', closing: '18:00' });
+  const [weekends, setWeekends] = useState([0]); // New: Stores day indices (0=Sun, 6=Sat)
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
   const [holidayList, setHolidayList] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,6 +91,8 @@ const Settings = ({ tenantId }) => {
       
       if (data) {
         setHours(data.officeHours || { opening: '09:00', closing: '18:00' });
+        // FETCH STORED WEEKENDS FROM DATABASE
+        setWeekends(Array.isArray(data.weekends) ? data.weekends : [0]);
         setHolidayList(Array.isArray(data.holidays) ? data.holidays : []);
         setBranding({ 
           companyName: data.companyName || '', 
@@ -114,6 +118,17 @@ const Settings = ({ tenantId }) => {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  /**
+   * 2. WEEKEND TOGGLE LOGIC
+   */
+  const toggleWeekend = (dayIndex) => {
+    setWeekends(prev => 
+      prev.includes(dayIndex) 
+        ? prev.filter(d => d !== dayIndex) 
+        : [...prev, dayIndex].sort((a, b) => a - b)
+    );
+  };
 
   // --- LOGIC HANDLERS (Preserved) ---
   const addBadge = () => {
@@ -209,13 +224,18 @@ const Settings = ({ tenantId }) => {
     setHolidayList((prevList) => prevList.filter((_, i) => i !== index));
   };
 
+  /**
+   * 3. PERSISTENCE LOGIC
+   */
   const saveSettings = async () => {
     if (saving) return;
     try {
       setSaving(true);
+      // SENDING WEEKENDS ARRAY TO SERVER
       const response = await API.put('/superadmin/update-settings', {
         tenantId: currentTenantId,
         officeHours: hours,
+        weekends: weekends, 
         holidays: holidayList,
         pointSettings: pointSettings,
         badgeLibrary: badgeLibrary 
@@ -245,7 +265,7 @@ const Settings = ({ tenantId }) => {
   return (
     <div className="w-full max-w-5xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 transition-colors duration-500">
       
-      {/* HEADER SECTION (Responsive Scaling) */}
+      {/* HEADER SECTION */}
       <div className="mb-12 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
         <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
           <LucideSettings className="text-primary" size={36} />
@@ -288,7 +308,33 @@ const Settings = ({ tenantId }) => {
            </div>
         </section>
 
-        {/* SECTION 1: WORKING HOURS (Responsive Layout) */}
+        {/* --- SECTION: WEEKEND CONFIGURATION --- */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+            <Coffee size={22} className="text-primary" /> Weekend Configuration
+          </h3>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-10 ml-1">Assign recurring non-working days. Systems will skip these when generating work directives.</p>
+          
+          <div className="flex flex-wrap gap-4">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+              <button
+                key={day}
+                type="button"
+                onClick={() => toggleWeekend(i)}
+                className={`w-20 h-20 rounded-2xl font-black text-xs uppercase transition-all flex flex-col items-center justify-center border-2 gap-2 ${
+                  weekends.includes(i)
+                    ? 'bg-red-500 border-red-500 text-white shadow-xl scale-110'
+                    : 'bg-background border-border text-slate-400 hover:border-red-500/50'
+                }`}
+              >
+                {day}
+                {weekends.includes(i) ? <FiX size={14}/> : <FiPlus size={14}/>}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION 1: WORKING HOURS */}
         <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
           <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
             <Clock size={22} className="text-primary" /> Operational Hours
@@ -305,7 +351,7 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
 
-        {/* SECTION 4: HOLIDAY CALENDAR (Responsive List) */}
+        {/* SECTION 4: HOLIDAY CALENDAR */}
         <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
           <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
             <Calendar size={22} className="text-primary" /> Holiday
@@ -331,7 +377,7 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
 
-        {/* SECTION 2: PERFORMANCE ENGINE (Responsive Brackets) */}
+        {/* SECTION 2: PERFORMANCE ENGINE */}
         <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative group/points">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
             <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 uppercase tracking-tight">
@@ -364,11 +410,11 @@ const Settings = ({ tenantId }) => {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest ml-1">Early Bonus (+)</label>
+                    <label className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest ml-1">Early Bonus (+)</label>
                     <input type="number" value={bracket.earlyBonus} onChange={(e) => updateBracket(index, 'earlyBonus', parseInt(e.target.value))} className="w-full bg-card border border-border text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-emerald-500/10 text-xs font-black shadow-sm" />
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[9px] font-black text-red-600 dark:text-red-500 uppercase tracking-widest ml-1">Late Penalty (-)</label>
+                    <label className="text-[9px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest ml-1">Late Penalty (-)</label>
                     <input type="number" value={bracket.latePenalty} onChange={(e) => updateBracket(index, 'latePenalty', parseInt(e.target.value))} className="w-full bg-card border border-border text-red-600 dark:text-red-400 px-4 py-3 rounded-xl outline-none focus:ring-4 focus:ring-red-500/10 text-xs font-black shadow-sm" />
                   </div>
                 </div>
@@ -379,7 +425,7 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
 
-        {/* --- SECTION 3: BADGE WORKSHOP (Responsive Grid) --- */}
+        {/* --- SECTION 3: BADGE WORKSHOP --- */}
         <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative overflow-hidden group/badges">
           <Award size={160} className="absolute -right-16 -top-16 text-amber-500 opacity-[0.03] group-hover/badges:scale-110 transition-transform duration-1000 pointer-events-none" />
           <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight relative z-10">

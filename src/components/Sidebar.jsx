@@ -28,13 +28,14 @@ import {
   Menu, 
   X, 
   LogOut,
-  LifeBuoy // New: Added for Support/Raise Ticket
+  LifeBuoy,
+  BarChart3 // NEW: Imported for Review Meeting
 } from 'lucide-react';
 
 /**
- * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.6
+ * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.7
  * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * Updated: Integrated Support Ticketing category for all personnel.
+ * Updated: Added 'Review Meeting' to the Administration suite.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -107,12 +108,13 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Employees', icon: <Users />, roles: ['Admin'] },
         { name: 'Mapping', icon: <UserCog />, roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
+        // NEW ITEM: Added for Weekly Review Meetings
+        { name: 'Review Meeting', icon: <BarChart3 />, roles: ['Admin', 'Coordinator'] }, 
         { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
       ]
     },
     {
-      // NEW CATEGORY: SUPPORT SYSTEM
       label: 'Support',
       items: [
         { name: 'Raise Ticket', icon: <LifeBuoy />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
