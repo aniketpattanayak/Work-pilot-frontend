@@ -83,20 +83,33 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     if (!currentAssignerId || !currentTenantId) return;
     try {
       setLoading(true);
-      const [delegationRes, empRes] = await Promise.all([
-        API.get(`/tasks/assigner/${currentAssignerId}`).catch(() => ({ data: [] })),
-        API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+
+      // Determine if the user is a doer (Employee) or a manager/admin
+      const isEmployee = user?.role === 'employee' || user?.roles?.includes('Employee');
+      
+      // If employee, call /tasks/doer. If admin, call /tasks/assigner.
+      const taskEndpoint = isEmployee 
+        ? `/tasks/doer/${currentAssignerId}` 
+        : `/tasks/assigner/${currentAssignerId}`;
+
+      const [taskRes, empRes] = await Promise.all([
+        API.get(taskEndpoint).catch(() => ({ data: [] })),
+        // Employees don't need the full staff list for reassigning work
+        !isEmployee 
+          ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] })
       ]);
       
-      const delegationData = Array.isArray(delegationRes.data) 
-        ? delegationRes.data 
-        : (delegationRes.data?.tasks || delegationRes.data?.data || []);
+      const rawTaskData = Array.isArray(taskRes.data) 
+        ? taskRes.data 
+        : (taskRes.data?.tasks || taskRes.data?.data || []);
 
       const employeeData = Array.isArray(empRes.data) 
         ? empRes.data 
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      const delegationOnly = delegationData.map(t => ({ ...t, taskType: 'Delegation' }));
+      // Standardize data for the high-density grid
+      const delegationOnly = rawTaskData.map(t => ({ ...t, taskType: 'Delegation' }));
       const sorted = delegationOnly.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
       setTasks(sorted);
@@ -110,7 +123,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentAssignerId, currentTenantId]);
+  }, [currentAssignerId, currentTenantId, user?.role, user?.roles]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
