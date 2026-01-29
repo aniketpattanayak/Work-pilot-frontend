@@ -84,17 +84,17 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     try {
       setLoading(true);
 
-      // Determine if the user is a doer (Employee) or a manager/admin
-      const isEmployee = user?.role === 'employee' || user?.roles?.includes('Employee');
-      
-      // If employee, call /tasks/doer. If admin, call /tasks/assigner.
+      // 1. Determine the correct endpoint based on user role
+      // If the user is an employee, fetch tasks assigned TO them.
+      // If admin/superadmin, fetch tasks assigned BY them.
+      const isEmployee = user?.role === 'employee';
       const taskEndpoint = isEmployee 
         ? `/tasks/doer/${currentAssignerId}` 
         : `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch(() => ({ data: [] })),
-        // Employees don't need the full staff list for reassigning work
+        // Only admins need the full employee list for the RevisionPanel
         !isEmployee 
           ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] })
@@ -108,7 +108,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data 
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      // Standardize data for the high-density grid
+      // 2. Map and Sort
       const delegationOnly = rawTaskData.map(t => ({ ...t, taskType: 'Delegation' }));
       const sorted = delegationOnly.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
@@ -123,7 +123,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentAssignerId, currentTenantId, user?.role, user?.roles]);
+  }, [currentAssignerId, currentTenantId, user?.role]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
