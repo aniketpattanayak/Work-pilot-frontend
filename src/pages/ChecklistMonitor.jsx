@@ -31,9 +31,9 @@ import {
 } from 'lucide-react';
 
 /**
- * CHECKLIST MONITOR v3.9
+ * CHECKLIST MONITOR v3.10
  * Purpose: Professional Operational Ledger with Tomorrow-Planning & Strict Production Sync.
- * Features: Timezone-Safe matching, Monthly performance counter, and Indigo planning theme.
+ * FIXED: Aggressive Cache-Busting and Pattern-Matching to force card removal on live server.
  */
 const ChecklistMonitor = ({ tenantId }) => {
   const [report, setReport] = useState([]);
@@ -62,32 +62,36 @@ const ChecklistMonitor = ({ tenantId }) => {
   /**
    * PERFORMANCE HELPERS
    */
+  const toPattern = (d) => {
+    if (!d) return "";
+    const date = new Date(d);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getMonthlyStats = useCallback((history) => {
     if (!Array.isArray(history)) return { count: 0 };
     const now = new Date();
-    const actualWork = history.filter(log => {
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const count = history.filter(log => {
       const isDone = log.action === 'Completed' || log.action === 'Administrative Completion';
       const logDate = new Date(log.timestamp);
-      return isDone && logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-    });
-    return { count: actualWork.length };
+      return isDone && logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
+    }).length;
+    return { count };
   }, []);
-
-  /**
-   * PRODUCTION SYNC HELPER
-   * Strips time/timezone to ensure server UTC matches browser Local time exactly.
-   */
-  const getSafeDateKey = (dateInput) => {
-    if (!dateInput) return null;
-    const d = new Date(dateInput);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
 
   const fetchLiveStatus = useCallback(async () => {
     try {
       setLoading(true);
-      // Cache-buster timestamp prevents browser from showing old data on production
-      const res = await API.get(`/tasks/checklist-all/${currentTenantId}?t=${Date.now()}`);
+      /**
+       * CACHE BUST
+       * forces fresh data from production server
+       */
+      const res = await API.get(`/tasks/checklist-all/${currentTenantId}?force_sync=${Date.now()}`);
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setReport(data);
     } catch (err) {
@@ -101,8 +105,7 @@ const ChecklistMonitor = ({ tenantId }) => {
   useEffect(() => { fetchLiveStatus(); }, [fetchLiveStatus]);
 
   /**
-   * PROTOCOL INSTANCE CALCULATOR (Updated v3.9)
-   * Scans from the next due date up to Tomorrow for planning insight.
+   * PROTOCOL INSTANCE CALCULATOR (Updated v3.10)
    */
   const getPendingInstances = (task) => {
     if (!task) return [];
@@ -120,15 +123,15 @@ const ChecklistMonitor = ({ tenantId }) => {
     let loopCount = 0;
     while (pointer <= tomorrow && loopCount < 30) {
       loopCount++;
-      const currentPointerKey = getSafeDateKey(pointer);
+      const currentPattern = toPattern(pointer);
       
       /**
-       * STRICT PRODUCTION MATCH
-       * Matches current pointer date against the history using safe string keys.
+       * STRICT PATTERN MATCH
+       * Character-by-character check against the ledger history
        */
       const isAlreadyDone = task.history && task.history.some(h => {
         if (h.action !== "Completed" && h.action !== "Administrative Completion") return false;
-        return getSafeDateKey(h.instanceDate || h.timestamp) === currentPointerKey;
+        return toPattern(h.instanceDate || h.timestamp) === currentPattern;
       });
       
       if (!isAlreadyDone) {
@@ -163,13 +166,14 @@ const ChecklistMonitor = ({ tenantId }) => {
 
     if (hasMissed) return { label: 'OVERDUE', color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: <AlertCircle size={12} />, isDone: false, count: instances.filter(i => i.isPast).length };
     if (hasToday) return { label: 'DUE TODAY', color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: <Clock size={12} />, isDone: false };
-    
-    // NEW: Indigo Tomorrow Identity
     if (hasTomorrow) return { label: 'TOMORROW DUE', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', icon: <Forward size={12} />, isDone: false };
 
     return { label: 'UPCOMING', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', icon: <Calendar size={12} />, isDone: false };
   };
 
+  /**
+   * CATEGORIZED FILTER ENGINE
+   */
   const filteredReport = useMemo(() => {
     return report.filter(task => {
       const statusObj = getOverallStatus(task);
@@ -208,13 +212,13 @@ const ChecklistMonitor = ({ tenantId }) => {
       setSelectedFile(null);
       
       /**
-       * HARD REFRESH
-       * Wait 800ms for database propagation on live cloud servers before refetching.
+       * FORCE SYNC
+       * Wait for server state to update before refetching
        */
       setTimeout(async () => {
           await fetchLiveStatus(); 
           alert("Operational Registry Synchronized.");
-      }, 800);
+      }, 1000);
     } catch (err) { 
       alert("Synchronization Error."); 
     } finally { 
@@ -225,14 +229,13 @@ const ChecklistMonitor = ({ tenantId }) => {
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[400px] gap-6">
       <RefreshCcw className="animate-spin text-primary" size={48} />
-      <span className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Synchronizing protocol...</span>
+      <span className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Processing Protocol...</span>
     </div>
   );
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 px-4">
       
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
         <div>
             <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter flex items-center gap-4 uppercase leading-none">
@@ -245,11 +248,10 @@ const ChecklistMonitor = ({ tenantId }) => {
         </button>
       </div>
 
-      {/* FILTER BAR */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className="relative group">
           <input 
-            type="text" placeholder="Search Name or Doer..."
+            type="text" placeholder="Search directives..."
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-card border border-border px-12 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
           />
@@ -282,9 +284,8 @@ const ChecklistMonitor = ({ tenantId }) => {
         </div>
       </div>
 
-      {/* DATA GRID */}
       <div className="flex flex-col bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl transition-colors">
-        <div className="hidden lg:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] px-10 py-6 bg-background/50 border-b border-border font-black text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center shadow-lg">
+        <div className="hidden lg:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] px-10 py-6 bg-background/50 border-b border-border font-black text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center">
             <div>Task Description</div><div>Personnel</div><div>Cycle</div><div>Monthly Activity</div><div>Last Log</div><div>Registry State</div><div className="text-right">Action</div>
         </div>
 
@@ -307,7 +308,7 @@ const ChecklistMonitor = ({ tenantId }) => {
 
                 <div className="hidden lg:block text-xs text-slate-400 font-bold uppercase tracking-tighter">{task.lastCompleted ? new Date(task.lastCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'NONE'}</div>
                 <div className="flex items-center gap-2 mt-3 lg:mt-0">
-                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest shadow-sm ${status.bg} ${status.color} ${status.border}`}>{status.icon} {status.label}</span>
+                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest ${status.bg} ${status.color} ${status.border}`}>{status.icon} {status.label}</span>
                   {instances.filter(i => i.isPast).length > 0 && (
                     <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">+{instances.filter(i => i.isPast).length} OVERDUE</span>
                   )}
@@ -326,7 +327,7 @@ const ChecklistMonitor = ({ tenantId }) => {
                              <div className="flex items-center gap-5">
                                <div className={`p-3 rounded-xl ${instance.isPast ? 'bg-red-500/10 text-red-600' : instance.isToday ? 'bg-amber-500/10 text-amber-600' : 'bg-indigo-500/10 text-indigo-600'}`}><Calendar size={20} /></div>
                                <div>
-                                 <p className="text-foreground font-black text-sm uppercase tracking-tight">{instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                 <p className="text-foreground font-black text-sm uppercase">{instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}</p>
                                  <p className={`text-[10px] font-black uppercase tracking-widest ${instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-600' : 'text-indigo-600'}`}>{instance.status}</p>
                                </div>
                              </div>
@@ -348,13 +349,12 @@ const ChecklistMonitor = ({ tenantId }) => {
                                 <span className="text-foreground font-black text-lg uppercase tracking-tighter">{task.taskName}</span>
                             </div>
                             <div>
-                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Operational Briefing:</span>
+                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Briefing:</span>
                                 <p className="text-foreground font-bold text-sm leading-relaxed opacity-80">{task.description || "NO MISSION DATA"}</p>
                             </div>
                         </div>
                       </div>
 
-                      {/* OPERATIONAL LEDGER (Dual-Date Consistency) */}
                       <div className="space-y-8">
                         <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Operational Ledger</h5>
                         <div className="max-h-[450px] overflow-y-auto custom-scrollbar bg-card p-8 rounded-[2.5rem] border border-border shadow-xl flex flex-col gap-8">
@@ -387,7 +387,6 @@ const ChecklistMonitor = ({ tenantId }) => {
         })}
       </div>
 
-      {/* MARK AS DONE MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-2xl animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-xl rounded-[3rem] p-10 lg:p-14 shadow-[0_0_100px_rgba(0,0,0,0.5)] relative animate-in zoom-in-95">
@@ -401,7 +400,7 @@ const ChecklistMonitor = ({ tenantId }) => {
               <div className="relative border-2 border-dashed border-border rounded-3xl p-10 text-center hover:border-primary/50 transition-all bg-background/50">
                   <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
                   <Upload size={40} className={`mx-auto mb-4 ${selectedFile ? 'text-emerald-500' : 'text-slate-400'}`} />
-                  <p className="text-sm font-black text-foreground uppercase tracking-tight">{selectedFile ? selectedFile.name : "Authorize Snapshot Upload"}</p>
+                  <p className="text-sm font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Authorize Snapshot Upload"}</p>
               </div>
               <button type="submit" disabled={isSubmitting} className="w-full py-7 rounded-[2rem] bg-primary text-primary-foreground font-black text-sm uppercase tracking-[0.4em] shadow-2xl transition-all active:scale-95 disabled:opacity-50">Synchronize Registry Node</button>
             </form>
