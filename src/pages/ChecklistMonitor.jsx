@@ -26,12 +26,14 @@ import {
   Search as SearchIcon,
   LayoutGrid,
   ClipboardList,
-  Fingerprint
+  Fingerprint,
+  Forward
 } from 'lucide-react';
 
 /**
- * CHECKLIST MONITOR v3.1
- * Updated: Operational Ledger now shows both "Instance Date" (Target) and "Submission Date" (Actual).
+ * CHECKLIST MONITOR v3.2
+ * Updated: Added 'Tomorrow Due' filter and status detection.
+ * Features: Multi-instance logic with future-lookahead for tomorrow's planning.
  */
 const ChecklistMonitor = ({ tenantId }) => {
   const [report, setReport] = useState([]);
@@ -74,19 +76,25 @@ const ChecklistMonitor = ({ tenantId }) => {
   useEffect(() => { fetchLiveStatus(); }, [fetchLiveStatus]);
 
   /**
-   * PROTOCOL INSTANCE CALCULATOR
+   * PROTOCOL INSTANCE CALCULATOR (Updated v3.2)
+   * Detects missing instances up to Today + Tomorrow.
    */
   const getPendingInstances = (task) => {
     if (!task) return [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
     
     let instances = [];
     let pointer = new Date(task.nextDueDate);
     pointer.setHours(0, 0, 0, 0);
     
     let loopCount = 0;
-    while (pointer <= today && loopCount < 30) {
+    // We look up to tomorrow to support the new filter
+    while (pointer <= tomorrow && loopCount < 30) {
       loopCount++;
       const dateStr = pointer.toDateString();
       
@@ -99,13 +107,16 @@ const ChecklistMonitor = ({ tenantId }) => {
       
       if (!isDone) {
         const isToday = dateStr === today.toDateString();
+        const isTomorrow = dateStr === tomorrow.toDateString();
         const isPast = pointer < today;
+
         instances.push({
           date: new Date(pointer),
           dateStr: dateStr,
           isToday: isToday,
+          isTomorrow: isTomorrow,
           isPast: isPast,
-          status: isPast ? 'OVERDUE' : 'TODAY'
+          status: isPast ? 'OVERDUE' : isToday ? 'TODAY' : 'TOMORROW'
         });
       }
       
@@ -117,14 +128,26 @@ const ChecklistMonitor = ({ tenantId }) => {
     return instances;
   };
 
+  /**
+   * OVERALL STATUS DETECTOR (Updated v3.2)
+   */
   const getOverallStatus = (task) => {
     if (!task) return { label: 'UNKNOWN', isDone: false };
     const instances = getPendingInstances(task);
+    
     if (instances.length === 0) return { label: 'ALL DONE', color: 'text-emerald-600', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: <CheckCircle size={12} />, isDone: true };
+    
     const hasMissed = instances.some(i => i.isPast);
     const hasToday = instances.some(i => i.isToday);
+    const hasTomorrow = instances.some(i => i.isTomorrow);
+
     if (hasMissed) return { label: 'OVERDUE', color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: <AlertCircle size={12} />, isDone: false, count: instances.filter(i => i.isPast).length };
+    
     if (hasToday) return { label: 'DUE TODAY', color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: <Clock size={12} />, isDone: false };
+    
+    // NEW: Tomorrow Detection
+    if (hasTomorrow) return { label: 'TOMORROW DUE', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', icon: <Forward size={12} />, isDone: false };
+
     return { label: 'UPCOMING', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', icon: <Calendar size={12} />, isDone: false };
   };
 
@@ -152,9 +175,10 @@ const ChecklistMonitor = ({ tenantId }) => {
       }
 
       if (activeTab !== 'All') {
-        if (activeTab === 'Pending' && statusObj.isDone) return false;
         if (activeTab === 'Overdue' && statusObj.label !== 'OVERDUE') return false;
         if (activeTab === 'Due Today' && statusObj.label !== 'DUE TODAY') return false;
+        // NEW: Tomorrow Filter Logic
+        if (activeTab === 'Tomorrow Due' && statusObj.label !== 'TOMORROW DUE') return false;
       }
       
       if (activeFrequency !== 'All Cycles') {
@@ -255,7 +279,8 @@ const ChecklistMonitor = ({ tenantId }) => {
             <Clock size={12} className="text-primary"/> Timeline Perspective
           </label>
           <div className="flex flex-wrap gap-2">
-            {['All', 'Overdue', 'Due Today'].map((tab) => (
+            {/* ADDED 'Tomorrow Due' tab below */}
+            {['All', 'Overdue', 'Due Today', 'Tomorrow Due'].map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeTab === tab ? 'bg-primary text-white border-primary shadow-lg scale-105' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}>
                 {tab}
               </button>
@@ -328,8 +353,8 @@ const ChecklistMonitor = ({ tenantId }) => {
                   <span className={`inline-flex items-center gap-2 px-4 py-2 lg:px-3 lg:py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest shadow-sm ${status.bg} ${status.color} ${status.border}`}>
                     {status.icon} {status.label}
                   </span>
-                  {instances.length > 1 && (
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">+{instances.length - 1} BACKLOG</span>
+                  {instances.filter(i => i.isPast).length > 0 && (
+                    <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">+{instances.filter(i => i.isPast).length} OVERDUE</span>
                   )}
                 </div>
 
@@ -346,23 +371,23 @@ const ChecklistMonitor = ({ tenantId }) => {
                    {instances.length > 0 && (
                      <div className="mb-12">
                        <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-8 flex items-center gap-3">
-                         <LayoutGrid size={16}/> Protocol Backlog Authorization
+                         <LayoutGrid size={16}/> Protocol Status Authorization
                        </h5>
                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                          {instances.map((instance, idx) => (
-                           <div key={idx} className={`flex justify-between items-center p-6 rounded-[1.5rem] border transition-all ${instance.isPast ? 'bg-red-500/5 border-red-500/10' : 'bg-amber-500/5 border-amber-500/10'}`}>
+                           <div key={idx} className={`flex justify-between items-center p-6 rounded-[1.5rem] border transition-all ${instance.isPast ? 'bg-red-500/5 border-red-500/10' : instance.isToday ? 'bg-amber-500/5 border-amber-500/10' : 'bg-indigo-500/5 border-indigo-500/10'}`}>
                              <div className="flex items-center gap-5">
-                               <div className={`p-3 rounded-xl ${instance.isPast ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                               <div className={`p-3 rounded-xl ${instance.isPast ? 'bg-red-500/10 text-red-600' : instance.isToday ? 'bg-amber-500/10 text-amber-600' : 'bg-indigo-500/10 text-indigo-600'}`}>
                                  <Calendar size={20} />
                                </div>
                                <div>
                                  <p className="text-foreground font-black text-sm uppercase tracking-tight">{instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                 <p className={`text-[10px] font-black uppercase tracking-widest ${instance.isPast ? 'text-red-500' : 'text-amber-600'}`}>{instance.status}</p>
+                                 <p className={`text-[10px] font-black uppercase tracking-widest ${instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-600' : 'text-indigo-600'}`}>{instance.status}</p>
                                </div>
                              </div>
                              {(userRoles.includes('Admin') || userRoles.includes('Coordinator')) && (
-                               <button onClick={(e) => { e.stopPropagation(); setActiveTask(task); setSelectedDate(instance.date.toISOString()); setShowModal(true); }} className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl transition-all active:scale-90 ${instance.isPast ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}`}>
-                                 DONE
+                               <button onClick={(e) => { e.stopPropagation(); setActiveTask(task); setSelectedDate(instance.date.toISOString()); setShowModal(true); }} className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl transition-all active:scale-90 ${instance.isPast ? 'bg-red-600 text-white' : instance.isToday ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}`}>
+                                 {instance.isTomorrow ? 'EARLY SYNC' : 'DONE'}
                                </button>
                              )}
                            </div>
@@ -372,7 +397,6 @@ const ChecklistMonitor = ({ tenantId }) => {
                    )}
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                      {/* TECHNICAL PARAMETERS */}
                       <div className="space-y-8">
                         <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Directive Parameters</h5>
                         <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl space-y-8">
@@ -381,7 +405,7 @@ const ChecklistMonitor = ({ tenantId }) => {
                                 <span className="text-foreground font-black text-lg uppercase leading-tight tracking-tighter">{task.taskName}</span>
                             </div>
                             <div className="border-b border-border pb-6">
-                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-3 italic">Operational Briefing (Description):</span>
+                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-3 italic">Operational Briefing:</span>
                                 <p className="text-foreground font-bold text-base leading-relaxed whitespace-pre-wrap">{task.description || "NO MISSION DATA"}</p>
                             </div>
                             <div className="grid grid-cols-2 gap-6">
@@ -397,7 +421,6 @@ const ChecklistMonitor = ({ tenantId }) => {
                         </div>
                       </div>
 
-                      {/* PERFORMANCE HISTORY LOG (OPERATIONAL LEDGER) */}
                       <div className="space-y-8">
                         <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Operational Ledger</h5>
                         <div className="max-h-[450px] overflow-y-auto custom-scrollbar bg-card p-8 rounded-[2.5rem] border border-border shadow-xl flex flex-col gap-8">
@@ -411,7 +434,6 @@ const ChecklistMonitor = ({ tenantId }) => {
                                     <Fingerprint size={12} className="opacity-50" />
                                     {log.action === 'Checklist Created' ? 'NODE INITIALIZED' : log.action}
                                   </span>
-                                  {/* INSTANCE DATE DISPLAY (The day work was meant for) */}
                                   {log.instanceDate && (
                                     <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center gap-1 uppercase tracking-tighter">
                                       <Calendar size={12} /> Work for: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -419,9 +441,7 @@ const ChecklistMonitor = ({ tenantId }) => {
                                   )}
                                 </div>
 
-                                {/* ACTUAL SUBMISSION DATE (Timestamp) */}
                                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-tighter flex flex-col items-end">
-                                  <span className="opacity-60 italic lowercase">Sync timestamp:</span>
                                   <span>Logged: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                                   <span>Time: {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
