@@ -31,9 +31,9 @@ import {
 } from 'lucide-react';
 
 /**
- * CHECKLIST MONITOR v3.11
- * Purpose: Professional Operational Ledger with Tomorrow-Planning & High-Verification Sync.
- * FIXED: Ensures completed cards vanish on production by using strict pattern matching.
+ * CHECKLIST MONITOR v3.17
+ * Purpose: Professional Operational Ledger with Location-Drift Protection.
+ * FIXED: Nigeria/Mumbai date slippage and ghost card removal.
  */
 const ChecklistMonitor = ({ tenantId }) => {
   const [report, setReport] = useState([]);
@@ -62,11 +62,15 @@ const ChecklistMonitor = ({ tenantId }) => {
   /**
    * PRODUCTION DATE PATTERN HELPER
    * Strips all time data to prevent UTC/Local shifts from failing matches.
+   * This handles the Nigeria (UTC+1) to Mumbai (UTC+5:30) drift.
    */
   const toPattern = (input) => {
     if (!input) return "";
     const d = new Date(input);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   /**
@@ -88,7 +92,7 @@ const ChecklistMonitor = ({ tenantId }) => {
   const fetchLiveStatus = useCallback(async () => {
     try {
       setLoading(true);
-      // Aggressive cache busting for production reliability
+      // Added force_sync to ensure fresh production data
       const res = await API.get(`/tasks/checklist-all/${currentTenantId}?force_sync=${Date.now()}`);
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setReport(data);
@@ -103,8 +107,8 @@ const ChecklistMonitor = ({ tenantId }) => {
   useEffect(() => { fetchLiveStatus(); }, [fetchLiveStatus]);
 
   /**
-   * PROTOCOL INSTANCE CALCULATOR (Updated v3.11)
-   * Detects pending instances from the last due date up to Tomorrow.
+   * PROTOCOL INSTANCE CALCULATOR (Updated v3.17)
+   * Detects pending instances and removes them using strict pattern matching.
    */
   const getPendingInstances = (task) => {
     if (!task) return [];
@@ -130,6 +134,7 @@ const ChecklistMonitor = ({ tenantId }) => {
        */
       const isAlreadyDone = task.history && task.history.some(h => {
         if (h.action !== "Completed" && h.action !== "Administrative Completion") return false;
+        // Verify both instanceDate and timestamp to ensure capture
         return toPattern(h.instanceDate || h.timestamp) === currentPattern;
       });
       
@@ -190,9 +195,15 @@ const ChecklistMonitor = ({ tenantId }) => {
     e.preventDefault();
     if (!activeTask || !selectedDate) return;
     
+    /**
+     * PATTERN-LOCK SYNC
+     * We send a locked string pattern to the backend so the Mumbai server
+     * doesn't shift the Nigeria-selected date.
+     */
+    const lockedDateString = toPattern(selectedDate);
     const formData = new FormData();
     formData.append("checklistId", activeTask._id);
-    formData.append("instanceDate", selectedDate);
+    formData.append("instanceDate", lockedDateString); // Locked pattern
     formData.append("remarks", remarks || "Registry Authorized");
     formData.append("completedBy", userId);
     if (selectedFile) formData.append("evidence", selectedFile);
@@ -203,10 +214,8 @@ const ChecklistMonitor = ({ tenantId }) => {
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
-      /**
-       * HIGH-VERIFICATION REFRESH
-       * Wait for server state to index completion before refetching
-       */
+      
+      // Verification Delay for Cloud DB
       setTimeout(async () => {
           await fetchLiveStatus(); 
           alert("Operational Registry Synchronized.");
@@ -249,7 +258,7 @@ const ChecklistMonitor = ({ tenantId }) => {
             className="w-full bg-card border border-border px-14 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
           />
           <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={22} />
-          {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={18}/></button>}
+          {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={18}/></button>}
         </div>
       </div>
 
@@ -345,16 +354,16 @@ const ChecklistMonitor = ({ tenantId }) => {
                               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                                 <div className="flex flex-col gap-1">
                                   <span className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Fingerprint size={14} className="opacity-50" />{log.action}</span>
-                                  {log.instanceDate && <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] uppercase tracking-tighter bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 w-fit">Work for: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
+                                  {log.instanceDate && <span className="text-emerald-600 font-bold text-[11px] uppercase tracking-tighter bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 w-fit">Target: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
                                 </div>
                                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-tighter flex flex-col items-end">
-                                  <span>Logged: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                  <span>Sync: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
                                   <span>Time: {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                               </div>
                               <p className="text-slate-500 font-bold text-sm leading-relaxed italic mt-1">"{log.remarks || 'Mission completed.'}"</p>
                               {log.attachmentUrl && (
-                                <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-3 hover:opacity-70"><ExternalLink size={14} /> View technical snapshot</a>
+                                <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:opacity-70"><ExternalLink size={14} /> View technical snapshot</a>
                               )}
                             </div>
                           )) : <div className="text-center py-24 opacity-20"><ClipboardList size={60} className="mx-auto mb-6" /><p className="text-[10px] font-black uppercase tracking-widest">Registry Log Empty</p></div>}
@@ -375,7 +384,7 @@ const ChecklistMonitor = ({ tenantId }) => {
             <button onClick={() => { setShowModal(false); setSelectedFile(null); setRemarks(""); }} className="p-3 absolute top-10 right-10 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-90"><X size={32} /></button>
             <div className="mb-14 text-center">
               <h3 className="text-primary text-4xl font-black uppercase tracking-tighter flex items-center justify-center gap-5"><CheckCircle size={44} /> Authorize Sync</h3>
-              <p className="text-slate-500 font-bold uppercase tracking-widest mt-5 text-xs">Mission Reference: {selectedDate && new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+              <p className="text-slate-500 font-bold uppercase tracking-widest mt-5 text-xs">Mission Ref: {selectedDate && new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             </div>
             <form onSubmit={handleMarkDone} className="space-y-12">
               <textarea required placeholder="Mission execution debriefing..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-44 bg-background border border-border text-foreground p-8 rounded-[2.5rem] outline-none focus:ring-8 focus:ring-primary/5 text-base font-bold shadow-inner resize-none" />
@@ -391,7 +400,7 @@ const ChecklistMonitor = ({ tenantId }) => {
       )}
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 20px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
