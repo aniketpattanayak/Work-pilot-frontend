@@ -25,13 +25,13 @@ import {
   Filter,
   Search as SearchIcon,
   LayoutGrid,
-  ClipboardList
+  ClipboardList,
+  Fingerprint
 } from 'lucide-react';
 
 /**
- * CHECKLIST MONITOR v3.0
- * Purpose: Advanced Operational Tracking with Categorized Filters & Global Search
- * Features: Multi-instance logic, Global Search (Name/Desc/Doer), and Status-based tabs.
+ * CHECKLIST MONITOR v3.1
+ * Updated: Operational Ledger now shows both "Instance Date" (Target) and "Submission Date" (Actual).
  */
 const ChecklistMonitor = ({ tenantId }) => {
   const [report, setReport] = useState([]);
@@ -75,7 +75,6 @@ const ChecklistMonitor = ({ tenantId }) => {
 
   /**
    * PROTOCOL INSTANCE CALCULATOR
-   * Detects missing instances from the last due date until today.
    */
   const getPendingInstances = (task) => {
     if (!task) return [];
@@ -137,7 +136,6 @@ const ChecklistMonitor = ({ tenantId }) => {
       const statusObj = getOverallStatus(task);
       const instances = getPendingInstances(task);
 
-      // 1. GLOBAL SEARCH (Name, Description, Doer Name)
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         const matchesName = task.taskName?.toLowerCase().includes(term);
@@ -146,7 +144,6 @@ const ChecklistMonitor = ({ tenantId }) => {
         if (!matchesName && !matchesDesc && !matchesDoer) return false;
       }
 
-      // 2. CALENDAR DATE FILTER
       if (selectedFilterDate) {
         const searchDateStr = selectedFilterDate.toDateString();
         const matchesDue = instances.some(i => i.dateStr === searchDateStr);
@@ -154,14 +151,12 @@ const ChecklistMonitor = ({ tenantId }) => {
         if (!matchesDue && !matchesHistory) return false;
       }
 
-      // 3. TIMELINE STATUS TABS
       if (activeTab !== 'All') {
         if (activeTab === 'Pending' && statusObj.isDone) return false;
         if (activeTab === 'Overdue' && statusObj.label !== 'OVERDUE') return false;
         if (activeTab === 'Due Today' && statusObj.label !== 'DUE TODAY') return false;
       }
       
-      // 4. FREQUENCY CYCLE FILTER
       if (activeFrequency !== 'All Cycles') {
         const freqMap = activeFrequency === 'Half Yearly' ? 'Half-Yearly' : activeFrequency;
         if (task.frequency !== freqMap) return false;
@@ -229,7 +224,6 @@ const ChecklistMonitor = ({ tenantId }) => {
 
       {/* SEARCH & DATE SEARCH TERMINAL */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {/* GLOBAL SEARCH BOX */}
         <div className="relative group">
           <input 
             type="text"
@@ -242,7 +236,6 @@ const ChecklistMonitor = ({ tenantId }) => {
           {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={18}/></button>}
         </div>
 
-        {/* DATE SEARCH */}
         <div className="relative group">
             <DatePicker
               selected={selectedFilterDate}
@@ -257,7 +250,6 @@ const ChecklistMonitor = ({ tenantId }) => {
 
       {/* CATEGORIZED FILTER TABS */}
       <div className="space-y-6 mb-10">
-        {/* SECTION 1: TIMELINE PERSPECTIVE */}
         <div className="space-y-3">
           <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
             <Clock size={12} className="text-primary"/> Timeline Perspective
@@ -271,7 +263,6 @@ const ChecklistMonitor = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* SECTION 2: CYCLE PERSPECTIVE */}
         <div className="space-y-3">
           <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
             <RefreshCcw size={12} className="text-emerald-500"/> Operational Cycle
@@ -311,7 +302,6 @@ const ChecklistMonitor = ({ tenantId }) => {
                 onClick={() => setExpandedId(isExpanded ? null : task._id)}
                 className={`grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-7 lg:px-10 cursor-pointer hover:bg-primary/[0.02] ${isExpanded ? 'bg-primary/[0.03]' : ''}`}
               >
-                {/* DYNAMIC TEXT WRAPPING */}
                 <div className={`font-black text-sm lg:text-base tracking-tight pr-4 ${isExpanded ? 'whitespace-normal' : 'truncate'} text-foreground`}>
                   <span className="lg:hidden text-[9px] block text-primary mb-1 uppercase tracking-widest font-black">Technical Description:</span>
                   {task.description || task.taskName}
@@ -407,18 +397,38 @@ const ChecklistMonitor = ({ tenantId }) => {
                         </div>
                       </div>
 
-                      {/* PERFORMANCE HISTORY LOG */}
+                      {/* PERFORMANCE HISTORY LOG (OPERATIONAL LEDGER) */}
                       <div className="space-y-8">
                         <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Operational Ledger</h5>
                         <div className="max-h-[450px] overflow-y-auto custom-scrollbar bg-card p-8 rounded-[2.5rem] border border-border shadow-xl flex flex-col gap-8">
                           {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().slice(0, 15).map((log, i) => (
                             <div key={i} className="pl-8 border-l-4 border-primary/20 relative flex flex-col gap-3 pb-2 transition-all hover:border-primary">
                               <div className="absolute top-1 -left-[10px] w-4 h-4 rounded-full bg-primary border-4 border-card shadow-lg" />
-                              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                                <span className="text-primary">{log.action === 'Checklist Created' ? 'NODE INITIALIZED' : log.action}</span>
-                                <span className="text-slate-400">{new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                              
+                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <Fingerprint size={12} className="opacity-50" />
+                                    {log.action === 'Checklist Created' ? 'NODE INITIALIZED' : log.action}
+                                  </span>
+                                  {/* INSTANCE DATE DISPLAY (The day work was meant for) */}
+                                  {log.instanceDate && (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center gap-1 uppercase tracking-tighter">
+                                      <Calendar size={12} /> Work for: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* ACTUAL SUBMISSION DATE (Timestamp) */}
+                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-tighter flex flex-col items-end">
+                                  <span className="opacity-60 italic lowercase">Sync timestamp:</span>
+                                  <span>Logged: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                  <span>Time: {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
                               </div>
-                              <p className="text-slate-500 font-bold text-sm leading-relaxed italic">"{log.remarks || 'Mission completed.'}"</p>
+
+                              <p className="text-slate-500 font-bold text-sm leading-relaxed italic mt-1">"{log.remarks || 'Mission completed.'}"</p>
+                              
                               {log.attachmentUrl && (
                                 <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-3 hover:opacity-70">
                                   <ExternalLink size={14} /> View Technical Snapshot
