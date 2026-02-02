@@ -381,7 +381,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           </div>
         </div>
       )}
-
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
