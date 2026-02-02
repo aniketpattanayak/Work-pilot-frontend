@@ -31,8 +31,8 @@ import {
 } from 'lucide-react';
 
 /**
- * CHECKLIST MONITOR v3.5
- * Purpose: Professional Operational Ledger with Tomorrow-Planning & Strict Production Sync.
+ * CHECKLIST MONITOR v3.7
+ * Purpose: Professional Operational Ledger with Tomorrow-Planning & Hard-Sync.
  */
 const ChecklistMonitor = ({ tenantId }) => {
   const [report, setReport] = useState([]);
@@ -59,9 +59,19 @@ const ChecklistMonitor = ({ tenantId }) => {
   const userId = sessionUser?.id || sessionUser?._id;
 
   /**
-   * TIMEZONE PROTECTION HELPER
-   * Returns a plain YYYY-MM-DD string to ensure server and browser dates match.
+   * PERFORMANCE HELPERS
    */
+  const getMonthlyStats = useCallback((history) => {
+    if (!Array.isArray(history)) return { count: 0 };
+    const now = new Date();
+    const actualWork = history.filter(log => {
+      const isDone = log.action === 'Completed' || log.action === 'Administrative Completion';
+      const logDate = new Date(log.timestamp);
+      return isDone && logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
+    });
+    return { count: actualWork.length };
+  }, []);
+
   const getSafeDateKey = (dateInput) => {
     if (!dateInput) return null;
     const d = new Date(dateInput);
@@ -71,7 +81,7 @@ const ChecklistMonitor = ({ tenantId }) => {
   const fetchLiveStatus = useCallback(async () => {
     try {
       setLoading(true);
-      // Added cache-buster timestamp for production reliability
+      // Cache-buster timestamp for production server reliability
       const res = await API.get(`/tasks/checklist-all/${currentTenantId}?t=${Date.now()}`);
       const data = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setReport(data);
@@ -86,8 +96,7 @@ const ChecklistMonitor = ({ tenantId }) => {
   useEffect(() => { fetchLiveStatus(); }, [fetchLiveStatus]);
 
   /**
-   * PROTOCOL INSTANCE CALCULATOR (Updated v3.5)
-   * Detects pending work up to Today + Tomorrow.
+   * PROTOCOL INSTANCE CALCULATOR (Updated v3.7)
    */
   const getPendingInstances = (task) => {
     if (!task) return [];
@@ -103,15 +112,13 @@ const ChecklistMonitor = ({ tenantId }) => {
     pointer.setHours(0, 0, 0, 0);
     
     let loopCount = 0;
-    // Scans through the calendar to find authorized future work nodes
     while (pointer <= tomorrow && loopCount < 30) {
       loopCount++;
-      const currentPointerKey = getSafeDateKey(pointer);
+      const currentKey = getSafeDateKey(pointer);
       
-      // Strict Verification: Checks ledger using safe string keys
       const isAlreadyDone = task.history && task.history.some(h => {
         if (h.action !== "Completed" && h.action !== "Administrative Completion") return false;
-        return getSafeDateKey(h.instanceDate || h.timestamp) === currentPointerKey;
+        return getSafeDateKey(h.instanceDate || h.timestamp) === currentKey;
       });
       
       if (!isAlreadyDone) {
@@ -153,6 +160,9 @@ const ChecklistMonitor = ({ tenantId }) => {
     return { label: 'UPCOMING', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30', icon: <Calendar size={12} />, isDone: false };
   };
 
+  /**
+   * CATEGORIZED FILTER ENGINE
+   */
   const filteredReport = useMemo(() => {
     return report.filter(task => {
       const statusObj = getOverallStatus(task);
@@ -170,7 +180,7 @@ const ChecklistMonitor = ({ tenantId }) => {
 
       return true;
     });
-  }, [report, activeTab, activeFrequency, searchTerm, selectedFilterDate]);
+  }, [report, activeTab, activeFrequency, searchTerm]);
 
   const handleMarkDone = async (e) => {
     e.preventDefault();
@@ -179,7 +189,7 @@ const ChecklistMonitor = ({ tenantId }) => {
     const formData = new FormData();
     formData.append("checklistId", activeTask._id);
     formData.append("instanceDate", selectedDate);
-    formData.append("remarks", remarks || "Registry Authorized");
+    formData.append("remarks", remarks || "Registry Synchronized");
     formData.append("completedBy", userId);
     if (selectedFile) formData.append("evidence", selectedFile);
     
@@ -189,10 +199,8 @@ const ChecklistMonitor = ({ tenantId }) => {
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
-      
-      // PRODUCTION SYNC FIX: Forces data refresh to remove completed cards instantly.
       await fetchLiveStatus(); 
-      alert("Registry Successfully Synchronized.");
+      alert("Operational Registry Synchronized.");
     } catch (err) { 
       alert("Synchronization Error."); 
     } finally { 
@@ -203,45 +211,34 @@ const ChecklistMonitor = ({ tenantId }) => {
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[400px] gap-6">
       <RefreshCcw className="animate-spin text-primary" size={48} />
-      <span className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Processing Ledger...</span>
+      <span className="text-slate-400 font-black uppercase tracking-[0.4em] text-[10px]">Synchronizing protocol...</span>
     </div>
   );
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 px-4">
       
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6">
         <div>
             <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter flex items-center gap-4 uppercase leading-none">
               <Activity className="text-primary" size={36} /> Work Monitor
             </h2>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Precision Industrial Performance Ledger</p>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Precision Industrial performance Ledger</p>
         </div>
         <button onClick={fetchLiveStatus} className="group bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
           <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh 
         </button>
       </div>
 
-      {/* FILTERS & SEARCH */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className="relative group">
           <input 
-            type="text" placeholder="Search Directive or Personnel..."
+            type="text" placeholder="Search directive or personnel..."
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-card border border-border px-12 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
           />
           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={18}/></button>}
-        </div>
-
-        <div className="relative group">
-            <DatePicker
-              selected={selectedFilterDate} onChange={(date) => setSelectedFilterDate(date)}
-              placeholderText="SEARCH SPECIFIC DATE"
-              className="w-full bg-card border border-border px-12 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-primary/10 shadow-inner"
-            />
-            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
         </div>
       </div>
 
@@ -250,7 +247,7 @@ const ChecklistMonitor = ({ tenantId }) => {
           <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2"><Clock size={12} className="text-primary"/> Timeline Perspective</label>
           <div className="flex flex-wrap gap-2">
             {['All', 'Overdue', 'Due Today', 'Tomorrow Due'].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeTab === tab ? 'bg-primary text-white border-primary shadow-lg scale-105' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}>
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeTab === tab ? 'bg-primary text-white border-primary shadow-lg scale-105' : 'bg-card text-slate-500 border-border'}`}>
                 {tab}
               </button>
             ))}
@@ -261,7 +258,7 @@ const ChecklistMonitor = ({ tenantId }) => {
           <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2"><RefreshCcw size={12} className="text-emerald-500"/> Operational Cycle</label>
           <div className="flex flex-wrap gap-2">
             {['All Cycles', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half Yearly', 'Yearly'].map((freq) => (
-              <button key={freq} onClick={() => setActiveFrequency(freq)} className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${activeFrequency === freq ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-card text-slate-400 border-border hover:border-emerald-500/40'}`}>
+              <button key={freq} onClick={() => setActiveFrequency(freq)} className={`px-6 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${activeFrequency === freq ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-card text-slate-400 border-border'}`}>
                 {freq}
               </button>
             ))}
@@ -269,27 +266,31 @@ const ChecklistMonitor = ({ tenantId }) => {
         </div>
       </div>
 
-      {/* DATA GRID */}
       <div className="flex flex-col bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl transition-colors">
-        <div className="hidden lg:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] px-10 py-6 bg-background/50 border-b border-border font-black text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center shadow-lg">
-            <div>Task Description</div><div>Personnel</div><div>Cycle</div><div>Monthly Activity</div><div>Last Log</div><div>Registry State</div><div className="text-right">Tuning</div>
+        <div className="hidden lg:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] px-10 py-6 bg-background/50 border-b border-border font-black text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center">
+            <div>Task Description</div><div>Personnel</div><div>Cycle</div><div>Monthly Syncs</div><div>Last Log</div><div>Registry State</div><div className="text-right">Action</div>
         </div>
 
         {filteredReport.map(task => {
           const status = getOverallStatus(task);
           const isExpanded = expandedId === task._id;
           const instances = getPendingInstances(task);
+          const monthlyCount = getMonthlyStats(task.history).count;
 
           return (
             <div key={task._id} className={`flex flex-col border-b border-border last:border-0 transition-all ${status.isDone ? 'opacity-40 grayscale' : ''}`}>
               <div onClick={() => setExpandedId(isExpanded ? null : task._id)} className={`grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-7 lg:px-10 cursor-pointer hover:bg-primary/[0.02]`}>
                 <div className={`font-black text-sm lg:text-base tracking-tight pr-4 text-foreground uppercase ${isExpanded ? 'whitespace-normal' : 'truncate'}`}>{task.taskName}</div>
-                <div className="hidden lg:block text-slate-500 text-xs font-black uppercase tracking-tight">{task.doerId?.name || 'Staff'}</div>
-                <div className="hidden lg:block text-slate-400 text-[10px] font-black uppercase tracking-widest">{task.frequency}</div>
-                <div className="mt-2 lg:mt-0 text-primary font-black text-[11px] uppercase tracking-tighter">{getMonthlyStats(task.history).count} Syncs</div>
-                <div className="hidden lg:block text-xs text-slate-400 font-bold uppercase tracking-tighter">{task.lastCompleted ? new Date(task.lastCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'NONE'}</div>
+                <div className="hidden lg:block text-slate-500 text-xs font-black uppercase">{task.doerId?.name || 'Staff'}</div>
+                <div className="hidden lg:block text-slate-400 text-[10px] font-black uppercase">{task.frequency}</div>
+                
+                <div className="mt-2 lg:mt-0 text-primary font-black text-[11px] uppercase tracking-tighter">
+                    {monthlyCount} Instances
+                </div>
+
+                <div className="hidden lg:block text-xs text-slate-400 font-bold uppercase">{task.lastCompleted ? new Date(task.lastCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'NONE'}</div>
                 <div className="flex items-center gap-2 mt-3 lg:mt-0">
-                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest shadow-sm ${status.bg} ${status.color} ${status.border}`}>{status.icon} {status.label}</span>
+                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest ${status.bg} ${status.color} ${status.border}`}>{status.icon} {status.label}</span>
                   {instances.filter(i => i.isPast).length > 0 && (
                     <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">+{instances.filter(i => i.isPast).length} OVERDUE</span>
                   )}
@@ -301,7 +302,7 @@ const ChecklistMonitor = ({ tenantId }) => {
                 <div className="bg-background/50 p-6 lg:p-12 border-t border-border animate-in slide-in-from-top-4 duration-500">
                    {instances.length > 0 && (
                      <div className="mb-12">
-                       <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-8 flex items-center gap-3"><LayoutGrid size={16}/> Protocol Status Authorization</h5>
+                       <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-8 flex items-center gap-3"><LayoutGrid size={16}/> Protocol status Authorization</h5>
                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                          {instances.map((instance, idx) => (
                            <div key={idx} className={`flex justify-between items-center p-6 rounded-[1.5rem] border transition-all ${instance.isPast ? 'bg-red-500/5 border-red-500/10' : instance.isToday ? 'bg-amber-500/5 border-amber-500/10' : 'bg-indigo-500/5 border-indigo-500/10'}`}>
@@ -330,23 +331,22 @@ const ChecklistMonitor = ({ tenantId }) => {
                                 <span className="text-foreground font-black text-lg uppercase tracking-tighter">{task.taskName}</span>
                             </div>
                             <div>
-                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Operational Briefing:</span>
+                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Briefing:</span>
                                 <p className="text-foreground font-bold text-sm leading-relaxed opacity-80">{task.description || "NO MISSION DATA"}</p>
                             </div>
                         </div>
                       </div>
 
-                      {/* OPERATIONAL LEDGER (Dual-Date Persistence) */}
                       <div className="space-y-8">
                         <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Operational Ledger</h5>
                         <div className="max-h-[450px] overflow-y-auto custom-scrollbar bg-card p-8 rounded-[2.5rem] border border-border shadow-xl flex flex-col gap-8">
                           {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().slice(0, 15).map((log, i) => (
                             <div key={i} className="pl-8 border-l-4 border-primary/20 relative flex flex-col gap-3 pb-2 transition-all hover:border-primary">
-                              <div className="absolute top-1 -left-[10px] w-4 h-4 rounded-full bg-primary border-4 border-card shadow-lg" />
+                              <div className="absolute top-1 -left-[10px] w-4 h-4 rounded-full bg-primary border-4 border-card" />
                               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                 <div className="flex flex-col gap-0.5">
                                   <span className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Fingerprint size={12} className="opacity-50" />{log.action}</span>
-                                  {log.instanceDate && <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[11px] uppercase tracking-tighter">Work for: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>}
+                                  {log.instanceDate && <span className="text-emerald-600 font-bold text-[11px] uppercase tracking-tighter">Work for: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>}
                                 </div>
                                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-tighter flex flex-col items-end">
                                   <span>Logged: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
@@ -355,7 +355,7 @@ const ChecklistMonitor = ({ tenantId }) => {
                               </div>
                               <p className="text-slate-500 font-bold text-sm leading-relaxed italic mt-1">"{log.remarks || 'Mission completed.'}"</p>
                               {log.attachmentUrl && (
-                                <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-3 hover:opacity-70"><ExternalLink size={14} /> View technical Snapshot</a>
+                                <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] mt-2 flex items-center gap-3 hover:opacity-70"><ExternalLink size={14} /> View technical snapshot</a>
                               )}
                             </div>
                           )) : <div className="text-center py-20 opacity-20"><ClipboardList size={48} className="mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">Registry Log Empty</p></div>}
@@ -369,14 +369,13 @@ const ChecklistMonitor = ({ tenantId }) => {
         })}
       </div>
 
-      {/* MARK AS DONE MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex items-center justify-center p-4 backdrop-blur-2xl animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-xl rounded-[3rem] p-10 lg:p-14 shadow-[0_0_100px_rgba(0,0,0,0.5)] relative animate-in zoom-in-95">
             <button onClick={() => { setShowModal(false); setSelectedFile(null); setRemarks(""); }} className="p-2 absolute top-10 right-10 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors active:scale-90"><X size={28} /></button>
             <div className="mb-12 text-center">
               <h3 className="text-primary text-3xl font-black uppercase tracking-tighter flex items-center justify-center gap-4"><CheckCircle size={36} /> Authorize Sync</h3>
-              <p className="text-slate-500 font-bold uppercase tracking-widest mt-4 text-xs">Timeline Ref: {selectedDate && new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+              <p className="text-slate-500 font-bold uppercase tracking-widest mt-4 text-xs">Directive Ref: {selectedDate && new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             </div>
             <form onSubmit={handleMarkDone} className="space-y-10">
               <textarea required placeholder="Mission debrief..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-40 bg-background border border-border text-foreground p-6 rounded-3xl outline-none focus:ring-8 focus:ring-primary/5 text-base font-bold shadow-inner resize-none" />
