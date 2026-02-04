@@ -22,12 +22,14 @@ import {
   Upload,
   ChevronDown,
   ChevronUp,
-  Search 
+  Search,
+  UserPlus
 } from "lucide-react";
 
 /**
- * COORDINATOR DASHBOARD v2.7
+ * COORDINATOR DASHBOARD v3.0
  * Purpose: Track Delegation & Routine Checklists with Location-Drift Protection.
+ * INTEGRATED: Mapping Tab Logic - Monitors all tasks for mapped personnel.
  * FIXED: Nigeria/Mumbai date slippage using Strict Pattern-Lock.
  */
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
@@ -173,18 +175,16 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       if (!matchesTab) return false;
       if (term === "") return true;
 
+      // UPDATED SEARCH: Now checks both Doer and Assigner names (essential for mapped personnel)
       return (task.title || "").toLowerCase().includes(term) || 
              (task.doerId?.name || "").toLowerCase().includes(term) || 
+             (task.assignerId?.name || "").toLowerCase().includes(term) ||
              (task.doerId?.department || "").toLowerCase().includes(term);
     });
   }, [tasks, activeTab, searchTerm, tenantSettings]);
 
   const handleMarkDone = async (task, instanceDate = null) => {
     if (task.taskType === 'Checklist' && instanceDate) {
-      /**
-       * PATTERN-LOCK SYNC
-       * Locks the date as a string to prevent Mumbai server backwards-shift.
-       */
       const lockedInstancePattern = toLockPattern(instanceDate);
       const formData = new FormData();
       formData.append("checklistId", task._id);
@@ -197,7 +197,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         setIsSubmitting(true);
         await API.post("/tasks/checklist-done", formData);
         setRemarks(""); setSelectedFile(null);
-        // Buffer for Mumbai DB indexing
         setTimeout(() => fetchTasks(), 1500);
         alert("Success! Registry Synchronized.");
       } catch (err) {
@@ -268,7 +267,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       {/* SEARCH BAR TERMINAL */}
       <div className="mb-8 relative group">
         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none"><Search size={22} className="text-slate-400 group-focus-within:text-primary transition-colors" /></div>
-        <input type="text" placeholder="Filter by Personnel, Department, or Directive..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-card border border-border pl-14 pr-12 py-5 rounded-[1.5rem] text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
+        <input type="text" placeholder="Filter by Personnel (Mapped), Dept, or Mission..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-card border border-border pl-14 pr-12 py-5 rounded-[1.5rem] text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
         {searchTerm && <button onClick={() => setSearchTerm("")} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-red-500"><X size={20} /></button>}
       </div>
 
@@ -325,7 +324,17 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                     <tr className="hover:bg-primary/[0.02] transition-all group">
                       <td className="px-8 py-7"><div className={`p-2.5 rounded-xl w-fit ${isChecklist ? 'bg-amber-500/10 text-amber-600' : 'bg-sky-500/10 text-sky-600'}`}>{isChecklist ? <ClipboardList size={20} /> : <Target size={20} />}</div></td>
                       <td className="px-8 py-7"><div className="text-sm font-black text-foreground mb-1 uppercase tracking-tight truncate max-w-[200px]">{task.title}</div><div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{isChecklist ? `Cycle: ${task.frequency}` : `ID: ${task._id?.slice(-6).toUpperCase()}`}</div></td>
-                      <td className="px-8 py-7"><div className="flex flex-col"><div className="flex items-center gap-2 text-slate-600 font-black text-[11px] uppercase tracking-tight"><UserCheck size={14} className="text-emerald-500" /> {task.doerId?.name || 'Staff'}</div><div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div></div></td>
+                      <td className="px-8 py-7">
+                        <div className="flex flex-col">
+                           {/* PERSONNEL COLUMN WITH MAPPED BADGE */}
+                           <div className="flex items-center gap-2 text-slate-600 font-black text-[11px] uppercase tracking-tight">
+                              <UserCheck size={14} className="text-emerald-500" /> 
+                              {task.doerId?.name || 'Staff'}
+                              <span className="ml-2 px-2 py-0.5 bg-primary/5 text-primary text-[8px] rounded border border-primary/10 shadow-sm font-black tracking-widest">Mapped</span>
+                           </div>
+                           <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div>
+                        </div>
+                      </td>
                       <td className="px-8 py-7 text-center"><div className="inline-flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-primary font-black text-[11px] font-mono shadow-inner"><Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}</div></td>
                       <td className="px-8 py-7"><div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]"><Clock size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div></td>
                       <td className="px-8 py-7"><span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>{isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}</span></td>
