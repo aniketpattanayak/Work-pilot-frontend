@@ -13,13 +13,14 @@ import {
   User,
   Lock,
   Layers,
+  CalendarDays,
   ChevronRight
 } from "lucide-react";
 
 /**
- * ADD EMPLOYEE: PERSONNEL PROVISIONING MODULE v1.5
+ * ADD EMPLOYEE: PERSONNEL PROVISIONING MODULE v1.7
  * Purpose: Handles multi-role registration and hierarchical mapping.
- * UI: Fully responsive and theme-adaptive (Light/Dark).
+ * FIX: Resolved "Controlled to Uncontrolled" warning with robust state initialization and fallbacks.
  */
 const AddEmployee = ({
   tenantId: propTenantId,
@@ -34,10 +35,11 @@ const AddEmployee = ({
     department: "",
     whatsappNumber: "",
     email: "",
-    roles: ["Doer"], // DEFAULT: Set to Doer on initial load
+    roles: ["Doer"], 
     password: "Password@123",
     managedDoers: [],
     managedAssigners: [],
+    workOnSunday: false, // Initialized as boolean
   });
 
   const [allEmployees, setAllEmployees] = useState([]);
@@ -45,7 +47,7 @@ const AddEmployee = ({
   const [loading, setLoading] = useState(false);
 
   /**
-   * 1. FETCH STAFF (Logic Preserved)
+   * 1. FETCH STAFF
    */
   const fetchStaff = useCallback(async () => {
     if (!tenantId) return;
@@ -66,12 +68,17 @@ const AddEmployee = ({
   }, [fetchStaff]);
 
   /**
-   * 2. LOAD DATA (Logic Preserved & Robust)
+   * 2. LOAD DATA
+   * FIX: Added !! and || "" fallbacks to ensure no 'undefined' values enter the inputs.
    */
   useEffect(() => {
     if (selectedEmployee) {
       setFormData({
         ...selectedEmployee,
+        name: selectedEmployee.name || "",
+        department: selectedEmployee.department || "",
+        email: selectedEmployee.email || "",
+        whatsappNumber: selectedEmployee.whatsappNumber || "",
         roles: Array.isArray(selectedEmployee.roles)
           ? selectedEmployee.roles.length > 0
             ? selectedEmployee.roles
@@ -89,10 +96,12 @@ const AddEmployee = ({
               typeof a === "object" ? a._id : a
             )
           : [],
+        workOnSunday: !!selectedEmployee.workOnSunday, // Force boolean
         password: "",
       });
       setIsEditing(true);
     } else {
+      // RESET LOGIC: Ensures fresh state for new employee entries
       setFormData({
         name: "",
         department: "",
@@ -102,13 +111,14 @@ const AddEmployee = ({
         password: "Password@123",
         managedDoers: [],
         managedAssigners: [],
+        workOnSunday: false, // Explicit reset
       });
       setIsEditing(false);
     }
   }, [selectedEmployee]);
 
   /**
-   * 3. LOGIC HANDLERS (Preserved)
+   * 3. LOGIC HANDLERS
    */
   const handleRoleToggle = (role) => {
     const currentRoles = [...formData.roles];
@@ -137,7 +147,7 @@ const AddEmployee = ({
   };
 
   /**
-   * 4. SUBMIT HANDSHAKE (Logic Preserved)
+   * 4. SUBMIT HANDSHAKE
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -170,6 +180,7 @@ const AddEmployee = ({
         password: "Password@123",
         managedDoers: [],
         managedAssigners: [],
+        workOnSunday: false,
       });
       setIsEditing(false);
       if (onSuccess) onSuccess();
@@ -189,7 +200,6 @@ const AddEmployee = ({
   return (
     <div className="bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500">
       
-      {/* HEADER SECTION (Responsive Scaling) */}
       <div className="px-6 py-6 sm:px-10 sm:py-8 bg-primary/5 border-b border-border">
         <h2 className="text-primary m-0 flex items-center gap-3 text-lg sm:text-2xl font-black tracking-tighter uppercase leading-tight">
           <UserPlus size={24} className="sm:w-7 sm:h-7" />{" "}
@@ -211,7 +221,7 @@ const AddEmployee = ({
             <input
               type="text"
               placeholder="e.g. Rahul Sharma"
-              value={formData.name}
+              value={formData.name || ""} // Safe Fallback
               required
               className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -222,7 +232,7 @@ const AddEmployee = ({
             <input
               type="text"
               placeholder="e.g. Operations Control"
-              value={formData.department}
+              value={formData.department || ""} // Safe Fallback
               required
               className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
@@ -230,14 +240,14 @@ const AddEmployee = ({
           </div>
         </div>
 
-        {/* COMMUNICATION BLOCK */}
+        {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <div className="flex flex-col">
             <InputLabel icon={Mail} label="Email Address" />
             <input
               type="email"
               placeholder="name@company.com"
-              value={formData.email}
+              value={formData.email || ""} // Safe Fallback
               required
               className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -248,11 +258,38 @@ const AddEmployee = ({
             <input
               type="text"
               placeholder="91XXXXXXXXXX"
-              value={formData.whatsappNumber}
+              value={formData.whatsappNumber || ""} // Safe Fallback
               required
               className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
             />
+          </div>
+
+          {/* SUNDAY WORK PREFERENCE TOGGLE */}
+          <div className="md:col-span-2">
+            <div className="bg-slate-50 dark:bg-slate-900/20 p-6 rounded-[2rem] border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group shadow-inner">
+              <div className="flex items-center gap-5">
+                <div className={`p-4 rounded-2xl transition-all duration-500 ${formData.workOnSunday ? "bg-amber-500/10 text-amber-600 shadow-lg shadow-amber-500/5" : "bg-slate-200 text-slate-400"}`}>
+                  <CalendarDays size={22} className={formData.workOnSunday ? "animate-pulse" : ""} />
+                </div>
+                <div>
+                  <p className="text-xs sm:text-sm font-black text-foreground uppercase tracking-tight leading-none">Sunday is a Working Day</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase mt-1.5 opacity-70 tracking-widest leading-relaxed">
+                    If enabled, this employee will receive checklist tasks on Sundays. <br className="hidden sm:block" /> 
+                    Official holidays will still be respected.
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input 
+                  type="checkbox" 
+                  checked={!!formData.workOnSunday} // Forced boolean state
+                  onChange={(e) => setFormData({ ...formData, workOnSunday: e.target.checked })} 
+                  className="sr-only peer" 
+                />
+                <div className="w-14 h-7 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -266,7 +303,7 @@ const AddEmployee = ({
             <input
               type="text"
               placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
-              value={formData.password}
+              value={formData.password || ""} // Safe Fallback
               required={!isEditing}
               className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -281,12 +318,12 @@ const AddEmployee = ({
                   type="button"
                   onClick={() => handleRoleToggle(role)}
                   className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${
-                    formData.roles.includes(role)
+                    (formData.roles || []).includes(role)
                       ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
                       : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
                   }`}
                 >
-                  {formData.roles.includes(role) ? (
+                  {(formData.roles || []).includes(role) ? (
                     <CheckSquare size={14} strokeWidth={3} />
                   ) : (
                     <Square size={14} strokeWidth={2} />
@@ -298,7 +335,7 @@ const AddEmployee = ({
           </div>
         </div>
 
-        {/* --- DYNAMIC HIERARCHY MAPPING (Responsive Container) --- */}
+        {/* --- DYNAMIC HIERARCHY MAPPING --- */}
         {formData.roles.includes("Assigner") && (
           <div className="bg-emerald-500/5 p-6 sm:p-8 rounded-[2rem] border border-emerald-500/20 border-l-4 border-l-emerald-500 animate-in slide-in-from-left-4">
             <h4 className="text-emerald-600 dark:text-emerald-400 m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
@@ -318,7 +355,7 @@ const AddEmployee = ({
                     <label
                       key={doer._id}
                       className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
-                        formData.managedDoers?.includes(doer._id)
+                        (formData.managedDoers || []).includes(doer._id)
                           ? "bg-card border-emerald-500/40 text-foreground"
                           : "bg-background border-border text-slate-400"
                       }`}
@@ -334,7 +371,7 @@ const AddEmployee = ({
                       <input
                         type="checkbox"
                         className="w-4 h-4 rounded accent-emerald-500 shrink-0"
-                        checked={formData.managedDoers?.includes(doer._id)}
+                        checked={(formData.managedDoers || []).includes(doer._id)}
                         onChange={() => handleCheckboxChange(doer._id, "managedDoers")}
                       />
                     </label>
@@ -362,7 +399,7 @@ const AddEmployee = ({
                     <label
                       key={assigner._id}
                       className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
-                        formData.managedAssigners?.includes(assigner._id)
+                        (formData.managedAssigners || []).includes(assigner._id)
                           ? "bg-card border-primary/40 text-foreground"
                           : "bg-background border-border text-slate-400"
                       }`}
@@ -378,7 +415,7 @@ const AddEmployee = ({
                       <input
                         type="checkbox"
                         className="w-4 h-4 rounded accent-primary shrink-0"
-                        checked={formData.managedAssigners?.includes(assigner._id)}
+                        checked={(formData.managedAssigners || []).includes(assigner._id)}
                         onChange={() => handleCheckboxChange(assigner._id, "managedAssigners")}
                       />
                     </label>
@@ -387,7 +424,6 @@ const AddEmployee = ({
           </div>
         )}
 
-        {/* --- EXECUTION BUTTON --- */}
         <button
           type="submit"
           disabled={loading}

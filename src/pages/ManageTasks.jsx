@@ -29,9 +29,8 @@ import {
 import RevisionPanel from '../components/RevisionPanel'; 
 
 /**
- * MANAGE TASKS: MISSION CONTROL MODULE v1.7
- * Fix: Light Mode accordion background set to a soft slate-100 for better depth.
- * Fix: Enhanced text contrast for descriptions and audit logs.
+ * MANAGE TASKS: MISSION CONTROL MODULE v1.8
+ * Updated: Integrated Assigner and History Performer names for maximum accountability.
  */
 const ManageTasks = ({ assignerId, tenantId }) => {
   const [tasks, setTasks] = useState([]);
@@ -84,9 +83,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     try {
       setLoading(true);
 
-      // 1. Determine the correct endpoint based on user role
-      // If the user is an employee, fetch tasks assigned TO them.
-      // If admin/superadmin, fetch tasks assigned BY them.
       const isEmployee = user?.role === 'employee';
       const taskEndpoint = isEmployee 
         ? `/tasks/doer/${currentAssignerId}` 
@@ -94,7 +90,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch(() => ({ data: [] })),
-        // Only admins need the full employee list for the RevisionPanel
         !isEmployee 
           ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] })
@@ -108,7 +103,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data 
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      // 2. Map and Sort
       const delegationOnly = rawTaskData.map(t => ({ ...t, taskType: 'Delegation' }));
       const sorted = delegationOnly.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
@@ -276,7 +270,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 </div>
               </div>
 
-              {/* EXPANDED INTEL VIEW: Set to bg-slate-100 for subtle depth in Light Mode */}
+              {/* EXPANDED INTEL VIEW: UPDATED TO SHOW ASSIGNER AND PERFORMER NAMES */}
               {isExpanded && (
                 <div className="bg-slate-100/50 dark:bg-slate-900/40 p-6 lg:p-10 border-t border-border animate-in slide-in-from-top-4 duration-500 transition-colors">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -284,6 +278,19 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                     <div className="space-y-6">
                         <h4 className="text-primary font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 px-1"><AlertTriangle size={16} /> Operational Brief</h4>
                         <div className="bg-white dark:bg-card p-6 rounded-[2rem] border border-border shadow-xl space-y-6">
+                            
+                            {/* UPDATED: ISSUED BY SECTION */}
+                            <div className="grid grid-cols-2 gap-4 border-b border-border/50 pb-4">
+                                <div>
+                                    <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Issued By (Assigner):</strong>
+                                    <span className="text-primary text-xs font-black uppercase">{task.assignerId?.name || "System Registry"}</span>
+                                </div>
+                                <div>
+                                    <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Target Personnel:</strong>
+                                    <span className="text-foreground text-xs font-black uppercase">{task.doerId?.name}</span>
+                                </div>
+                            </div>
+
                             <div className="space-y-3">
                                 <strong className="text-primary block text-[10px] font-black uppercase tracking-widest opacity-90">Objective Blueprint:</strong>
                                 <p className="text-slate-800 dark:text-foreground text-sm font-bold uppercase tracking-tight leading-relaxed">
@@ -332,8 +339,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().map((log, i) => (
                                 <div key={i} className="relative pl-8 border-l-2 border-slate-200 dark:border-border flex flex-col gap-2 pb-2">
                                     <div className="absolute top-1 -left-[5px] w-2 h-2 rounded-full bg-primary/40 border border-primary/20 shadow-[0_0_8px_rgba(56,189,248,0.3)]" />
+                                    
+                                    {/* UPDATED: HISTORY ROW WITH PERFORMER NAME */}
                                     <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                                        <span className="text-primary">{log.action === 'Points Calculated' ? 'REWARD SYNC' : log.action}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-primary">{log.action === 'Points Calculated' ? 'REWARD SYNC' : log.action}</span>
+                                            <span className="text-slate-400">BY</span>
+                                            <span className="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded italic">
+                                                {log.performedBy?.name || "System Control"}
+                                            </span>
+                                        </div>
                                         <span className="text-slate-500 dark:text-slate-600 font-mono">{new Date(log.timestamp).toLocaleDateString([], {month: 'short', day: 'numeric'})}</span>
                                     </div>
                                     <p className="text-[11px] text-slate-800 dark:text-slate-400 font-bold uppercase tracking-tight italic leading-relaxed opacity-95">"{log.remarks || "System update protocol."}"</p>

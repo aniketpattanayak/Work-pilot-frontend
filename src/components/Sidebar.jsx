@@ -29,13 +29,14 @@ import {
   X, 
   LogOut,
   LifeBuoy,
-  BarChart3 // NEW: Imported for Review Meeting
+  BarChart3,
+  GitBranch // NEW: Added for Flow Management System
 } from 'lucide-react';
 
 /**
- * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.7
+ * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.8
  * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * Updated: Added 'Review Meeting' to the Administration suite.
+ * Updated: Integrated FMS (Flow Management System) into the Administration suite.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -108,7 +109,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Employees', icon: <Users />, roles: ['Admin'] },
         { name: 'Mapping', icon: <UserCog />, roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
-        // NEW ITEM: Added for Weekly Review Meetings
+        // NEW ITEM: Added for Flow Management System
+        { name: 'Flow Management', icon: <GitBranch />, roles: ['Admin'] }, 
         { name: 'Review Meeting', icon: <BarChart3 />, roles: ['Admin', 'Coordinator'] }, 
         { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
@@ -126,6 +128,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     if (itemName === 'Dashboard') return '';
     if (itemName === 'Create Checklist') return 'checklist-setup';
     if (itemName === 'My Checklist') return 'checklist';
+    // Logic for the new FMS route
+    if (itemName === 'Flow Management') return 'fms-dashboard'; 
     return itemName.toLowerCase().replace(/\s+/g, '-');
   };
 

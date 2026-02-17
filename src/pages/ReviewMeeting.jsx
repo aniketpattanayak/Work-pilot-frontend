@@ -19,12 +19,17 @@ import {
   Trash2,
   FileText,
   Timer,
-  CalendarDays
+  CalendarDays,
+  ShieldAlert,
+  Lock,
+  PlayCircle // Added for Custom Run icon
 } from 'lucide-react';
+import RevisionPanel from '../components/RevisionPanel'; 
 
 /**
- * WEEKLY REVIEW MEETING v3.7
- * Features: Internal Modal Date Filtering + Full "Not Done" Audit Ledger + Live Delay Tracking.
+ * WEEKLY REVIEW MEETING v3.9
+ * Purpose: Compliance auditing with Manual Date Range Deep-Dives.
+ * UPDATED: Integrated Internal Modal Custom Date Range Selection.
  */
 const ReviewMeeting = ({ tenantId }) => {
   const [viewType, setViewType] = useState('All'); 
@@ -39,11 +44,20 @@ const ReviewMeeting = ({ tenantId }) => {
   const [activePerson, setActivePerson] = useState(null);
   const [deepDiveData, setDeepDiveData] = useState([]);
   const [loadingDeepDive, setLoadingDeepDive] = useState(false);
-  const [activeWeekIndex, setActiveWeekIndex] = useState(0);
+  const [activeWeekIndex, setActiveWeekIndex] = useState(null); // Changed to null for clarity
 
+  // NEW: Custom Date Range States for Modal
+  const [modalStartDate, setModalStartDate] = useState("");
+  const [modalEndDate, setModalEndDate] = useState("");
+
+  const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
+  const isAdmin = user.roles?.includes('Admin') || user.role === 'Admin';
+
   const fetchAnalytics = useCallback(async () => {
+    if (!isAdmin) return; 
+
     try {
       setLoading(true);
       const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, {
@@ -56,19 +70,28 @@ const ReviewMeeting = ({ tenantId }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentTenantId, viewType, selectedDate]);
+  }, [currentTenantId, viewType, selectedDate, isAdmin]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  const fetchTaskDetails = async (employeeId, weekRange, index) => {
-    if (!employeeId || !weekRange?.start) return;
+  /**
+   * REFINED: FETCH TASK DETAILS
+   * Accepts manual dates or pre-defined ranges.
+   */
+  const fetchTaskDetails = async (employeeId, start, end, index = null) => {
+    if (!employeeId || !start || !end) return;
     try {
       setLoadingDeepDive(true);
       setActiveWeekIndex(index);
+      
+      // Update modal inputs to match what is being viewed
+      setModalStartDate(start.split('T')[0]);
+      setModalEndDate(end.split('T')[0]);
+
       const res = await API.get(`/tasks/employee-deep-dive/${employeeId}`, {
-        params: { startDate: weekRange.start, endDate: weekRange.end }
+        params: { startDate: start, endDate: end }
       });
       setDeepDiveData(res.data || []);
     } catch (err) {
@@ -83,7 +106,7 @@ const ReviewMeeting = ({ tenantId }) => {
     try {
       const endpoint = type === 'Checklist' ? `/tasks/checklist/${taskId}` : `/tasks/task/${taskId}`;
       await API.delete(endpoint);
-      fetchTaskDetails(activePerson.employeeId, activePerson.history[activeWeekIndex].dates, activeWeekIndex);
+      fetchTaskDetails(activePerson.employeeId, modalStartDate, modalEndDate, activeWeekIndex);
       fetchAnalytics();
     } catch (err) {
       alert("Purge failed.");
@@ -107,10 +130,6 @@ const ReviewMeeting = ({ tenantId }) => {
     return labels[index] || `${index + 1}TH LAST WEEK`;
   };
 
-  /**
-   * LIVE AUDIT DELAY LOGIC
-   * Calculates "Live Overdue" for missions not yet completed.
-   */
   const calculateDelay = (deadline, completedAt) => {
     const d1 = new Date(deadline);
     const now = new Date();
@@ -172,8 +191,28 @@ const ReviewMeeting = ({ tenantId }) => {
     setActivePerson(row);
     setDeepDiveData([]); 
     setShowModal(true);
-    if (row.history.length > 0) fetchTaskDetails(row.employeeId, row.history[0].dates, 0);
+    // Defaults to last week initially
+    if (row.history.length > 0) fetchTaskDetails(row.employeeId, row.history[0].dates.start, row.history[0].dates.end, 0);
   };
+
+  if (!isAdmin) return (
+    <div className="w-full h-[70vh] flex flex-col items-center justify-center animate-in fade-in duration-500">
+      <div className="bg-white p-12 rounded-[3rem] border-2 border-slate-200 shadow-2xl flex flex-col items-center text-center max-w-lg space-y-6">
+         <div className="bg-red-50 p-6 rounded-full border-4 border-red-100 shadow-inner">
+            <Lock className="text-red-500" size={60} strokeWidth={1.5} />
+         </div>
+         <div>
+            <h3 className="text-slate-950 text-2xl font-black uppercase tracking-tighter">Access Restricted</h3>
+            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-2 italic">
+               The Review Meeting module is reserved for Executive Admin Personnel only.
+            </p>
+         </div>
+         <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-200 text-slate-400 text-[9px] font-black uppercase tracking-widest">
+            Security Protocol: Node-Identity Verification Failed
+         </div>
+      </div>
+    </div>
+  );
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[500px] gap-4">
@@ -199,7 +238,7 @@ const ReviewMeeting = ({ tenantId }) => {
         </button>
       </div>
 
-      {/* MAIN FILTERS (DATE REMOVED FROM HERE) */}
+      {/* MAIN FILTERS */}
       <div className="bg-slate-50 p-6 rounded-[2.5rem] border-2 border-slate-200 mb-10 space-y-6 shadow-sm">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="relative">
@@ -269,47 +308,55 @@ const ReviewMeeting = ({ tenantId }) => {
         </div>
       </div>
 
-      {/* POPUP MODAL - INTERNAL DATE FILTERING & AUDIT */}
+      {/* POPUP MODAL - CUSTOM DATE RANGE AUDIT INTEGRATED */}
       {showModal && activePerson && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-8 overflow-hidden animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setShowModal(false)} />
           <div className="relative bg-white w-full max-w-[1680px] max-h-[92vh] rounded-[2rem] shadow-2xl flex flex-col border-2 border-white/20">
             
-            {/* POPUP HEADER: DATE PICKER MOVED HERE */}
+            {/* POPUP HEADER */}
             <div className="bg-slate-900 p-6 flex justify-between items-center text-white border-b-2 border-primary z-50">
                <div className="flex items-center gap-6">
-                  <User size={24} className="text-primary"/>
+                  <div className="bg-primary/20 p-3 rounded-2xl"><User size={28} className="text-primary"/></div>
                   <div>
                      <h3 className="text-xl font-black uppercase tracking-tighter leading-none">{activePerson.name}</h3>
                      <p className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">{activePerson.dept} • HISTORICAL COMPLIANCE AUDIT</p>
                   </div>
                </div>
 
-               {/* INTERNAL MODAL DATE PICKER */}
-               <div className="hidden lg:flex items-center bg-white/5 border border-white/10 px-4 py-2 rounded-xl gap-4 group hover:border-primary transition-all">
-                  <div className="flex items-center gap-2 text-primary">
-                    <CalendarDays size={18} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Audit Reference:</span>
+               <div className="flex items-center gap-4">
+                  {/* NEW: CUSTOM DATE RANGE PICKER SECTION */}
+                  <div className="hidden xl:flex items-center bg-white/5 border border-white/10 px-6 py-2.5 rounded-2xl gap-6 group hover:border-primary transition-all shadow-inner">
+                    <div className="flex items-center gap-2">
+                       <Calendar size={16} className="text-primary" />
+                       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Custom Range:</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <input type="date" value={modalStartDate} onChange={(e) => setModalStartDate(e.target.value)} className="bg-transparent text-white font-black text-xs outline-none border-b border-white/20 pb-1" />
+                       <span className="text-slate-600 font-bold text-xs">to</span>
+                       <input type="date" value={modalEndDate} onChange={(e) => setModalEndDate(e.target.value)} className="bg-transparent text-white font-black text-xs outline-none border-b border-white/20 pb-1" />
+                    </div>
+                    <button 
+                      onClick={() => fetchTaskDetails(activePerson.employeeId, modalStartDate, modalEndDate, null)}
+                      className="bg-primary text-slate-950 p-2 rounded-lg hover:scale-110 active:scale-95 transition-all flex items-center gap-2"
+                      title="Run Audit"
+                    >
+                       <PlayCircle size={18} fill="currentColor" />
+                    </button>
                   </div>
-                  <input 
-                    type="date" 
-                    value={selectedDate} 
-                    onChange={(e) => setSelectedDate(e.target.value)} 
-                    className="bg-transparent text-white font-black text-xs outline-none cursor-pointer"
-                  />
-               </div>
 
-               <button onClick={() => setShowModal(false)} className="bg-white/10 hover:bg-red-500 p-3 rounded-xl transition-all"><X size={20} /></button>
+                  <button onClick={() => setShowModal(false)} className="bg-white/10 hover:bg-red-500 p-3 rounded-xl transition-all"><X size={20} /></button>
+               </div>
             </div>
 
             {/* POPUP BODY */}
             <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar bg-slate-100">
                
-               {/* 1. UNIFIED WEEKLY TABLE */}
+               {/* 1. WEEKLY SELECTOR TABLE */}
                <div className="space-y-4">
                   <div className="flex items-center gap-3 ml-4">
                      <History size={18} className="text-slate-400" />
-                     <h4 className="text-sm font-black uppercase tracking-tighter text-slate-950">Personnel Progress (Weekly Wise Breakdown)</h4>
+                     <h4 className="text-sm font-black uppercase tracking-tighter text-slate-950">Quick Select (Weekly Breakdown)</h4>
                   </div>
                   <div className="bg-white border-2 border-slate-300 rounded-[1.5rem] shadow-xl overflow-hidden ring-4 ring-slate-200/30">
                      <table className="w-full text-left border-collapse min-w-[1550px]">
@@ -321,7 +368,7 @@ const ReviewMeeting = ({ tenantId }) => {
                               <th className="px-5 py-4 border-r border-slate-200 text-center">DONE</th>
                               <th className="px-5 py-4 border-r border-slate-200 text-center text-red-600">OVERDUE</th>
                               <th className="px-5 py-4 text-center bg-red-50/20 text-slate-950">NOT DONE (%)</th>
-                              <th className="px-5 py-4 text-center">DRILL DOWN</th>
+                              <th className="px-5 py-4 text-center">AUDIT</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -337,7 +384,7 @@ const ReviewMeeting = ({ tenantId }) => {
                                     <td className="px-5 py-4 border-r border-slate-200 text-center text-red-600">{weekStats.overdue}</td>
                                     <td className={`px-5 py-4 border-r border-slate-200 text-center font-bold ${parseFloat(getPercentage(weekStats.notDone, weekStats.total)) > 20 ? 'text-red-600' : ''}`}>{getPercentage(weekStats.notDone, weekStats.total)} ({weekStats.notDone})</td>
                                     <td className="px-5 py-4 text-center">
-                                       <button onClick={() => fetchTaskDetails(activePerson.employeeId, week.dates, wIdx)} className={`p-2 rounded-lg transition-all ${isSelected ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-950'}`}>
+                                       <button onClick={() => fetchTaskDetails(activePerson.employeeId, week.dates.start, week.dates.end, wIdx)} className={`p-2 rounded-lg transition-all ${isSelected ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-950'}`}>
                                           <Search size={14} />
                                        </button>
                                     </td>
@@ -349,12 +396,12 @@ const ReviewMeeting = ({ tenantId }) => {
                   </div>
                </div>
 
-               {/* 2. COMPREHENSIVE AUDIT LEDGER (REFINED FOR FULL "NOT DONE" VISIBILITY) */}
+               {/* 2. COMPREHENSIVE AUDIT LEDGER */}
                <div className="space-y-6 pb-20">
                   <div className="flex items-center justify-between ml-4">
                      <div className="flex items-center gap-4">
                         <Layers size={20} className="text-slate-900"/>
-                        <h4 className="text-lg font-black uppercase tracking-tighter text-slate-950">Mission Audit Ledger (Full Traceability)</h4>
+                        <h4 className="text-lg font-black uppercase tracking-tighter text-slate-950">Mission Audit Ledger (Period: {modalStartDate} to {modalEndDate})</h4>
                      </div>
                      <span className="bg-slate-950 text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">{deepDiveData.length} Missions Identified</span>
                   </div>
@@ -423,7 +470,7 @@ const ReviewMeeting = ({ tenantId }) => {
                   ) : (
                      <div className="bg-white p-24 rounded-[3rem] border-4 border-dotted border-slate-100 text-center">
                         <AlertCircle className="mx-auto mb-3 text-slate-200" size={48} />
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-300">Select a period from the Personnel Progress table to audit missions.</span>
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-300">No missions identified for this custom range. Try different dates.</span>
                      </div>
                   )}
                </div>

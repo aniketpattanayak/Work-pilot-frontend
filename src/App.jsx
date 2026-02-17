@@ -5,11 +5,14 @@ import Dashboard from './pages/Dashboard';
 import SuperAdmin from './pages/SuperAdmin';
 // NEW: Import ReviewMeeting to ensure the component is registered
 import ReviewMeeting from './pages/ReviewMeeting'; 
+// NEW: Import FmsDashboard to fix the blank page issue
+import FmsDashboard from './pages/FmsDashboard'; 
 import { getSubdomain } from './utils/subdomain';
 
 /**
- * CORE APPLICATION ROUTER v1.7
+ * CORE APPLICATION ROUTER v1.8
  * Purpose: Global state management and top-level route distribution.
+ * Updated: Registered FmsDashboard route for factory flow management.
  */
 function App() {
   const [user, setUser] = useState(null);
