@@ -7,12 +7,14 @@ import SuperAdmin from './pages/SuperAdmin';
 import ReviewMeeting from './pages/ReviewMeeting'; 
 // NEW: Import FmsDashboard to fix the blank page issue
 import FmsDashboard from './pages/FmsDashboard'; 
+// NEW: Import ReportsTab for factory-specific data logs
+import ReportsTab from './pages/ReportsTab';
 import { getSubdomain } from './utils/subdomain';
 
 /**
- * CORE APPLICATION ROUTER v1.8
+ * CORE APPLICATION ROUTER v1.9
  * Purpose: Global state management and top-level route distribution.
- * Updated: Registered FmsDashboard route for factory flow management.
+ * Updated: Integrated ReportsTab and preserved all existing logic.
  */
 function App() {
   const [user, setUser] = useState(null);

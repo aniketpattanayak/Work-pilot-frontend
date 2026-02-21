@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import API from '../api/axiosConfig'; 
-import { 
-  Trash2, 
-  CheckCircle, 
-  Clock, 
-  AlertTriangle, 
-  XCircle, 
-  RefreshCcw, 
-  User, 
-  ChevronDown, 
-  ChevronUp, 
+import API from '../api/axiosConfig';
+import {
+  Trash2,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  XCircle,
+  RefreshCcw,
+  User,
+  ChevronDown,
+  ChevronUp,
   History,
   Layers,
   Repeat,
@@ -24,9 +24,9 @@ import {
   Search,
   CheckCircle2,
   ArrowRight,
-  Calendar 
+  Calendar
 } from 'lucide-react';
-import RevisionPanel from '../components/RevisionPanel'; 
+import RevisionPanel from '../components/RevisionPanel';
 
 /**
  * MANAGE TASKS: MISSION CONTROL MODULE v1.8
@@ -34,11 +34,11 @@ import RevisionPanel from '../components/RevisionPanel';
  */
 const ManageTasks = ({ assignerId, tenantId }) => {
   const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]); 
-  const [timeFilter, setTimeFilter] = useState('All');    
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  const [timeFilter, setTimeFilter] = useState('All');
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTaskId, setExpandedTaskId] = useState(null); 
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -52,26 +52,24 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
     const filtered = allTasks.filter(task => {
       if (!task.deadline || range === 'All') return true;
-      
+
       const deadline = new Date(task.deadline);
       deadline.setHours(0, 0, 0, 0);
 
       if (range === 'Today') {
         return deadline.getTime() === now.getTime();
       }
-      
+
       if (range === 'Next 7 Days') {
         const nextWeek = new Date(now);
         nextWeek.setDate(now.getDate() + 7);
         return deadline >= now && deadline <= nextWeek;
       }
-      
-      if (range === 'Next 1 Year') {
-        const nextYear = new Date(now);
-        nextYear.setFullYear(now.getFullYear() + 1);
-        return deadline >= now && deadline <= nextYear;
+
+      if (range === 'Pending Work') {
+        return deadline.getTime() < now.getTime() && task.status !== 'Verified' && task.status !== 'Completed';
       }
-      
+
       return true;
     });
 
@@ -84,23 +82,23 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       setLoading(true);
 
       const isEmployee = user?.role === 'employee';
-      const taskEndpoint = isEmployee 
-        ? `/tasks/doer/${currentAssignerId}` 
+      const taskEndpoint = isEmployee
+        ? `/tasks/doer/${currentAssignerId}`
         : `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch(() => ({ data: [] })),
-        !isEmployee 
+        !isEmployee
           ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] })
       ]);
-      
-      const rawTaskData = Array.isArray(taskRes.data) 
-        ? taskRes.data 
+
+      const rawTaskData = Array.isArray(taskRes.data)
+        ? taskRes.data
         : (taskRes.data?.tasks || taskRes.data?.data || []);
 
-      const employeeData = Array.isArray(empRes.data) 
-        ? empRes.data 
+      const employeeData = Array.isArray(empRes.data)
+        ? empRes.data
         : (empRes.data?.employees || empRes.data?.data || []);
 
       const delegationOnly = rawTaskData.map(t => ({ ...t, taskType: 'Delegation' }));
@@ -126,14 +124,14 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   }, [timeFilter, applyTimeFilter]);
 
   const handleVerifyTask = async (taskId, isSatisfied) => {
-    const status = isSatisfied ? 'Verified' : 'Accepted'; 
+    const status = isSatisfied ? 'Verified' : 'Accepted';
     const remarks = !isSatisfied ? prompt("Tactical Feedback: Identify required corrections:") : "Directive evidence verified.";
-    
+
     if (!isSatisfied && !remarks) return;
 
     try {
       await API.put(`/tasks/respond`, {
-        taskId, status, remarks, doerId: currentAssignerId 
+        taskId, status, remarks, doerId: currentAssignerId
       });
       alert(isSatisfied ? "Handshake Complete: Mission Verified." : "Correction Issued: Returning to Node.");
       fetchData();
@@ -169,7 +167,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30">
-      
+
       {previewImage && (
         <div className="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl" onClick={() => setPreviewImage(null)}>
           <button className="absolute top-8 right-8 bg-red-600 hover:bg-red-500 p-4 rounded-full text-white shadow-2xl transition-all active:scale-90 z-20 cursor-pointer" onClick={() => setPreviewImage(null)}><X size={28} /></button>
@@ -195,21 +193,20 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       {/* TIME FILTERS */}
       <div className="flex flex-wrap gap-3 mb-10">
-        {['All', 'Today', 'Next 7 Days', 'Next 1 Year'].map((range) => (
+        {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
           <button
             key={range}
             onClick={() => setTimeFilter(range)}
-            className={`px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 shadow-sm ${
-              timeFilter === range 
-              ? 'bg-primary text-white dark:text-slate-950 border-primary shadow-primary/20' 
+            className={`px-6 py-3 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 shadow-sm ${timeFilter === range
+              ? 'bg-primary text-white dark:text-slate-950 border-primary shadow-primary/20'
               : 'bg-card text-slate-500 border-border hover:border-slate-400'
-            }`}
+              }`}
           >
             {range}
           </button>
         ))}
       </div>
-      
+
       {/* GRID HEADER */}
       <div className="hidden lg:grid grid-cols-[1.5fr_2fr_1fr_1fr_1fr_1.5fr] px-10 py-6 bg-card backdrop-blur-xl rounded-t-[2.5rem] border border-border font-black text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-[0.25em] items-center shadow-lg transition-colors duration-500">
         <div>Task Name</div>
@@ -228,8 +225,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
           return (
             <div key={task._id} className="flex flex-col border-b border-border last:border-0 group transition-all duration-300">
-              <div 
-                onClick={() => toggleExpand(task._id)} 
+              <div
+                onClick={() => toggleExpand(task._id)}
                 className={`flex flex-col lg:grid lg:grid-cols-[1.5fr_2fr_1fr_1fr_1fr_1.5fr] items-start lg:items-center px-6 py-6 lg:px-10 lg:py-7 cursor-pointer transition-all hover:bg-primary/[0.02] dark:hover:bg-primary/[0.05] ${isExpanded ? 'bg-slate-100/60 dark:bg-primary/[0.08]' : ''} ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
               >
                 <div className="flex items-center gap-4 w-full lg:w-auto mb-3 lg:mb-0 min-w-0">
@@ -247,14 +244,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 </div>
 
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-500 font-bold text-[11px] mb-3 lg:mb-0">
-                    <Calendar size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'}) : 'AWAITING'}
+                  <Calendar size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'AWAITING'}
                 </div>
 
                 <div className="mb-4 lg:mb-0">
-                  <span className={`inline-flex px-3 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-widest border shadow-sm ${
-                    task.status === 'Verified' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
-                    task.status === 'Completed' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' : 
-                    'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'}`}>
+                  <span className={`inline-flex px-3 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-widest border shadow-sm ${task.status === 'Verified' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                    task.status === 'Completed' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' :
+                      'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'}`}>
                     {task.status || 'Active Node'}
                   </span>
                 </div>
@@ -274,87 +270,87 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               {isExpanded && (
                 <div className="bg-slate-100/50 dark:bg-slate-900/40 p-6 lg:p-10 border-t border-border animate-in slide-in-from-top-4 duration-500 transition-colors">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                    
+
                     <div className="space-y-6">
-                        <h4 className="text-primary font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 px-1"><AlertTriangle size={16} /> Operational Brief</h4>
-                        <div className="bg-white dark:bg-card p-6 rounded-[2rem] border border-border shadow-xl space-y-6">
-                            
-                            {/* UPDATED: ISSUED BY SECTION */}
-                            <div className="grid grid-cols-2 gap-4 border-b border-border/50 pb-4">
-                                <div>
-                                    <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Issued By (Assigner):</strong>
-                                    <span className="text-primary text-xs font-black uppercase">{task.assignerId?.name || "System Registry"}</span>
-                                </div>
-                                <div>
-                                    <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Target Personnel:</strong>
-                                    <span className="text-foreground text-xs font-black uppercase">{task.doerId?.name}</span>
-                                </div>
-                            </div>
+                      <h4 className="text-primary font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 px-1"><AlertTriangle size={16} /> Operational Brief</h4>
+                      <div className="bg-white dark:bg-card p-6 rounded-[2rem] border border-border shadow-xl space-y-6">
 
-                            <div className="space-y-3">
-                                <strong className="text-primary block text-[10px] font-black uppercase tracking-widest opacity-90">Objective Blueprint:</strong>
-                                <p className="text-slate-800 dark:text-foreground text-sm font-bold uppercase tracking-tight leading-relaxed">
-                                    {task.description || "No supplemental directives detected for this node."}
-                                </p>
-                            </div>
-
-                            {Array.isArray(task.files) && task.files.some(f => !f.fileName.includes("Evidence")) && (
-                                <div className="space-y-3 pt-6 border-t border-border/50">
-                                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest">Attached Schematics:</p>
-                                    <div className="flex flex-wrap gap-3">
-                                        {task.files.filter(f => !f.fileName.includes("Evidence")).map((file, i) => (
-                                            <button key={i} onClick={() => setPreviewImage(file.fileUrl)} className="bg-slate-50 dark:bg-background border border-border px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-3 hover:border-primary/40 transition-all shadow-sm">
-                                                <Paperclip size={14} /> {file.fileName}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {(task.status === 'Completed' || task.status === 'Verified') && (
-                                <div className="space-y-4 pt-6 border-t border-border">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
-                                        <h5 className="text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">Node Execution Proof:</h5>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-background p-4 rounded-2xl border border-border shadow-inner italic">
-                                        <p className="text-slate-700 dark:text-slate-400 text-xs font-bold uppercase tracking-tight">"{task.remarks || "No node remarks synchronized."}"</p>
-                                    </div>
-                                    <div className="flex flex-wrap gap-3 mt-4">
-                                        {Array.isArray(task.files) && task.files.filter(f => f.fileName.includes("Evidence")).map((file, i) => (
-                                            <button key={i} onClick={() => setPreviewImage(file.fileUrl)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-500/20">
-                                                <Maximize2 size={14} /> Inspect Asset Proof
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                        {/* UPDATED: ISSUED BY SECTION */}
+                        <div className="grid grid-cols-2 gap-4 border-b border-border/50 pb-4">
+                          <div>
+                            <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Issued By (Assigner):</strong>
+                            <span className="text-primary text-xs font-black uppercase">{task.assignerId?.name || "System Registry"}</span>
+                          </div>
+                          <div>
+                            <strong className="text-slate-400 block text-[8px] font-black uppercase tracking-widest">Target Personnel:</strong>
+                            <span className="text-foreground text-xs font-black uppercase">{task.doerId?.name}</span>
+                          </div>
                         </div>
-                        {isRevision && <RevisionPanel task={task} employees={employees} assignerId={currentAssignerId} onSuccess={fetchData} />}
+
+                        <div className="space-y-3">
+                          <strong className="text-primary block text-[10px] font-black uppercase tracking-widest opacity-90">Objective Blueprint:</strong>
+                          <p className="text-slate-800 dark:text-foreground text-sm font-bold uppercase tracking-tight leading-relaxed">
+                            {task.description || "No supplemental directives detected for this node."}
+                          </p>
+                        </div>
+
+                        {Array.isArray(task.files) && task.files.some(f => !f.fileName.includes("Evidence")) && (
+                          <div className="space-y-3 pt-6 border-t border-border/50">
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest">Attached Schematics:</p>
+                            <div className="flex flex-wrap gap-3">
+                              {task.files.filter(f => !f.fileName.includes("Evidence")).map((file, i) => (
+                                <button key={i} onClick={() => setPreviewImage(file.fileUrl)} className="bg-slate-50 dark:bg-background border border-border px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-3 hover:border-primary/40 transition-all shadow-sm">
+                                  <Paperclip size={14} /> {file.fileName}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {(task.status === 'Completed' || task.status === 'Verified') && (
+                          <div className="space-y-4 pt-6 border-t border-border">
+                            <div className="flex items-center gap-3">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                              <h5 className="text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">Node Execution Proof:</h5>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-background p-4 rounded-2xl border border-border shadow-inner italic">
+                              <p className="text-slate-700 dark:text-slate-400 text-xs font-bold uppercase tracking-tight">"{task.remarks || "No node remarks synchronized."}"</p>
+                            </div>
+                            <div className="flex flex-wrap gap-3 mt-4">
+                              {Array.isArray(task.files) && task.files.filter(f => f.fileName.includes("Evidence")).map((file, i) => (
+                                <button key={i} onClick={() => setPreviewImage(file.fileUrl)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-500/20">
+                                  <Maximize2 size={14} /> Inspect Asset Proof
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {isRevision && <RevisionPanel task={task} employees={employees} assignerId={currentAssignerId} onSuccess={fetchData} />}
                     </div>
 
                     <div className="space-y-6">
-                        <h4 className="text-primary font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 px-1"><History size={16} /> Technical Audit History</h4>
-                        <div className="max-h-[400px] overflow-y-auto custom-scrollbar bg-white dark:bg-card p-8 rounded-[2rem] border border-border shadow-xl space-y-8">
-                            {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().map((log, i) => (
-                                <div key={i} className="relative pl-8 border-l-2 border-slate-200 dark:border-border flex flex-col gap-2 pb-2">
-                                    <div className="absolute top-1 -left-[5px] w-2 h-2 rounded-full bg-primary/40 border border-primary/20 shadow-[0_0_8px_rgba(56,189,248,0.3)]" />
-                                    
-                                    {/* UPDATED: HISTORY ROW WITH PERFORMER NAME */}
-                                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-primary">{log.action === 'Points Calculated' ? 'REWARD SYNC' : log.action}</span>
-                                            <span className="text-slate-400">BY</span>
-                                            <span className="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded italic">
-                                                {log.performedBy?.name || "System Control"}
-                                            </span>
-                                        </div>
-                                        <span className="text-slate-500 dark:text-slate-600 font-mono">{new Date(log.timestamp).toLocaleDateString([], {month: 'short', day: 'numeric'})}</span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-800 dark:text-slate-400 font-bold uppercase tracking-tight italic leading-relaxed opacity-95">"{log.remarks || "System update protocol."}"</p>
-                                </div>
-                            )) : <p className="text-slate-500 dark:text-slate-700 text-[10px] font-black uppercase tracking-[0.3em] text-center py-10">Historical Ledger Empty</p>}
-                        </div>
+                      <h4 className="text-primary font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-3 px-1"><History size={16} /> Technical Audit History</h4>
+                      <div className="max-h-[400px] overflow-y-auto custom-scrollbar bg-white dark:bg-card p-8 rounded-[2rem] border border-border shadow-xl space-y-8">
+                        {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().map((log, i) => (
+                          <div key={i} className="relative pl-8 border-l-2 border-slate-200 dark:border-border flex flex-col gap-2 pb-2">
+                            <div className="absolute top-1 -left-[5px] w-2 h-2 rounded-full bg-primary/40 border border-primary/20 shadow-[0_0_8px_rgba(56,189,248,0.3)]" />
+
+                            {/* UPDATED: HISTORY ROW WITH PERFORMER NAME */}
+                            <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
+                              <div className="flex items-center gap-2">
+                                <span className="text-primary">{log.action === 'Points Calculated' ? 'REWARD SYNC' : log.action}</span>
+                                <span className="text-slate-400">BY</span>
+                                <span className="text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded italic">
+                                  {log.performedBy?.name || "System Control"}
+                                </span>
+                              </div>
+                              <span className="text-slate-500 dark:text-slate-600 font-mono">{new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-800 dark:text-slate-400 font-bold uppercase tracking-tight italic leading-relaxed opacity-95">"{log.remarks || "System update protocol."}"</p>
+                          </div>
+                        )) : <p className="text-slate-500 dark:text-slate-700 text-[10px] font-black uppercase tracking-[0.3em] text-center py-10">Historical Ledger Empty</p>}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -363,10 +359,10 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           );
         })}
         {filteredTasks.length === 0 && (
-            <div className="py-32 text-center flex flex-col items-center gap-6 opacity-30 grayscale transition-colors">
-                < LucideClipboard size={80} className="text-primary" />
-                <p className="text-slate-500 font-black uppercase tracking-[0.5em] text-[10px]">No Assigned Directives Detected</p>
-            </div>
+          <div className="py-32 text-center flex flex-col items-center gap-6 opacity-30 grayscale transition-colors">
+            < LucideClipboard size={80} className="text-primary" />
+            <p className="text-slate-500 font-black uppercase tracking-[0.5em] text-[10px]">No Assigned Directives Detected</p>
+          </div>
         )}
       </div>
 

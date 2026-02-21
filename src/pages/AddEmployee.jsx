@@ -35,7 +35,7 @@ const AddEmployee = ({
     department: "",
     whatsappNumber: "",
     email: "",
-    roles: ["Doer"], 
+    roles: ["Doer"],
     password: "Password@123",
     managedDoers: [],
     managedAssigners: [],
@@ -84,17 +84,17 @@ const AddEmployee = ({
             ? selectedEmployee.roles
             : ["Doer"]
           : selectedEmployee.role
-          ? [selectedEmployee.role]
-          : ["Doer"],
+            ? [selectedEmployee.role]
+            : ["Doer"],
         managedDoers: Array.isArray(selectedEmployee.managedDoers)
           ? selectedEmployee.managedDoers.map((d) =>
-              typeof d === "object" ? d._id : d
-            )
+            typeof d === "object" ? d._id : d
+          )
           : [],
         managedAssigners: Array.isArray(selectedEmployee.managedAssigners)
           ? selectedEmployee.managedAssigners.map((a) =>
-              typeof a === "object" ? a._id : a
-            )
+            typeof a === "object" ? a._id : a
+          )
           : [],
         workOnSunday: !!selectedEmployee.workOnSunday, // Force boolean
         password: "",
@@ -199,7 +199,7 @@ const AddEmployee = ({
 
   return (
     <div className="bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500">
-      
+
       <div className="px-6 py-6 sm:px-10 sm:py-8 bg-primary/5 border-b border-border">
         <h2 className="text-primary m-0 flex items-center gap-3 text-lg sm:text-2xl font-black tracking-tighter uppercase leading-tight">
           <UserPlus size={24} className="sm:w-7 sm:h-7" />{" "}
@@ -213,7 +213,7 @@ const AddEmployee = ({
       </div>
 
       <form onSubmit={handleSubmit} className="p-6 sm:p-10 flex flex-col gap-8">
-        
+
         {/* IDENTITY BLOCK */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
           <div className="flex flex-col">
@@ -275,17 +275,17 @@ const AddEmployee = ({
                 <div>
                   <p className="text-xs sm:text-sm font-black text-foreground uppercase tracking-tight leading-none">Sunday is a Working Day</p>
                   <p className="text-[9px] text-slate-500 font-bold uppercase mt-1.5 opacity-70 tracking-widest leading-relaxed">
-                    If enabled, this employee will receive checklist tasks on Sundays. <br className="hidden sm:block" /> 
+                    If enabled, this employee will receive checklist tasks on Sundays. <br className="hidden sm:block" />
                     Official holidays will still be respected.
                   </p>
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={!!formData.workOnSunday} // Forced boolean state
-                  onChange={(e) => setFormData({ ...formData, workOnSunday: e.target.checked })} 
-                  className="sr-only peer" 
+                  onChange={(e) => setFormData({ ...formData, workOnSunday: e.target.checked })}
+                  className="sr-only peer"
                 />
                 <div className="w-14 h-7 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
               </label>
@@ -317,11 +317,10 @@ const AddEmployee = ({
                   key={role}
                   type="button"
                   onClick={() => handleRoleToggle(role)}
-                  className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${
-                    (formData.roles || []).includes(role)
-                      ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
-                      : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
-                  }`}
+                  className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${(formData.roles || []).includes(role)
+                    ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
+                    : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
+                    }`}
                 >
                   {(formData.roles || []).includes(role) ? (
                     <CheckSquare size={14} strokeWidth={3} />
@@ -354,11 +353,10 @@ const AddEmployee = ({
                   .map((doer) => (
                     <label
                       key={doer._id}
-                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
-                        (formData.managedDoers || []).includes(doer._id)
-                          ? "bg-card border-emerald-500/40 text-foreground"
-                          : "bg-background border-border text-slate-400"
-                      }`}
+                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${(formData.managedDoers || []).includes(doer._id)
+                        ? "bg-card border-emerald-500/40 text-foreground"
+                        : "bg-background border-border text-slate-400"
+                        }`}
                     >
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-black truncate leading-tight uppercase tracking-tight">
@@ -398,11 +396,10 @@ const AddEmployee = ({
                   .map((assigner) => (
                     <label
                       key={assigner._id}
-                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${
-                        (formData.managedAssigners || []).includes(assigner._id)
-                          ? "bg-card border-primary/40 text-foreground"
-                          : "bg-background border-border text-slate-400"
-                      }`}
+                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${(formData.managedAssigners || []).includes(assigner._id)
+                        ? "bg-card border-primary/40 text-foreground"
+                        : "bg-background border-border text-slate-400"
+                        }`}
                     >
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-black truncate leading-tight uppercase tracking-tight">
@@ -427,11 +424,10 @@ const AddEmployee = ({
         <button
           type="submit"
           disabled={loading}
-          className={`group relative mt-4 py-5 px-8 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-xl ${
-            loading
-              ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-sky-500 to-sky-600 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 cursor-pointer"
-          }`}
+          className={`group relative mt-4 py-5 px-8 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-xl ${loading
+            ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
+            : "bg-gradient-to-r from-sky-500 to-sky-600 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 cursor-pointer"
+            }`}
         >
           {loading ? (
             <RefreshCcw className="animate-spin" size={20} />

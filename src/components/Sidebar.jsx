@@ -30,13 +30,14 @@ import {
   LogOut,
   LifeBuoy,
   BarChart3,
-  GitBranch // NEW: Added for Flow Management System
+  GitBranch,
+  FileText // NEW: Icon for Reports Hub
 } from 'lucide-react';
 
 /**
- * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.8
+ * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.9
  * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * Updated: Integrated FMS (Flow Management System) into the Administration suite.
+ * Updated: Integrated Reports Hub exclusively for Admin roles.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
@@ -109,9 +110,10 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Employees', icon: <Users />, roles: ['Admin'] },
         { name: 'Mapping', icon: <UserCog />, roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
-        // NEW ITEM: Added for Flow Management System
         { name: 'Flow Management', icon: <GitBranch />, roles: ['Admin'] }, 
         { name: 'Review Meeting', icon: <BarChart3 />, roles: ['Admin', 'Coordinator'] }, 
+        // NEW ITEM: Reports Hub (Admin Only)
+        { name: 'Reports Hub', icon: <FileText />, roles: ['Admin'] },
         { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
       ]
@@ -128,8 +130,9 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     if (itemName === 'Dashboard') return '';
     if (itemName === 'Create Checklist') return 'checklist-setup';
     if (itemName === 'My Checklist') return 'checklist';
-    // Logic for the new FMS route
     if (itemName === 'Flow Management') return 'fms-dashboard'; 
+    // Logic for the new Reports Hub route
+    if (itemName === 'Reports Hub') return 'reports';
     return itemName.toLowerCase().replace(/\s+/g, '-');
   };
 
