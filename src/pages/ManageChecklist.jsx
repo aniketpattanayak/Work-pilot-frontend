@@ -18,8 +18,10 @@ import {
   ChevronDown,
   History,
   Settings2,
-  Check
+  Check,
+  Plus
 } from 'lucide-react';
+import CreateChecklist from './CreateChecklist';
 
 /**
  * MANAGE CHECKLIST v5.4
@@ -35,6 +37,7 @@ const ManageChecklist = ({ tenantId }) => {
 
   // MODAL STATE
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const [editData, setEditData] = useState({
     doerId: '',
@@ -51,6 +54,15 @@ const ManageChecklist = ({ tenantId }) => {
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
+
+
+
+const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+
+
+
+
   /**
    * TIMELINE ENGINE
    */
@@ -60,14 +72,37 @@ const ManageChecklist = ({ tenantId }) => {
     const frequency = item.frequency;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    let pointer = new Date(today);
+    let pointer = new Date(today); 
     const weekends = tenantSettings?.weekends || [0];
     const holidays = tenantSettings?.holidays || [];
 
+    /*
     const isNonWorkingDay = (date) => {
       const dateStr = date.toISOString().split('T')[0];
       return weekends.includes(date.getDay()) || holidays.some(h => new Date(h.date).toISOString().split('T')[0] === dateStr);
     };
+    */
+
+
+
+
+    const normalizeDate = (d) => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+};
+
+const holidaySet = new Set(
+  (holidays || []).map(h => normalizeDate(h.date))
+);
+
+const isNonWorkingDay = (date) => {
+  const time = normalizeDate(date);
+  return weekends.includes(date.getDay()) || holidaySet.has(time);
+};
+
+
+
 
     const matchesConfig = (date) => {
       if (frequency === 'Weekly') {
@@ -80,6 +115,50 @@ const ManageChecklist = ({ tenantId }) => {
       }
       return true;
     };
+
+
+
+    if (['Yearly', 'Half-Yearly', 'Quarterly'].includes(frequency)) {
+  const baseDate = new Date(item.nextDueDate || today);
+
+  const incrementMap = {
+    'Yearly': 1,
+    'Half-Yearly': 0.5,
+    'Quarterly': 0.25
+  };
+
+  let count = 0;
+  let pointer = new Date(baseDate);
+
+  while (dates.length < 5 && count < 10) {
+    count++;
+
+    // increment based on type
+    if (frequency === 'Yearly') pointer.setFullYear(pointer.getFullYear() + 1);
+    if (frequency === 'Half-Yearly') pointer.setMonth(pointer.getMonth() + 6);
+    if (frequency === 'Quarterly') pointer.setMonth(pointer.getMonth() + 3);
+
+    // skip holidays/weekends
+    while (isNonWorkingDay(pointer)) {
+      pointer.setDate(pointer.getDate() + 1);
+    }
+
+    dates.push({
+      label: dates.length === 0 ? "NEXT" : "FOLLOWING",
+      date: new Date(pointer).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
+    });
+  }
+
+  return dates;
+}
+
+
+
+
 
     let loopSafety = 0;
     while (dates.length < 5 && loopSafety < 1000) {
@@ -146,13 +225,20 @@ const ManageChecklist = ({ tenantId }) => {
 
   const handleEditClick = (item, e) => {
     e.stopPropagation();
+
+
+    const emp = employees.find(e => e._id === (item.doerId?._id || item.doerId));
+    setSelectedEmployee(emp);
+
+
     setEditingId(item._id);
     setEditData({
       doerId: item.doerId?._id || item.doerId,
       taskName: item.taskName,
       description: item.description || '',
       frequency: item.frequency,
-      frequencyConfig: item.frequencyConfig || { daysOfWeek: [], daysOfMonth: [] }
+      frequencyConfig: item.frequencyConfig || { daysOfWeek: [], daysOfMonth: [] },
+      createdAt: item.createdAt 
     });
   };
 
@@ -172,225 +258,475 @@ const ManageChecklist = ({ tenantId }) => {
     try { await API.delete(`/tasks/checklist/${id}`); fetchData(); } catch (err) { alert("Deletion error."); }
   };
 
+{/*
+
+    useEffect(() => {
+  if (selectedEmployee && !selectedEmployee.workOnSunday) {
+    setEditData(prev => ({
+      ...prev,
+      frequencyConfig: {
+        ...prev.frequencyConfig,
+        daysOfWeek: prev.frequencyConfig.daysOfWeek.filter(d => d !== 0)
+      }
+    }));
+  }
+}, [selectedEmployee]);
+
+
+*/}
+
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[400px] gap-6">
       <RefreshCcw className="animate-spin text-primary" size={50} />
       <p className="text-foreground font-black text-sm tracking-[0.4em] uppercase">Opening Registry...</p>
     </div>
   );
+  
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 pb-20 px-6 selection:bg-primary/30">
+ <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700  px-6 selection:bg-primary/30">
+      {/* ================= HEADER ================= */}
+<div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
 
-      {/* HEADER SECTION */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-6">
-        <div className="flex items-center gap-6">
-          <div className="bg-primary/10 p-5 rounded-2xl border border-primary/20 shadow-inner">
-            <ClipboardList className="text-primary" size={36} />
-          </div>
-          <div>
-            <h2 className="text-foreground text-3xl md:text-4xl font-black tracking-tighter uppercase leading-none">Task Registry</h2>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mt-2 opacity-80 italic">Precision Operational Management Grid</p>
-          </div>
-        </div>
-        <button onClick={fetchData} className="group bg-card hover:bg-background border border-border px-10 py-4 rounded-2xl text-foreground font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4 shadow-xl active:scale-95">
-          <RefreshCcw size={20} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Sync Data
-        </button>
-      </div>
+  <div className="flex items-center gap-4">
+    <div className="bg-primary/10 p-3 rounded-xl border border-primary/20">
+      <ClipboardList className="text-primary" size={24} />
+    </div>
 
-      {/* FILTER TERMINAL */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10 bg-card/50 p-8 rounded-[3rem] border border-border shadow-inner">
-        <div className="relative group">
-          <input type="text" placeholder="Search by Personnel or Task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-background border border-border text-foreground px-14 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm shadow-inner" />
-          <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
-        </div>
-        <div className="relative group"><input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full bg-background border border-border text-foreground px-14 py-4 rounded-2xl outline-none font-black text-xs uppercase shadow-inner" /><Calendar size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" /></div>
-        <div className="flex bg-background p-1.5 rounded-2xl border border-border overflow-x-auto custom-scrollbar shadow-inner">
-          {frequencyTabs.map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-primary text-primary-foreground shadow-lg' : 'text-slate-500 hover:text-foreground'}`}>{tab}</button>
-          ))}
-        </div>
-      </div>
+    <div>
+      <h2 className="text-foreground text-xl md:text-2xl font-black tracking-tight uppercase leading-tight">
+        Task Registry
+      </h2>
+      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest opacity-70">
+        Operational Grid
+      </p>
+    </div>
+  </div>
+
+  <div className="flex items-center gap-3">
+  <button
+    onClick={fetchData}
+    className="group bg-card hover:bg-background border border-border px-5 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-md active:scale-95 transition"
+  >
+    <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
+    Refresh
+  </button>
+  <button
+    onClick={() => setIsCreateOpen(true)}
+    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+  >
+    <Plus size={14} />
+    New Task
+  </button>
+  </div>
+</div>
+
+
+{/* ================= FILTER BAR ================= */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-card/40 p-4 rounded-2xl border border-border">
+
+  {/* SEARCH */}
+  <div className="relative group">
+    <input
+      type="text"
+      placeholder="Search..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="w-full bg-background border border-border text-foreground px-10 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 text-sm font-semibold"
+    />
+    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary" />
+  </div>
+
+  {/* DATE */}
+  {/*<div className="relative group">
+    <input
+      type="date"
+      value={selectedDate}
+      onChange={(e) => setSelectedDate(e.target.value)}
+      className="w-full bg-background border border-border text-foreground px-10 py-2 rounded-xl text-xs font-semibold"
+    />
+    <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+  </div>
+  */}
+
+  {/* TABS */}
+  <div className="flex bg-background p-1 rounded-xl border border-border overflow-x-auto custom-scrollbar">
+    {frequencyTabs.map(tab => (
+      <button
+        key={tab}
+        onClick={() => setActiveTab(tab)}
+        className={`flex-1 px-4 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition whitespace-nowrap ${
+          activeTab === tab
+            ? 'bg-primary text-primary-foreground shadow'
+            : 'text-slate-500 hover:text-foreground'
+        }`}
+      >
+        {tab}
+      </button>
+    ))}
+  </div>
+
+</div>
 
       {/* EXCEL GRID */}
-      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1600px]">
-            <thead>
-              <tr className="bg-background/80 border-b border-border text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-                <th className="px-8 py-6 border-r border-border text-center w-24">Pos.</th>
-                <th className="px-8 py-6 border-r border-border">Directive Name</th>
-                <th className="px-8 py-6 border-r border-border">Personnel</th>
-                <th className="px-8 py-6 border-r border-border min-w-[450px]">Technical Briefing</th>
-                <th className="px-8 py-6 border-r border-border text-center">Cycle / Tuning</th>
-                <th className="px-8 py-6 border-r border-border">Future Schedule</th>
-                <th className="px-8 py-6 text-right pr-12">Registry Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredChecklists.map((item, index) => {
-                const isEditing = editingId === item._id;
-                const schedule = getNextFiveDates(item);
+      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
 
-                return (
-                  <tr key={item._id} className={`transition-all ${isEditing ? 'bg-primary/5' : 'hover:bg-primary/[0.01]'}`}>
-                    <td className="px-8 py-6 border-r border-border text-center text-xs font-black text-slate-400">#{String(index + 1).padStart(2, '0')}</td>
+  {/* SCROLL AREA */}
+  <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar  w-full scrollbar-thin">
 
-                    <td className="px-8 py-6 border-r border-border">
-                      {isEditing ? <input value={editData.taskName} onChange={(e) => setEditData({ ...editData, taskName: e.target.value })} className="w-full bg-background border border-primary/30 p-3 rounded-xl font-black text-sm uppercase text-foreground" />
-                        : <span className="font-black text-foreground text-sm uppercase leading-tight block">{item.taskName}</span>}
-                    </td>
+    {/* TABLE */}
+    <div className="w-[900px] sm:w-full text-sm">
 
-                    <td className="px-8 py-6 border-r border-border">
-                      {isEditing ? (
-                        <select value={editData.doerId} onChange={(e) => setEditData({ ...editData, doerId: e.target.value })} className="w-full bg-background border border-primary/30 p-3 rounded-xl font-black text-xs uppercase text-foreground">
-                          {employees.map(emp => <option key={emp._id} value={emp._id}>{emp.name}</option>)}
-                        </select>
-                      ) : (
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20"><User size={18} className="text-primary" /></div>
-                          <span className="text-foreground font-black text-sm uppercase whitespace-nowrap tracking-tight">{item.doerId?.name || 'UNMAPPED'}</span>
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-8 py-6 border-r border-border">
-                      {isEditing ? <textarea value={editData.description} onChange={(e) => setEditData({ ...editData, description: e.target.value })} className="w-full bg-background border border-primary/30 p-3 rounded-xl text-sm font-bold text-foreground h-24 shadow-inner resize-none" />
-                        : <p className="text-foreground text-sm font-bold leading-relaxed italic opacity-70 line-clamp-2">{item.description || "No briefing."}</p>}
-                    </td>
-
-                    <td className="px-8 py-6 border-r border-border text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        {isEditing ? (
-                          <button
-                            onClick={() => setIsConfigModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-md"
-                          >
-                            <Settings2 size={14} /> Tune Frequency
-                          </button>
-                        ) : (
-                          <span className="text-primary text-[10px] font-black uppercase tracking-widest border-2 border-primary/20 bg-primary/5 px-4 py-2 rounded-xl shadow-sm">{item.frequency}</span>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-6 border-r border-border">
-                      <div className="relative group">
-                        <select className="w-full bg-background border border-border text-foreground font-black text-[11px] uppercase px-5 py-3 rounded-2xl appearance-none cursor-pointer hover:border-primary transition-all shadow-inner">
-                          {schedule.length > 0 ? schedule.map((obj, dIdx) => (
-                            <option key={dIdx} className="font-bold py-3 bg-card">{obj.label} → {obj.date}</option>
-                          )) : <option>Registry Synced</option>}
-                        </select>
-                        <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:text-primary transition-transform" />
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-6 text-right pr-12">
-                      <div className="flex justify-end gap-4">
-                        {isEditing ? (
-                          <>
-                            <button onClick={(e) => handleUpdate(item._id, e)} className="p-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-500 shadow-xl active:scale-90 transition-all"><Save size={20} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-4 bg-slate-200 dark:bg-slate-800 text-foreground rounded-2xl active:scale-90"><X size={20} /></button>
-                          </>
-                        ) : (
-                          <>
-                            <button onClick={(e) => handleEditClick(item, e)} className="p-4 bg-slate-950 dark:bg-slate-100 dark:text-slate-950 text-white rounded-2xl hover:scale-110 transition-all shadow-lg active:scale-90"><Edit3 size={18} /></button>
-                            <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-4 bg-red-600 text-white rounded-2xl hover:bg-red-500 shadow-xl active:scale-90 transition-all"><Trash2 size={18} /></button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {/* HEADER */}
+      <div className="grid grid-cols-[60px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
+        <span className="text-center">#</span>
+        <span>Title</span>
+        <span>Assigned to</span>
+        <span >Description</span>
+        <span className="text-center">Cycle</span>
+        <span>Schedule</span>
+        <span className="text-right">Actions</span>
       </div>
 
-      {/* ADVANCED CONFIGURATION MODAL */}
-      {isConfigModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-2xl rounded-[3rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] overflow-hidden relative animate-in zoom-in-95 duration-500">
+      {/* ROWS */}
+      {filteredChecklists.map((item, index) => {
+        const isEditing = editingId === item._id;
+        const schedule = getNextFiveDates(item);
 
-            {/* MODAL HEADER */}
-            <div className="px-10 py-8 bg-background/50 border-b border-border flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-2xl border border-primary/20"><Settings2 className="text-primary" size={24} /></div>
-                <div>
-                  <h3 className="text-foreground font-black text-xl tracking-tighter uppercase">Frequency Tuning</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Adjust multi-instance parameters</p>
-                </div>
-              </div>
-              <button onClick={() => setIsConfigModalOpen(false)} className="text-slate-400 hover:text-foreground transition-all"><X size={28} /></button>
+        return (
+          <div
+            key={item._id}
+            className={`grid grid-cols-[60px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0 ${
+              isEditing ? 'bg-primary/5' : ''
+            }`}
+          >
+
+            {/* POS */}
+            <span className="text-center text-xs font-black text-slate-400">
+              #{String(index + 1).padStart(2, '0')}
+            </span>
+
+            {/* NAME */}
+            <div className="min-w-0">
+              {isEditing ? (
+                <input
+                  value={editData.taskName}
+                  onChange={(e) => setEditData({ ...editData, taskName: e.target.value })}
+                  className="w-full bg-background border border-primary/30 p-2 rounded-lg text-sm font-bold"
+                />
+              ) : (
+                <span className="font-bold text-sm truncate block">
+                  {item.taskName}
+                </span>
+              )}
             </div>
 
-            <div className="p-10 space-y-10">
-              {/* FREQUENCY SELECT */}
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Lifecycle Cycle</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map(f => (
-                    <button
-                      key={f}
-                      onClick={() => setEditData({ ...editData, frequency: f })}
-                      className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest border transition-all ${editData.frequency === f ? 'bg-primary text-white border-primary shadow-xl scale-105' : 'bg-background text-slate-400 border-border hover:border-primary/40'}`}
-                    >
-                      {f}
-                    </button>
+            {/* PERSON */}
+            <div className="min-w-0">
+              {isEditing ? (
+                <select
+                  value={editData.doerId}
+                  onChange={(e) => {
+  const emp = employees.find(emp => emp._id === e.target.value);
+  setSelectedEmployee(emp); // ✅
+  setEditData({ ...editData, doerId: e.target.value });
+}}
+
+                  className="w-full bg-background border border-primary/30 p-2 rounded-lg text-xs"
+                >
+                  {employees.map(emp => (
+                    <option key={emp._id} value={emp._id}>{emp.name}</option>
                   ))}
-                </div>
-              </div>
-
-              {/* CONFIGURATION AREA */}
-              <div className="bg-background/50 p-8 rounded-[2rem] border border-border border-dashed min-h-[150px] flex flex-col justify-center items-center">
-                {editData.frequency === 'Weekly' && (
-                  <div className="space-y-6 text-center">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Authorize Operational Days</span>
-                    <div className="flex flex-wrap justify-center gap-3">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
-                        <button key={i} onClick={() => toggleEditDay(i)} className={`w-14 h-14 rounded-2xl font-black text-xs border transition-all ${editData.frequencyConfig.daysOfWeek.includes(i) ? 'bg-primary text-white border-primary shadow-lg scale-110' : 'bg-card text-slate-400 border-border'}`}>{d}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {editData.frequency === 'Monthly' && (
-                  <div className="space-y-6 text-center">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Authorize Calendar Dates</span>
-                    <div className="grid grid-cols-7 sm:grid-cols-10 gap-2">
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                        <button key={d} onClick={() => toggleEditDate(d)} className={`w-10 h-10 rounded-xl font-black text-[10px] border transition-all ${editData.frequencyConfig.daysOfMonth.includes(d) ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg scale-110' : 'bg-card text-slate-400 border-border'}`}>{d}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!['Weekly', 'Monthly'].includes(editData.frequency) && (
-                  <div className="text-center">
-                    <CheckCircle2 className="text-primary/20 mx-auto mb-4" size={40} />
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Automatic anchoring active for {editData.frequency} cycles.</p>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => setIsConfigModalOpen(false)}
-                className="w-full py-6 rounded-[1.5rem] bg-primary text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-4"
-              >
-                <Check size={20} /> Apply Parameters
-              </button>
+                </select>
+              ) : (
+                <span className="truncate block text-sm font-semibold">
+                  {item.doerId?.name || 'UNMAPPED'}
+                </span>
+              )}
             </div>
+
+            {/* DESCRIPTION */}
+            <div className="min-w-0">
+              {isEditing ? (
+                <textarea
+                  value={editData.description}
+                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  className="w-full bg-background border border-primary/30 p-2 rounded-lg text-xs h-16 resize-none"
+                />
+              ) : (
+                <p className="text-xs truncate opacity-70">
+                  {item.description || "No briefing."}
+                </p>
+              )}
+            </div>
+
+            {/* FREQUENCY */}
+            <div className="text-center min-w-0">
+              {isEditing ? (
+                <button
+                  onClick={(e) => {
+  e.stopPropagation();
+  setEditingId(item._id); // ensure editing row
+  setEditData({
+    ...item,
+    frequency: item.frequency,
+    frequencyConfig: item.frequencyConfig || {
+      daysOfWeek: [],
+      daysOfMonth: []
+    }
+  });
+  setIsConfigModalOpen(true);
+}}
+                  className="text-[9px] px-3 py-1 bg-primary/10 border rounded-lg"
+                >
+                  {item.frequency}
+                </button>
+              ) : (
+                <span className="text-[10px] font-bold text-primary truncate">
+                  {item.frequency}
+                </span>
+              )}
+            </div>
+
+            {/* SCHEDULE */}
+            <div className="min-w-0">
+              <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
+                {schedule.length > 0 ? schedule.map((obj, i) => (
+                  <option key={i}>{obj.label} → {obj.date}</option>
+                )) : <option>Synced</option>}
+              </select>
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex justify-end gap-2 min-w-0">
+              {isEditing ? (
+                <>
+                  <button onClick={(e) => handleUpdate(item._id, e)} className="p-2 bg-emerald-600 text-white rounded-lg">
+                    <Save size={14} />
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="p-2 bg-slate-400 rounded-lg">
+                    <X size={14} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg">
+                    <Edit3 size={14} />
+                  </button>
+                  <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg">
+                    <Trash2 size={14} />
+                  </button>
+                </>
+              )}
+            </div>
+
+          </div>
+        );
+      })}
+
+    </div>
+  </div>
+</div>
+
+{isConfigModalOpen && (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+
+    <div className="bg-card border border-border w-full max-w-lg md:max-w-xl rounded-[2rem] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-300">
+
+      {/* HEADER */}
+      <div className="px-6 md:px-8 py-5 bg-background/60 border-b border-border flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
+            <Settings2 className="text-primary" size={20} />
+          </div>
+          <div>
+            <h3 className="text-foreground font-black text-lg uppercase tracking-tight">
+              Frequency Tuning
+            </h3>
+            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+              Adjust parameters
+            </p>
           </div>
         </div>
-      )}
+        <button
+          onClick={() => setIsConfigModalOpen(false)}
+          className="text-slate-400 hover:text-foreground transition"
+        >
+          <X size={22} />
+        </button>
+      </div>
+      {/* BODY */}
+      <div className="p-6 md:p-8 space-y-8">
+        {/* FREQUENCY SELECT */}
+        <div className="space-y-3">
+
+
+
+{/*
+          
+<div className="space-y-2">
+  <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+    Start Date
+  </label>
+
+  <input
+    type="date"
+    value={editData.createdAt ? editData.createdAt.split('T')[0] : ''}
+    onChange={(e) =>
+      setEditData({ ...editData, createdAt: e.target.value })
+    }
+    className="w-full bg-background border border-border p-3 rounded-xl text-sm font-semibold"
+  />
+</div>
+
+*/}
+
+          <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+            Lifecycle
+          </label>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map(f => (
+              <button
+                key={f}
+                onClick={() => setEditData({ ...editData, frequency: f })}
+                className={`py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border transition ${
+                  editData.frequency === f
+                    ? 'bg-primary text-white border-primary shadow-md'
+                    : 'bg-background text-slate-400 border-border hover:border-primary/40'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* CONFIG AREA */}
+        <div className="bg-background/40 p-5 rounded-xl border border-border border-dashed min-h-[120px] flex flex-col justify-center items-center">
+
+          {/* WEEKLY */}
+          {editData.frequency === 'Weekly' && (
+            <div className="space-y-4 text-center">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                Select Days
+              </span>
+
+              <div className="flex flex-wrap justify-center gap-2">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => {
+  const isSunday = i === 0;
+  const isDisabled = isSunday && selectedEmployee && !selectedEmployee.workOnSunday;
+
+  return (
+    <button
+      key={i}
+      disabled={isDisabled}
+      onClick={() => !isDisabled && toggleEditDay(i)}
+      className={`w-10 h-10 rounded-lg text-[10px] font-black border transition
+        ${editData.frequencyConfig.daysOfWeek.includes(i)
+          ? 'bg-primary text-white border-primary'
+          : 'bg-card text-slate-400 border-border'}
+        ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
+      `}
+      title={isDisabled ? "Employee doesn't work on Sundays" : ""}
+    >
+      {d}
+    </button>
+  );
+})}
+              </div>
+            </div>
+          )}
+
+          {/* MONTHLY */}
+          {editData.frequency === 'Monthly' && (
+            <div className="space-y-4 text-center w-full">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                Select Dates
+              </span>
+
+              <div className="grid grid-cols-7 gap-1 max-h-[150px] overflow-y-auto custom-scrollbar">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <button
+                    key={d}
+                    onClick={() => toggleEditDate(d)}
+                    className={`h-8 rounded text-[10px] font-black border transition ${
+                      editData.frequencyConfig.daysOfMonth.includes(d)
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-card text-slate-400 border-border'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* OTHER */}
+          {!['Weekly', 'Monthly'].includes(editData.frequency) && (
+            <div className="text-center">
+              <CheckCircle2 className="text-primary/30 mx-auto mb-2" size={30} />
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                Auto mode active
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ACTION */}
+        <button
+          onClick={() => setIsConfigModalOpen(false)}
+          className="w-full py-4 rounded-xl bg-primary text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition"
+        >
+          Apply
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 20px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
       `}</style>
+
+      {/* ── CREATE CHECKLIST MODAL ── */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Plus size={16} className="text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-foreground uppercase tracking-tight">New Checklist Task</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-widest">Create & assign a recurring task</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCreateOpen(false)}
+                className="w-8 h-8 rounded-lg bg-muted hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center justify-center transition-colors group"
+              >
+                <X size={15} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+              </button>
+            </div>
+            {/* Modal Body — renders the full CreateChecklist form */}
+            <div className="overflow-y-auto flex-1">
+              <CreateChecklist
+                tenantId={currentTenantId}
+                onSuccess={() => { setIsCreateOpen(false); fetchData(); }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    
   );
 };
 

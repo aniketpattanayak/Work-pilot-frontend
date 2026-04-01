@@ -17,10 +17,73 @@ import {
  * Purpose: Handles deadline approvals or task reassignments with full theme adaptivity.
  * Logic: Includes automated date extraction from history remarks.
  */
-const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
+const RevisionPanel = ({ task, employees, assignerId, onSuccess, source  }) => {
+
+
+  const revisionLog = task?.history
+  ?.filter(h => h.action === "Revision Requested")
+  ?.slice(-1)[0];
+
+const reason = revisionLog?.remarks || "No reason provided";
+
+
   const [newDoerId, setNewDoerId] = useState('');
   const [reassignRemarks, setReassignRemarks] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+
+
+  const user = JSON.parse(localStorage.getItem("user")) || {};
+const currentUserId = user._id || user.id;
+
+
+  const isDoer = source === "doer";
+const isAssigner = source === "manage"; 
+
+
+const [doerRemarks, setDoerRemarks] = useState('');
+const [proposedDeadline, setProposedDeadline] = useState('');
+
+
+
+
+
+const handleRequestRevision = async () => {
+  if (!doerRemarks || !proposedDeadline) {
+    return alert("Fill all fields");
+  }
+
+  try {
+    setIsProcessing(true);
+
+    const finalRemarks = `${doerRemarks}. Proposed Deadline: ${proposedDeadline}`;
+
+    await API.post('/tasks/handle-revision', {
+      taskId: task._id,
+      action: 'Request',
+      remarks: finalRemarks,
+      proposedDeadline: new Date(proposedDeadline)
+    });
+
+    /*await API.post('/tasks/handle-revision', {
+      taskId: task._id,
+      action: 'Notify'
+    });*/
+
+    alert("Revision request sent");
+    onSuccess();
+  } catch (err) {
+    console.error(err);
+    alert("Failed");
+  } finally {
+    setIsProcessing(false);
+  }
+};
+
+
+
+
+
 
   // --- COMMAND: AUTHORIZE PROPOSED DEADLINE ---
   const handleApprove = async () => {
@@ -28,16 +91,13 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
       setIsProcessing(true);
       
       // Safety Guard: Extract the date from the remarks string
-      let proposedDate = task.deadline; 
-      if (task.remarks && task.remarks.includes("Proposed Deadline:")) {
-          const extractedDate = task.remarks.split("Proposed Deadline: ")[1]?.split(".")[0];
-          if (extractedDate) proposedDate = extractedDate;
-      }
+      //let proposedDate = task.deadline; 
+      let proposedDate =reason.includes("Proposed Deadline:")? reason.split("Proposed Deadline: ")[1]: task?.proposedDeadline;
       
-      await API.put(`/tasks/handle-revision`, {
+      await API.post(`/tasks/handle-revision`, {
         taskId: task._id,
         action: 'Approve',
-        newDeadline: proposedDate, 
+        newDeadline: new Date(proposedDate), 
         assignerId: assignerId
       });
       
@@ -57,7 +117,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
     
     try {
       setIsProcessing(true);
-      await API.put(`/tasks/handle-revision`, {
+      await API.post(`/tasks/handle-revision`, {
         taskId: task._id,
         action: 'Reassign',
         newDoerId: newDoerId,
@@ -76,12 +136,42 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
 
   return (
     <div className="mt-6 bg-amber-50/50 dark:bg-amber-500/5 rounded-[2rem] border border-amber-500/20 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700 shadow-xl">
-      
+      {isDoer && (
+  <div className="p-6 space-y-6">
+
+    <h4 className="text-xs font-black uppercase">Request Revision</h4>
+
+    <textarea
+      placeholder="Reason for revision..."
+      value={doerRemarks}
+      onChange={(e) => setDoerRemarks(e.target.value)}
+      className="w-full p-4 border rounded-xl"
+    />
+
+    <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">Proposed Deadline</label>
+    <input
+      type="date"
+      value={proposedDeadline}
+      placeholder="Proposed deadline"
+      onChange={(e) => setProposedDeadline(e.target.value)}
+      className="w-full p-4 border rounded-xl"
+    />
+
+    <button
+      onClick={handleRequestRevision}
+      className="w-full bg-yellow-500 text-white py-3 rounded-xl"
+    >
+      Submit Revision Request
+    </button>
+
+  </div>
+)}
       {/* Header Banner: Adaptive Alert State */}
+      {isAssigner && (<>
       <div className="px-6 py-5 bg-amber-500/10 border-b border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
             <AlertTriangle className="text-amber-600 dark:text-amber-500" size={20} />
-            <h4 className="text-amber-700 dark:text-amber-500 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] m-0 leading-tight">Intervention Protocol: Revision Request</h4>
+            <h4 className="text-amber-700 dark:text-amber-500 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] m-0 leading-tight">Intervention: Revision Request Raised</h4>
         </div>
         <div className="bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/20 shrink-0">
             <span className="text-[9px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">Decision Pending</span>
@@ -93,10 +183,11 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
         {/* Request Details Block */}
         <div className="bg-background/80 backdrop-blur-sm p-5 rounded-2xl border border-amber-500/10 space-y-3 shadow-inner">
             <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                <MessageSquare size={12} className="text-amber-500" /> Doer Node Statement
+                <MessageSquare size={12} className="text-amber-500" /> Doer Statement To Revise 
             </div>
-            <p className="text-slate-600 dark:text-slate-300 text-xs md:text-sm font-bold leading-relaxed italic uppercase tracking-tight">
-                "{task.remarks || "Standard revision requested without additional context."}"
+            <p className="text-slate-600 dark:text-slate-500 text-xs md:text-sm font-bold leading-relaxed italic uppercase tracking-tight">
+                {/*"{task.remarks || "Standard revision requested without additional context."}"*/}
+                {reason}
             </p>
         </div>
 
@@ -133,7 +224,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
                         className="w-full bg-background border border-border text-foreground pl-14 pr-12 py-4 rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-tight outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all cursor-pointer appearance-none shadow-inner"
                     >
                         <option value="">Select Alternative Doer Node</option>
-                        {employees
+                        {(employees || [])
                         .filter(emp => {
                           const empRoles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
                           return (empRoles.includes('Doer')) && emp._id !== (task.doerId?._id || task.doerId);
@@ -149,7 +240,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
                 <div className="relative group">
                     <History className="absolute left-5 top-5 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                     <textarea 
-                        placeholder="Log reasoning for rerouting (transmitted to new node)..." 
+                        placeholder="Add message To The New Doer..." 
                         value={reassignRemarks}
                         onChange={(e) => setReassignRemarks(e.target.value)}
                         className="w-full bg-background border border-border text-foreground pl-14 pr-6 py-4 rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-tight outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all min-h-[100px] resize-none shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700"
@@ -172,7 +263,8 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess }) => {
                 </button>
             </div>
         </div>
-      </div>
+      </div> 
+    </>)}
 
       {/* Footer Meta Protocol */}
       <div className="px-8 py-4 bg-background/50 border-t border-amber-500/10 flex items-center gap-3">

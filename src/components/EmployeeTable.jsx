@@ -20,7 +20,7 @@ import {
  * Purpose: Centralized staff management with adaptive Light/Dark themes.
  * Responsive: Optimized font scaling and horizontal overflow handling for mobile.
  */
-const EmployeeTable = ({ tenantId, onEdit }) => {
+const EmployeeTable = ({ tenantId, onEdit ,onAddNew }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -62,10 +62,10 @@ const EmployeeTable = ({ tenantId, onEdit }) => {
   );
 
   return (
-    <div className="mt-8 bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border shadow-2xl overflow-hidden animate-in fade-in duration-700 transition-colors duration-500">
+   <div className="mt-8 bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border shadow-2xl overflow-hidden">
       
-      {/* --- TABLE HEADER SECTION --- */}
-      <div className="px-5 py-6 sm:px-10 sm:py-8 border-b border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+      {/* --- RECTIFIED TABLE HEADER --- */}
+      <div className="px-5 py-6 sm:px-10 sm:py-8 border-b border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
           <div className="bg-primary/10 p-2.5 rounded-2xl border border-primary/20 shrink-0">
             <Users size={24} className="text-primary" />
@@ -94,7 +94,7 @@ const EmployeeTable = ({ tenantId, onEdit }) => {
               <th className="px-6 py-5">Access Clearances</th>
               <th className="px-6 py-5">Linkage States</th>
               <th className="px-6 py-5">Contact Node</th>
-              <th className="px-6 py-5 sm:px-10 text-right">Intervention</th>
+              <th className="px-6 py-5 sm:px-10 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

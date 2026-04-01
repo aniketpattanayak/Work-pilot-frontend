@@ -244,11 +244,29 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     </div>
   );
 
+
+
+  /*
   const pendingCount = tasks.filter(t => (t.status === 'Pending' || t.status === 'Active') && (t.taskType !== 'Checklist' || getPendingInstances(t).length > 0)).length;
   const completedCount = tasks.filter(t => t.status === 'Completed' || t.status === 'Verified').length;
 
+
+  */
+
+  const pendingCount = filteredTasks.filter(
+  t =>
+    (t.status === 'Pending' || t.status === 'Active') &&
+    (t.taskType !== 'Checklist' || getPendingInstances(t).length > 0)
+).length;
+
+const completedCount = filteredTasks.filter(
+  t => t.status === 'Completed' || t.status === 'Verified'
+).length;
+
+
+
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 px-4">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700  selection:bg-primary/30 px-4">
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
@@ -260,7 +278,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           </div>
         </div>
         <button onClick={fetchTasks} className="group w-full md:w-auto bg-card hover:bg-background border border-border px-10 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
-          <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh Ledger
+          <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
@@ -276,7 +294,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         <div className="bg-card p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-5 text-primary group-hover:scale-110 transition-transform"><Layers size={60} /></div>
           <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Total Directives</span>
-          <div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{tasks.length}</div>
+          {/*<div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{tasks.length}</div>*/}
+          <div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{filteredTasks.length}</div>
+
         </div>
         <div className="bg-card p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:scale-110 transition-transform"><Clock size={60} /></div>
@@ -298,18 +318,20 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       </div>
 
       {/* TASK LIST */}
-      <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full border-collapse text-left min-w-[1000px]">
-            <thead>
-              <tr className="bg-background/50 border-b border-border">
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Personnel</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Ledger State</th>
-                <th className="px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
+      <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl overflow-hidden h-[600px] flex flex-col">
+        {/* SCROLL AREA */}
+        <div className="flex-1 overflow-auto custom-scrollbar">
+           <div className="min-w-[700px] lg:min-w-full">
+          <table className="w-full table-fixed border-collapse text-left">
+            <thead className='sticky top-0 z-20 bg-background/90 backdrop-blur-xl'>
+              <tr className=" bg-background/50 border-b border-border">
+                <th className=" w-[60px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
+                <th className=" w-[180px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
+                <th className=" w-[160px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Personnel</th>
+                <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
+                <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
+                <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Ledger State</th>
+                <th className=" w-[150px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -322,12 +344,23 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 return (
                   <React.Fragment key={task._id}>
                     <tr className="hover:bg-primary/[0.02] transition-all group">
-                      <td className="px-8 py-7"><div className={`p-2.5 rounded-xl w-fit ${isChecklist ? 'bg-amber-500/10 text-amber-600' : 'bg-sky-500/10 text-sky-600'}`}>{isChecklist ? <ClipboardList size={20} /> : <Target size={20} />}</div></td>
-                      <td className="px-8 py-7"><div className="text-sm font-black text-foreground mb-1 uppercase tracking-tight truncate max-w-[200px]">{task.title}</div><div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{isChecklist ? `Cycle: ${task.frequency}` : `ID: ${task._id?.slice(-6).toUpperCase()}`}</div></td>
-                      <td className="px-8 py-7">
-                        <div className="flex flex-col">
-                           {/* PERSONNEL COLUMN WITH MAPPED BADGE */}
-                           <div className="flex items-center gap-2 text-slate-600 font-black text-[11px] uppercase tracking-tight">
+                      <td className="px-4 py-3 min-w-0 break-words">
+                        <div className={`p-2 rounded-xl w-fit ${isChecklist ? 'bg-amber-500/10 text-amber-600' : 'bg-sky-500/10 text-sky-600'}`}>{isChecklist ? 'CHK': 'DLG'}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="relative group max-w-[180px]">
+                            <div className="text-sm font-black text-foreground uppercase tracking-tight truncate">{task.title}</div>
+                              {/* HOVER FULL TEXT */}
+                            <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-card border border-border rounded-lg p-2 text-xs shadow-xl z-50 w-max max-w-[300px]">
+                              {task.title}
+                            </div>
+                        </div>
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{isChecklist ? `Cycle: ${task.frequency}` : `ID: ${task._id?.slice(-6).toUpperCase()}`}</div>
+                      </td>
+                      <td className="px-4 py-3 min-w-0 break-words">
+                        <div className="flex flex-col gap-1 min-w-0 break-words">
+                          {/*personalll*/}
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-black">
                               <UserCheck size={14} className="text-emerald-500" /> 
                               {task.doerId?.name || 'Staff'}
                               <span className="ml-2 px-2 py-0.5 bg-primary/5 text-primary text-[8px] rounded border border-primary/10 shadow-sm font-black tracking-widest">Mapped</span>
@@ -335,42 +368,101 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                            <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div>
                         </div>
                       </td>
-                      <td className="px-8 py-7 text-center"><div className="inline-flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-primary font-black text-[11px] font-mono shadow-inner"><Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}</div></td>
-                      <td className="px-8 py-7"><div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]"><Clock size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div></td>
-                      <td className="px-8 py-7"><span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>{isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}</span></td>
-                      <td className="px-8 py-7">
-                        <div className="flex justify-end items-center gap-3">
-                          {isChecklist && instances.length > 0 && <button onClick={() => setExpandedTaskId(isExpanded ? null : task._id)} className="flex items-center gap-2 px-5 py-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-90">{isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {instances.length} Backlogs</button>}
-                          {activeTab !== 'Completed' && <button onClick={() => openReminderModal(task)} className="flex items-center gap-2 px-5 py-3 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90"><MessageCircle size={16} /> Remind</button>}
-                          {!isChecklist && isPending && <button onClick={() => handleMarkDone(task)} className="flex items-center gap-2 px-5 py-3 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-90"><Zap size={16} /> Force Done</button>}
+                      <td className="px-4 py-3 min-w-0 break-words text-center"><div className="inline-flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-primary font-black text-[11px] font-mono shadow-inner"><Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}</div></td>
+                      <td className="px-4 py-3 min-w-0 break-words"><div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]"><Clock size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div></td>
+                      <td className="px-4 py-3 min-w-0 break-words"><span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>{isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}</span></td>
+                      <td className="px-4 py-3 min-w-0 break-words">
+                        <div className="flex flex-wrap justify-end items-center gap-2 max-w-[220px] ml-auto">
+                          {isChecklist && instances.length > 0 && <button onClick={() => setExpandedTaskId(isExpanded ? null : task._id)} className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-90">{isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {instances.length} Backlogs</button>}
+                          {activeTab !== 'Completed' && <button onClick={() => openReminderModal(task)} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90"><MessageCircle size={16} /> Remind</button>}
+                          {!isChecklist && isPending && <button onClick={() => handleMarkDone(task)} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-90"><Zap size={16} /> Force Done</button>}
                         </div>
                       </td>
                     </tr>
-                    {isExpanded && instances.length > 0 && (
-                      <tr>
-                        <td colSpan="7" className="px-8 py-6 bg-background/50 border-y border-border/10">
-                          <div className="space-y-4">
-                            <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-6 flex items-center gap-3"><Layers size={14} /> Backlog Authorization Grid</h5>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {instances.map((instance, idx) => (
-                                <div key={idx} className={`flex justify-between items-center p-5 rounded-[1.5rem] border transition-all ${instance.isPast ? 'bg-red-500/5 border-red-500/20' : 'bg-card border-border'}`}>
-                                    <div className="flex items-center gap-4 flex-1">
-                                    <div className={`p-2.5 rounded-xl border ${instance.isPast ? 'bg-red-500/10 border-red-500/20' : 'bg-primary/10 border-primary/20'}`}><Calendar size={20} className={instance.isPast ? 'text-red-600' : 'text-primary'} /></div>
-                                    <div><p className="text-foreground font-black text-sm uppercase tracking-tight">{instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}</p><p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${instance.isPast ? 'text-red-500' : 'text-primary'}`}>{instance.status}</p></div>
-                                    </div>
-                                    <button onClick={() => handleMarkDone(task, instance.date)} className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 shadow-xl flex items-center justify-center gap-2 ${instance.isPast ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}`}><CheckCircle2 size={16} /> Mark Done</button>
-                                </div>
-                                ))}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+
+
+                   {isExpanded && instances.length > 0 && (
+  <tr>
+    <td colSpan="7" className="px-4 py-3 bg-background/50 border-y border-border/10">
+
+      <div className="space-y-3">
+
+        {/* 🔥 HEADER */}
+        <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
+          <Layers size={12} /> Backlog Authorization Grid
+        </h5>
+
+        {/* TABLE */}
+        <div className="overflow-y-auto max-h-[280px]">
+
+          {/* MINI HEADER */}
+          <div className="grid grid-cols-[1.5fr_1fr_auto] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border">
+            <span>Date</span>
+            <span>Status</span>
+            <span className="text-right">Action</span>
+          </div>
+
+          {/* ROWS */}
+          {instances.map((instance, idx) => {
+
+            const rowColor =
+              instance.isPast
+                ? 'text-red-500'
+                : instance.isToday
+                ? 'text-amber-500'
+                : 'text-primary';
+
+            return (
+              <div
+                key={idx}
+                className="grid grid-cols-[1.5fr_1fr_auto] items-center px-3 py-2 border-b border-border/50 hover:bg-muted/20 transition"
+              >
+
+                {/* DATE */}
+                <span className="text-sm font-medium text-foreground">
+                  {instance.date.toLocaleDateString('en-IN', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: 'short'
+                  })}
+                </span>
+
+                {/* STATUS */}
+                <span className={`text-[10px] font-black uppercase ${rowColor}`}>
+                  {instance.status}
+                </span>
+
+                {/* ACTION */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleMarkDone(task, instance.date)}
+                    className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest
+                      ${instance.isPast
+                        ? 'bg-red-600 text-white'
+                        : 'bg-emerald-600 text-white'
+                      }`}
+                  >
+                    DONE
+                  </button>
+                </div>
+
+              </div>
+            );
+          })}
+
+        </div>
+
+      </div>
+
+    </td>
+  </tr>
+)}
                   </React.Fragment>
                 );
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

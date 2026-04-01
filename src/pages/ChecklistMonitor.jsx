@@ -104,6 +104,7 @@ const ChecklistMonitor = ({ tenantId }) => {
     }
   }, [currentTenantId]);
 
+
   useEffect(() => { fetchLiveStatus(); }, [fetchLiveStatus]);
 
   /**
@@ -235,146 +236,322 @@ const ChecklistMonitor = ({ tenantId }) => {
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 px-4">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-1">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-        <div>
-            <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter flex items-center gap-4 uppercase leading-none">
-              <Activity className="text-primary" size={36} /> Work Monitor
-            </h2>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Precision Industrial performance Ledger</p>
-        </div>
-        <button onClick={fetchLiveStatus} className="group bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh 
+      {/* HEADER + SEARCH ROW */}
+<div className="flex flex-col gap-6 mb-10">
+
+  {/* TOP BAR */}
+  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+
+    {/* LEFT: TITLE */}
+    <div>
+      <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter flex items-center gap-4 uppercase leading-none">
+        <Activity className="text-primary" size={36} /> Work Monitor
+      </h2>
+      <p className="text-slate-500 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">
+        Precision Industrial performance Ledger
+      </p>
+    </div>
+
+    {/* RIGHT: SEARCH + REFRESH */}
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
+
+      {/* SEARCH */}
+      <div className="relative w-full sm:w-[350px]">
+        <input 
+          type="text"
+          placeholder="Search directive or personnel..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full bg-card border border-border px-14 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+        />
+        <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={22} />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
+          >
+            <X size={18}/>
+          </button>
+        )}
+      </div>
+
+      {/* REFRESH BUTTON */}
+      <button
+        onClick={fetchLiveStatus}
+        className="group bg-card hover:bg-background border border-border px-6 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl whitespace-nowrap"
+      >
+        <RefreshCcw
+          size={18}
+          className="group-hover:rotate-180 transition-transform duration-700 text-primary"
+        />
+        Refresh
+      </button>
+
+    </div>
+  </div>
+
+  {/* TIMELINE (NOW BELOW HEADER) */}
+  <div className="space-y-3">
+    <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
+      <Clock size={12} className="text-primary"/> Timeline Perspective
+    </label>
+
+    <div className="flex flex-wrap gap-2">
+      {['All', 'Overdue', 'Due Today', 'Tomorrow Due'].map((tab) => (
+        <button
+          key={tab}
+          onClick={() => setActiveTab(tab)}
+          className={`px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${
+            activeTab === tab
+              ? 'bg-primary text-white border-primary shadow-lg scale-105'
+              : 'bg-card text-slate-500 border-border'
+          }`}
+        >
+          {tab}
         </button>
-      </div>
+      ))}
+    </div>
+  </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        <div className="relative group">
-          <input 
-            type="text" placeholder="Search directive or personnel..."
-            value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-card border border-border px-14 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-          />
-          <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={22} />
-          {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={18}/></button>}
-        </div>
-      </div>
-
-      <div className="space-y-6 mb-10">
-        <div className="space-y-3">
-          <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 flex items-center gap-2">
-            <Clock size={12} className="text-primary"/> Timeline Perspective
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {['All', 'Overdue', 'Due Today', 'Tomorrow Due'].map((tab) => (
-              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all border ${activeTab === tab ? 'bg-primary text-white border-primary shadow-lg scale-105' : 'bg-card text-slate-500 border-border'}`}>
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+</div>
 
       {/* DATA GRID */}
-      <div className="flex flex-col bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl transition-colors">
-        <div className="hidden lg:grid grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] px-10 py-7 bg-background/50 border-b border-border font-black text-slate-500 text-[10px] uppercase tracking-[0.25em] items-center">
-            <div>Directive Name</div><div>Personnel</div><div>Cycle</div><div>Monthly Activity</div><div>Last Log</div><div>Registry State</div><div className="text-right">Action</div>
+           <div className="h-[550px] flex flex-col overflow-hidden rounded-xl border border-border ">
+
+<div className="w-full overflow-x-auto">
+      <div className="min-w-[700px]">
+
+         {/* GRID HEADER */}
+        <div className="grid grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]
+            px-6 lg:px-10 py-5 bg-card backdrop-blur-xl border border-border 
+            font-black text-slate-400 text-[10px] lg:text-[11px]
+           uppercase tracking-[0.2em] items-center 
+          shadow-lg sticky top-0 z-20">
+            <div>Task Name</div><div>Assigned to</div><div>Cycle</div><div>Monthly<br></br>Activity</div><div>Last Log</div><div>Registry State</div><div className="text-right">Action</div>
         </div>
 
         {filteredReport.map(task => {
           const status = getOverallStatus(task);
           const isExpanded = expandedId === task._id;
-          const instances = getPendingInstances(task);
+          const instances =getPendingInstances(task);
           const monthlySyncs = getMonthlyStats(task.history).count;
 
           return (
             <div key={task._id} className={`flex flex-col border-b border-border last:border-0 transition-all ${status.isDone ? 'opacity-40 grayscale' : ''}`}>
-              <div onClick={() => setExpandedId(isExpanded ? null : task._id)} className={`grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-8 lg:px-10 cursor-pointer hover:bg-primary/[0.02]`}>
-                <div className={`font-black text-sm lg:text-base tracking-tight pr-4 text-foreground uppercase ${isExpanded ? 'whitespace-normal' : 'truncate'}`}>{task.taskName}</div>
-                <div className="hidden lg:block text-slate-500 text-xs font-black uppercase tracking-tight">{task.doerId?.name || 'Staff'}</div>
-                <div className="hidden lg:block text-slate-400 text-[10px] font-black uppercase tracking-widest">{task.frequency}</div>
-                <div className="mt-2 lg:mt-0 text-primary font-black text-[11px] uppercase tracking-tighter">{monthlySyncs} Syncs</div>
-                <div className="hidden lg:block text-xs text-slate-400 font-bold uppercase tracking-tighter">{task.lastCompleted ? new Date(task.lastCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'NONE'}</div>
-                <div className="flex items-center gap-2 mt-3 lg:mt-0">
+              <div onClick={() => setExpandedId(isExpanded ? null : task._id)} className={`grid grid-cols-1 grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-8 lg:px-10 cursor-pointer hover:bg-primary/[0.02]`}>
+                <div className={`font-black text-sm text-base tracking-tight pr-4 text-foreground uppercase ${isExpanded ? 'whitespace-normal' : 'truncate'}`}>{task.taskName}</div>
+                <div className=" text-slate-500 text-xs font-black uppercase tracking-tight">{task.doerId?.name || 'Staff'}</div>
+                <div className=" text-slate-400 text-[10px] font-black uppercase tracking-widest">{task.frequency}</div>
+                <div className="mt-2 mt-0 text-primary font-black text-[11px] uppercase tracking-tighter">{monthlySyncs} Syncs</div>
+                <div className=" text-xs text-slate-400 font-bold uppercase tracking-tighter">{task.lastCompleted ? new Date(task.lastCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'NONE'}</div>
+                <div className="flex items-center gap-2 mt-3 mt-0">
                   <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border font-black text-[9px] uppercase tracking-widest ${status.bg} ${status.color} ${status.border}`}>{status.icon} {status.label}</span>
                   {instances.filter(i => i.isPast).length > 0 && (
                     <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">+{instances.filter(i => i.isPast).length} MISSED</span>
                   )}
                 </div>
-                <div className="hidden lg:flex justify-end text-slate-400">{isExpanded ? <ChevronUp size={24} className="text-primary" /> : <ChevronDown size={24} />}</div>
+                <div className="flex justify-end text-slate-400">{isExpanded ? <ChevronUp size={24} className="text-primary" /> : <ChevronDown size={24} />}</div>
               </div>
 
               {isExpanded && (
-                <div className="bg-background/50 p-6 lg:p-12 border-t border-border animate-in slide-in-from-top-4 duration-500">
-                   {instances.length > 0 && (
-                     <div className="mb-12">
-                       <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-8 flex items-center gap-3"><LayoutGrid size={16}/> Direct Status Authorization</h5>
-                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                         {instances.map((instance, idx) => (
-                           <div key={idx} className={`flex justify-between items-center p-6 rounded-[2rem] border transition-all ${instance.isPast ? 'bg-red-500/5 border-red-500/10' : instance.isToday ? 'bg-amber-500/5 border-amber-500/10' : 'bg-indigo-500/5 border-indigo-500/10'}`}>
-                             <div className="flex items-center gap-5">
-                               <div className={`p-4 rounded-2xl ${instance.isPast ? 'bg-red-500/10 text-red-600' : instance.isToday ? 'bg-amber-500/10 text-amber-600' : 'bg-indigo-500/10 text-indigo-600'}`}><Calendar size={22} /></div>
-                               <div>
-                                 <p className="text-foreground font-black text-sm uppercase">{instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}</p>
-                                 <p className={`text-[10px] font-black uppercase tracking-widest ${instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-600' : 'text-indigo-600'}`}>{instance.status}</p>
-                               </div>
-                             </div>
-                             {(userRoles.includes('Admin') || userRoles.includes('Coordinator')) && (
-                               <button onClick={(e) => { e.stopPropagation(); setActiveTask(task); setSelectedDate(instance.date.toISOString()); setShowModal(true); }} className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-90 ${instance.isPast ? 'bg-red-600 text-white' : instance.isToday ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}`}>{instance.isTomorrow ? 'EARLY SYNC' : 'DONE'}</button>
-                             )}
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
+  <div className="bg-background/60 backdrop-blur-xl p-6 lg:p-12 border-t border-border animate-in slide-in-from-top-4 duration-500">
 
-                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                      <div className="space-y-8">
-                        <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Directive Parameters</h5>
-                        <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-xl space-y-6">
-                            <div className="border-b border-border pb-4">
-                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Node Identifier:</span>
-                                <span className="text-foreground font-black text-lg uppercase tracking-tighter">{task.taskName}</span>
-                            </div>
-                            <div>
-                                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest block mb-2 italic">Operational Briefing:</span>
-                                <p className="text-foreground font-bold text-sm leading-relaxed opacity-80">{task.description || "NO MISSION DATA"}</p>
-                            </div>
-                        </div>
-                      </div>
+  {/* ================= HEADER: DIRECTIVE PARAMETERS (MINIMAL) ================= */}
+<div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
-                      <div className="space-y-8">
-                        <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] px-2">Operational Ledger</h5>
-                        <div className="max-h-[500px] overflow-y-auto custom-scrollbar bg-card p-8 rounded-[3rem] border border-border shadow-xl flex flex-col gap-10">
-                          {Array.isArray(task.history) && task.history.length > 0 ? [...task.history].reverse().slice(0, 15).map((log, i) => (
-                            <div key={i} className="pl-10 border-l-4 border-primary/20 relative flex flex-col gap-4 pb-2 transition-all hover:border-primary">
-                              <div className="absolute top-1 -left-[12px] w-5 h-5 rounded-full bg-primary border-4 border-card shadow-lg" />
-                              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Fingerprint size={14} className="opacity-50" />{log.action}</span>
-                                  {log.instanceDate && <span className="text-emerald-600 font-bold text-[11px] uppercase tracking-tighter bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10 w-fit">Target: {new Date(log.instanceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>}
-                                </div>
-                                <div className="text-slate-400 text-[9px] font-black uppercase tracking-tighter flex flex-col items-end">
-                                  <span>Sync: {new Date(log.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
-                                  <span>Time: {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                </div>
-                              </div>
-                              <p className="text-slate-500 font-bold text-sm leading-relaxed italic mt-1">"{log.remarks || 'Mission completed.'}"</p>
-                              {log.attachmentUrl && (
-                                <a href={log.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-3 hover:opacity-70"><ExternalLink size={14} /> View technical snapshot</a>
-                              )}
-                            </div>
-                          )) : <div className="text-center py-24 opacity-20"><ClipboardList size={60} className="mx-auto mb-6" /><p className="text-[10px] font-black uppercase tracking-widest">Registry Log Empty</p></div>}
-                        </div>
-                      </div>
-                   </div>
-                </div>
+  <h1 className="text-xl md:text-2xl font-black tracking-tight text-foreground">
+    {task.taskName}
+  </h1>
+
+  <p className="text-sm md:text-base font-medium text-foreground/70 md:max-w-[60%]">
+    {task.description || "NO MISSION DATA"}
+  </p>
+
+</div>
+
+  {/* ================= MAIN GRID ================= */}
+  <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-10 items-stretch">
+
+    {/* ================= LEFT: DIRECT STATUS ================= */}
+    <div className="flex-1 max-h-[450px] overflow-y-auto custom-scrollbar w-full">
+      <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-4">
+    Work Status
+  </h5>
+
+  <div className="w-full min-w-full">
+
+    {/* HEADER */}
+    <div className="grid grid-cols-3 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-border bg-card sticky top-0 z-10">
+      <span>Date</span>
+      <span>Status</span>
+      <span className="text-right">Action</span>
+    </div>
+
+    {/* ROWS */}
+    {instances.map((instance, idx) => {
+      const rowColor =
+        instance.isPast
+          ? 'text-red-500'
+          : instance.isToday
+          ? 'text-amber-600'
+          : 'text-indigo-600';
+
+      return (
+        <div
+          key={idx}
+          className="grid grid-cols-3 items-center px-4 py-2 border-b border-border/50 hover:bg-muted/30 transition"
+        >
+          {/* DATE */}
+          <span className="font-semibold text-foreground text-sm">
+            {instance.date.toLocaleDateString('en-IN', {
+              weekday: 'short',
+              day: '2-digit',
+              month: 'short'
+            })}
+          </span>
+
+          {/* STATUS */}
+          <span className={`text-[10px] font-black uppercase tracking-widest ${rowColor}`}>
+            {instance.status}
+          </span>
+
+          {/* ACTION */}
+          <div className="flex justify-end">
+            {(userRoles.includes('Admin') || userRoles.includes('Coordinator')) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTask(task);
+                  setSelectedDate(instance.date.toISOString());
+                  setShowModal(true);
+                }}
+                className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${
+                  instance.isPast
+                    ? 'bg-red-600 text-white'
+                    : instance.isToday
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-indigo-600 text-white'
+                }`}
+              >
+                {instance.isTomorrow ? 'EARLY' : 'DONE'}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    })}
+
+  </div>
+</div>
+
+{/* ================= RIGHT: OPERATIONAL LEDGER ================= */}
+{/* ================= RIGHT: OPERATIONAL LEDGER ================= */}
+<div className="bg-card p-6 rounded-[2.5rem] border border-border shadow-xl flex flex-col max-h-[400px] + flex-1 + overflow-y-auto overflow-hidden">
+
+  <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.4em] mb-4">
+    Activity History
+  </h5>
+
+  <div className="flex-1 overflow-y-auto  custom-scrollbar w-full">
+
+    <div className="w-full text-sm">
+
+      {/* HEADER */}
+      <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-border sticky top-0 bg-card z-10">
+        <span>Action</span>
+        <span>Target</span>
+        <span>Time</span>
+        <span className="text-right">Link</span>
+      </div>
+
+      {/* ROWS */}
+      {Array.isArray(task.history) && task.history.length > 0 ? (
+        [...task.history].reverse().slice(0, 15).map((log, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 py-2 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
+          >
+
+            {/* ACTION + REMARK */}
+            <div className="flex flex-col min-w-0">
+              <span className="text-primary text-[10px] font-black uppercase tracking-widest truncate">
+                {log.action}
+              </span>
+              <span
+                className="text-slate-500 text-xs italic truncate"
+                title={log.remarks || "Mission completed."}
+              >
+                {log.remarks || "Mission completed."}
+              </span>
+            </div>
+
+            {/* TARGET */}
+            <span className="text-emerald-600 text-[10px] font-bold uppercase truncate">
+              {log.instanceDate
+                ? new Date(log.instanceDate).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short'
+                  })
+                : '--'}
+            </span>
+
+            {/* TIME */}
+            <div className="text-slate-400 text-[10px] font-bold flex flex-col min-w-0">
+              <span>
+                {new Date(log.timestamp).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short'
+                })}
+              </span>
+              <span>
+                {new Date(log.timestamp).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
+            </div>
+
+            {/* LINK */}
+            <div className="flex justify-end min-w-0">
+              {log.attachmentUrl ? (
+                <a
+                  href={log.attachmentUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary text-[9px] font-black uppercase tracking-widest hover:opacity-70"
+                >
+                  View
+                </a>
+              ) : (
+                <span className="text-slate-400 text-[9px]">—</span>
               )}
+            </div>
+
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-20 opacity-20">
+          <ClipboardList size={50} className="mx-auto mb-4" />
+          <p className="text-[10px] font-black uppercase tracking-widest">
+            Registry Log Empty
+          </p>
+        </div>
+      )}
+
+    </div>
+  </div>
+</div>
+</div>
+</div>
+)}
             </div>
           );
         })}
+        </div>
+      </div>
       </div>
 
       {/* MARK AS DONE MODAL */}

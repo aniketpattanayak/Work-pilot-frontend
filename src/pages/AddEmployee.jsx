@@ -198,24 +198,26 @@ const AddEmployee = ({
   );
 
   return (
-    <div className="bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500">
+    <div className="w-full max-w-4xl mx-auto bg-card rounded-2xl border border-border shadow-xl">
+        {/*<div className=" bg-transparent shadow-none border-none w-full">*/}
+          {/* bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500 */}
 
-      <div className="px-6 py-6 sm:px-10 sm:py-8 bg-primary/5 border-b border-border">
-        <h2 className="text-primary m-0 flex items-center gap-3 text-lg sm:text-2xl font-black tracking-tighter uppercase leading-tight">
+      <div className="px-4 py-4 sm:px-6 sm:py-5 bg-primary/5 border-b border-border">
+        <h2 className="text-primary m-0 flex items-center gap-3 text-base sm:text-lg font-black tracking-tighter uppercase leading-tight">
           <UserPlus size={24} className="sm:w-7 sm:h-7" />{" "}
           {isEditing
             ? `Modify: ${formData.name}`
             : "Add New Employees "}
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-[10px] sm:text-sm font-medium uppercase tracking-tight opacity-80">
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-[9px] sm:text-xs font-medium uppercase tracking-tight opacity-80">
           Configure authentication, company roles and organizational reporting lines
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 sm:p-10 flex flex-col gap-8">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 flex flex-col gap-5">
 
         {/* IDENTITY BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div className="flex flex-col">
             <InputLabel icon={User} label="Full Name" />
             <input
@@ -223,7 +225,7 @@ const AddEmployee = ({
               placeholder="e.g. Rahul Sharma"
               value={formData.name || ""} // Safe Fallback
               required
-              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
@@ -234,14 +236,14 @@ const AddEmployee = ({
               placeholder="e.g. Operations Control"
               value={formData.department || ""} // Safe Fallback
               required
-              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
           </div>
         </div>
 
         {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 ">
           <div className="flex flex-col">
             <InputLabel icon={Mail} label="Email Address" />
             <input
@@ -249,7 +251,7 @@ const AddEmployee = ({
               placeholder="name@company.com"
               value={formData.email || ""} // Safe Fallback
               required
-              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
@@ -260,52 +262,73 @@ const AddEmployee = ({
               placeholder="91XXXXXXXXXX"
               value={formData.whatsappNumber || ""} // Safe Fallback
               required
-              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
               onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
             />
           </div>
 
           {/* SUNDAY WORK PREFERENCE TOGGLE */}
           <div className="md:col-span-2">
-            <div className="bg-slate-50 dark:bg-slate-900/20 p-6 rounded-[2rem] border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group shadow-inner">
-              <div className="flex items-center gap-5">
-                <div className={`p-4 rounded-2xl transition-all duration-500 ${formData.workOnSunday ? "bg-amber-500/10 text-amber-600 shadow-lg shadow-amber-500/5" : "bg-slate-200 text-slate-400"}`}>
-                  <CalendarDays size={22} className={formData.workOnSunday ? "animate-pulse" : ""} />
-                </div>
-                <div>
-                  <p className="text-xs sm:text-sm font-black text-foreground uppercase tracking-tight leading-none">Sunday is a Working Day</p>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase mt-1.5 opacity-70 tracking-widest leading-relaxed">
-                    If enabled, this employee will receive checklist tasks on Sundays. <br className="hidden sm:block" />
-                    Official holidays will still be respected.
-                  </p>
-                </div>
+              <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-border flex items-center justify-between gap-3 shadow-inner">
+
+                <div className="flex items-center gap-3 min-w-0">
+                     <div
+                        className={`p-2 rounded-lg transition-all duration-300 ${
+                        formData.workOnSunday
+                        ? "bg-amber-500/10 text-amber-600"
+                        : "bg-slate-200 text-slate-400"
+                       }`}
+                  >
+                  <CalendarDays
+                    size={16}
+                     className={formData.workOnSunday ? "animate-pulse" : ""}
+                  />
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  checked={!!formData.workOnSunday} // Forced boolean state
-                  onChange={(e) => setFormData({ ...formData, workOnSunday: e.target.checked })}
-                  className="sr-only peer"
-                />
-                <div className="w-14 h-7 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-6 after:transition-all peer-checked:bg-amber-500 shadow-inner"></div>
-              </label>
-            </div>
-          </div>
+
+      <div className="min-w-0">
+        <p className="text-[10px] font-black text-foreground uppercase leading-none truncate">
+          Sunday Working
+        </p>
+        <p className="text-[8px] text-slate-500 font-semibold mt-1 opacity-70 truncate">
+          Tasks enabled on Sundays
+        </p>
+      </div>
+    </div>
+
+    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+      <input
+        type="checkbox"
+        checked={!!formData.workOnSunday}
+        onChange={(e) =>
+          setFormData({ ...formData, workOnSunday: e.target.checked })
+        }
+        className="sr-only peer"
+      />
+      <div className="w-10 h-5 bg-slate-200 dark:bg-slate-800 rounded-full 
+        peer-checked:after:translate-x-5 
+        after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+        after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all 
+        peer-checked:bg-amber-500 shadow-inner">
+      </div>
+    </label>
+
+  </div>
+</div>
         </div>
 
         {/* SECURITY & PERMISSIONS BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div className="flex flex-col">
             <InputLabel
               icon={Lock}
-              label={isEditing ? "Reset Access Cipher" : "system access password"}
+              label={isEditing ? "Reset Password" : "system access password"}
             />
             <input
               type="text"
               placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
               value={formData.password || ""} // Safe Fallback
               required={!isEditing}
-              className="w-full px-5 py-4 bg-background border border-border text-foreground rounded-2xl text-sm font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
           </div>
@@ -451,7 +474,7 @@ const AddEmployee = ({
           background: var(--color-primary); 
         }
       `}</style>
-    </div>
+    </div> 
   );
 };
 

@@ -70,7 +70,6 @@ const Login = ({ onLoginSuccess }) => {
       
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      
       const actualTenantId = res.data.tenantId || tenant.id || tenant._id;
       localStorage.setItem('tenantId', actualTenantId);
       

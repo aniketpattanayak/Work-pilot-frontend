@@ -120,7 +120,7 @@ const CoordinatorMapping = ({ tenantId }) => {
   const safeEmployees = Array.isArray(allEmployees) ? allEmployees : [];
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 pb-20 selection:bg-primary/30">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 selection:bg-primary/30">
       
       {/* --- EXECUTIVE COMMAND HEADER (Responsive) --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8 px-2">
@@ -150,135 +150,138 @@ const CoordinatorMapping = ({ tenantId }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.8fr] gap-8 md:gap-12 items-start">
-        
-        {/* --- STEP 1: SUPERVISOR SELECTION TERMINAL --- */}
-        <div className="bg-card backdrop-blur-xl p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-border shadow-2xl transition-all duration-500">
-          <div className="flex items-center gap-5 mb-10">
-            <div className="w-11 h-11 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-inner shrink-0">
-                <ShieldCheck size={24} className="text-primary" />
-            </div>
-            <h4 className="text-foreground font-black text-lg md:text-xl tracking-tighter uppercase">Select User</h4>
-          </div>
-          
-          <div className="space-y-8">
-            <div className="relative group">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em] ml-3 mb-3 block">Select user who will act as coordinator</label>
-                <div className="relative">
-                  <select 
-                    value={selectedSupervisor}
-                    onChange={(e) => setSelectedSupervisor(e.target.value)}
-                    className="w-full appearance-none px-8 py-6 bg-background text-foreground border border-border rounded-2xl cursor-pointer outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm pr-14 shadow-inner uppercase tracking-tight"
-                  >
-                    <option value="">-- Choose Any Staff Node --</option>
-                    {safeEmployees.map(c => (
-                        <option key={c._id} value={c._id}>
-                        {c.name} — ({Array.isArray(c.roles) ? c.roles.join(', ') : (c.role || 'Node')})
-                        </option>
-                    ))}
-                  </select>
-                  <ChevronRight className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600 rotate-90 pointer-events-none" size={24} />
-                </div>
-            </div>
 
-            <div className="p-8 bg-background/50 rounded-[2rem] border border-border shadow-inner relative overflow-hidden group/alert">
-                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none transition-transform group-hover/alert:scale-110">
-                   <Fingerprint size={80} className="text-primary" />
-                </div>
-                <div className="flex gap-5 relative z-10">
-                    <AlertCircle className="text-primary shrink-0" size={22} />
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-black leading-relaxed uppercase tracking-widest">
-                    <span className="text-primary font-black mr-2"> Alert:</span> 
-                    Designated user can view, complete and send reminder for team tasks.
-                    </p>
-                </div>
-            </div>
-          </div>
+<div className="bg-card backdrop-blur-xl 
+p-6 md:p-8 
+rounded-[2rem] md:rounded-[2.5rem] 
+border border-border 
+shadow-2xl space-y-8">
+
+  {/* ================= STEP 1 ================= */}
+
+
+  <div > 
+    <div className="flex items-center gap-4 mb-6">
+      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+        <ShieldCheck size={20} className="text-primary" />
+      </div>
+      <h4 className="font-black text-base md:text-lg uppercase tracking-tight">
+        Select User
+      </h4>
+    </div>
+
+    <div className="space-y-5">
+      <div>
+        <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] ml-2 mb-2 block">
+          Coordinator
+        </label>
+
+        <select 
+          value={selectedSupervisor}
+          onChange={(e) => setSelectedSupervisor(e.target.value)}
+          className="w-full px-5 py-4 bg-background border border-border rounded-xl 
+          text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="">-- Choose Staff --</option>
+          {safeEmployees.map(c => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="p-4 bg-background/50 rounded-xl border border-border text-[10px] font-bold text-slate-500">
+        ⚠ Coordinator can manage and monitor assigned team tasks.
+      </div>
+    </div>
+  </div>
+
+  {/* ================= STEP 2 ================= */}
+  <div className={`
+  relative rounded-[1.5rem] border border-border 
+  p-5 md:p-6 shadow-inner overflow-hidden transition-all duration-500
+
+  ${!selectedSupervisor 
+    ? 'bg-background/20 backdrop-blur-md opacity-60 pointer-events-none' 
+    : 'bg-background/40 backdrop-blur-xl opacity-100'
+  }
+`}>
+
+  {/* GLOW (separate, not wrapping content) */}
+  <div className="absolute -top-20 -right-20 w-60 h-60 
+  bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+  {/* CONTENT */}
+  <div className="relative z-10">
+
+    {/* HEADER */}
+    <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+          <Users size={20} className="text-emerald-500" />
         </div>
+        <h4 className="font-black text-base md:text-lg uppercase tracking-tight">
+          Select Targets
+        </h4>
+      </div>
 
-        {/* --- STEP 2: SCOPE OF AUTHORITY (TARGETS) --- */}
-        <div className="bg-card backdrop-blur-xl p-8 md:p-10 rounded-[2rem] md:rounded-[3rem] border border-border shadow-2xl relative overflow-hidden group transition-all duration-500">
-          <div className="absolute -top-32 -right-32 w-80 h-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none transition-opacity duration-1000" />
-          
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-12 gap-8 relative z-10">
-            <div className="flex items-center gap-5">
-                <div className="w-11 h-11 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-inner shrink-0">
-                    <Users size={24} className="text-emerald-500" />
-                </div>
-                <h4 className="text-foreground font-black text-lg md:text-xl tracking-tighter uppercase">choose authorized flocks</h4>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-5 w-full sm:w-auto">
-                <button 
-                  onClick={handleSelectAll}
-                  disabled={!selectedSupervisor || safeEmployees.length <= 1}
-                  className="w-full sm:w-auto text-primary hover:text-sky-400 font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                >
-                  {selectedTargets.length === (safeEmployees.length - 1) && safeEmployees.length > 0 ? <Square size={18}/> : <CheckSquare size={18}/>}
-                  {selectedTargets.length === (safeEmployees.length - 1) && safeEmployees.length > 0 ? "Deselect All" : "Select All Nodes"}
-                </button>
-                <div className="bg-background px-6 py-2.5 rounded-full border border-border text-emerald-600 dark:text-emerald-400 font-black text-[10px] tracking-[0.2em] shadow-inner uppercase whitespace-nowrap">
-                  {selectedTargets.length} Selected
-                </div>
-            </div>
-          </div>
+      <span className="text-[10px] font-black text-emerald-500">
+        {selectedTargets.length} Selected
+      </span>
+    </div>
 
-          {/* TARGET GRID (Responsive Layout) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 max-h-[550px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
-            {safeEmployees.length > 0 ? safeEmployees
-              .filter(e => e._id !== selectedSupervisor) 
-              .map(a => (
-              <div 
-                key={a._id} 
-                onClick={() => selectedSupervisor && handleToggle(a._id)}
-                className={`
-                  p-6 rounded-[2rem] cursor-pointer transition-all duration-500 flex items-center gap-6 border shadow-sm
-                  ${!selectedSupervisor ? 'opacity-20 cursor-not-allowed grayscale pointer-events-none' : 'opacity-100'}
-                  ${selectedTargets.includes(a._id) 
-                    ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-500/50 shadow-xl shadow-emerald-500/5' 
-                    : 'bg-background border-border hover:border-primary/50'
-                  }
-                `}
-              >
-                <div className={`
-                  w-8 h-8 rounded-xl border flex items-center justify-center transition-all duration-700 shadow-inner shrink-0
-                  ${selectedTargets.includes(a._id) ? 'bg-emerald-500 border-emerald-500 scale-110 shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-background border-border'}
-                `}>
-                  {selectedTargets.includes(a._id) && <CheckCircle2 size={16} className="text-white dark:text-slate-950" strokeWidth={3} />}
-                </div>
-                <div className="min-w-0">
-                  <div className={`text-sm md:text-base font-black truncate tracking-tight uppercase ${selectedTargets.includes(a._id) ? 'text-emerald-700 dark:text-emerald-400' : 'text-foreground'}`}>
-                    {a.name}
-                  </div>
-                  <div className="flex items-center gap-2 text-[8px] md:text-[9px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-[0.2em] mt-2">
-                    <Briefcase size={12} className="shrink-0 text-primary/40" /> {a.department || 'General'} <span className="opacity-20">|</span> {Array.isArray(a.roles) ? a.roles[0] : (a.role || 'Member')}
-                  </div>
-                </div>
-              </div>
-            )) : (
-              <div className="col-span-full py-32 flex flex-col items-center justify-center opacity-30 animate-in zoom-in-95">
-                 <UserCheck size={80} className="text-slate-400" />
-                 <p className="text-[12px] font-black uppercase mt-8 tracking-[0.5em] text-center">Personnel Registry Data Offline</p>
-              </div>
-            )}
-          </div>
+    {/* TARGET LIST */}
+    <div className="max-h-[350px] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
 
-          <button 
-            onClick={handleSave} 
-            disabled={saving || !selectedSupervisor} 
-            className={`
-              mt-12 w-full py-6 rounded-[2rem] font-black text-[11px] md:text-xs uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 relative z-10 shadow-2xl
-              ${!selectedSupervisor 
-                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-border cursor-not-allowed' 
-                : 'bg-primary hover:bg-sky-400 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 shadow-primary/20'
+      {safeEmployees
+        .filter(e => e._id !== selectedSupervisor)
+        .map(a => (
+          <div 
+            key={a._id}
+            onClick={() => selectedSupervisor && handleToggle(a._id)}
+            className={`flex items-center gap-4 px-4 py-3 rounded-xl border cursor-pointer transition backdrop-blur-sm
+              ${selectedTargets.includes(a._id)
+                ? 'bg-emerald-500/10 border-emerald-400 shadow-md'
+                : 'bg-background/60 border-border hover:border-primary/40'
               }
             `}
           >
-            {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Save size={24} />}
-            {saving ? 'Transmitting Updates...' : 'Synchronize Operational Scope'}
-          </button>
-        </div>
-      </div>
+            <div className={`w-6 h-6 rounded-md border flex items-center justify-center
+              ${selectedTargets.includes(a._id) ? 'bg-emerald-500 border-emerald-500' : ''}
+            `}>
+              {selectedTargets.includes(a._id) && <CheckCircle2 size={14} className="text-white" />}
+            </div>
+
+            <div className="min-w-0">
+              <div className="text-sm font-bold truncate">{a.name}</div>
+              <div className="text-[9px] text-slate-500 uppercase">
+                {a.department || 'General'}
+              </div>
+            </div>
+          </div>
+        ))}
+
+    </div>
+
+  </div>
+</div>
+
+  {/* ================= ACTION ================= */}
+  <button 
+    onClick={handleSave} 
+    disabled={saving || !selectedSupervisor}
+    className={`w-full py-4 rounded-xl font-black text-[11px] uppercase tracking-widest transition
+      ${!selectedSupervisor
+        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+        : 'bg-primary text-white hover:bg-sky-400 active:scale-95'
+      }
+    `}
+  >
+    {saving ? 'Saving...' : 'Save Changes'}
+  </button>
+
+</div>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

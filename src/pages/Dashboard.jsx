@@ -57,6 +57,8 @@ import {
   BarChart3, 
 } from "lucide-react";
 
+import { Plus } from "lucide-react";
+
 /**
  * DASHBOARD: GLOBAL OPERATIONAL COMMAND v2.0
  * Fully Responsive | Multi-Tenant | Dual-Theme (Light/Dark)
@@ -71,6 +73,20 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false); 
 
+const [isModalOpen, setIsModalOpen] = useState(false);
+  const handleEditInitiated = (emp) => {
+    setSelectedEmployee(emp);
+    setIsModalOpen(true); // Open modal on edit
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+
+
+
   // NEW: State for the Dual Header Efficiency Index
   const [userScore, setUserScore] = useState({ 
     chkNotDone: 0, 
@@ -80,10 +96,24 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
 
   // Persistence Logic
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
-  const sessionUser = JSON.parse(localStorage.getItem("user"));
+
+
+/*
+  const [liveUser, setLiveUser] = useState(
+  JSON.parse(localStorage.getItem("user"))
+);
+
+
+const sessionUser = liveUser;
+
+*/
+
+
+  const sessionUser =JSON.parse(localStorage.getItem("user"));
+
   const userId = user?._id || user?.id || sessionUser?.id || sessionUser?._id;
 
-  const userRoles =
+ const userRoles =
     user?.roles ||
     sessionUser?.roles ||
     (user?.role ? [user.role] : []) ||
@@ -192,7 +222,48 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
     navigate(`/dashboard/${route}`);
     setSelectedEmployee(null);
   };
+/*
 
+
+
+
+const refreshUserProfile = useCallback(async () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const res = await API.get(`/superadmin/auth/me`);
+
+    const updatedUser = res.data?.user || res.data;
+
+    // ✅ update storage
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+
+    // ✅ update state (THIS TRIGGERS UI)
+    setLiveUser(updatedUser);
+  } catch (err) {
+    console.error("User refresh failed", err);
+  }
+}, [currentTenantId]);
+
+
+
+
+useEffect(() => {
+  refreshUserProfile();
+}, [refreshUserProfile]);
+
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    refreshUserProfile();
+  }, 60000); // every 1 min
+
+  return () => clearInterval(interval);
+}, [refreshUserProfile]);
+
+
+*/
   /**
    * LEADERBOARD SUB-COMPONENT
    */
@@ -374,7 +445,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
         </header>
 
         {/* MAIN ROUTE HUB */}
-        <main className="p-4 md:p-10 w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
+        <main className="p-4 md:p-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
           <Routes>
             <Route path="/" element={
                 <div className="space-y-10">
@@ -440,7 +511,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
             />
 
             <Route path="review-meeting" element={<ReviewMeeting tenantId={currentTenantId} />} />
-            <Route path="employees" element={
+           {/* <Route path="employees" element={
                 <div className="flex flex-col gap-10">
                   <div className="bg-card p-2 rounded-[2.5rem] border border-border shadow-2xl">
                     <AddEmployee tenantId={currentTenantId} selectedEmployee={selectedEmployee} onSuccess={() => { fetchEmployees(); setSelectedEmployee(null); }} />
@@ -454,7 +525,55 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                   )}
                 </div>
               }
-            />
+            />*/}
+
+
+            <Route path="employees" element={
+  <div className="relative">
+    {/* POPUP MODAL OVERLAY */}
+    {isModalOpen && (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" 
+          onClick={handleCloseModal}
+        />
+        
+        {/* Modal Content */}
+        <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+           {/* Close Button */}
+           <button 
+              onClick={handleCloseModal}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-[101]"
+           >
+              <X size={24} />
+           </button>
+
+           <AddEmployee 
+              tenantId={currentTenantId} 
+              selectedEmployee={selectedEmployee} 
+              onSuccess={() => { 
+                  fetchEmployees(); 
+                  handleCloseModal(); 
+              }} 
+           />
+        </div>
+      </div>
+    )}
+
+    {/* DATA TABLE */}
+    <RegisteredEmployees 
+      employees={employees} 
+      onEdit={handleEditInitiated} 
+      fetchEmployees={fetchEmployees}
+      onAddNew={() => {
+        setSelectedEmployee(null); // Clear previous edit data
+        setIsModalOpen(true);
+      }}
+    />
+  </div>
+} /> 
+
             <Route path="raise-ticket" element={ <RaiseTicket userId={userId} tenantId={currentTenantId} /> } />
             <Route path="factory-settings" element={<SettingsPage tenantId={currentTenantId} />} />
             <Route path="mapping" element={<CoordinatorMapping tenantId={currentTenantId} />} />

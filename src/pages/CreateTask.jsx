@@ -36,7 +36,7 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   </div>
 ));
 
-const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
+const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSuccess }) => {
   const [task, setTask] = useState({
     title: "",
     description: "",
@@ -73,6 +73,61 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+
+
+
+
+
+  
+
+  const [holidayList, setHolidayList] = useState([]);
+
+
+  const fetchSettings = useCallback(async () => {
+    if (!currentTenantId) return;
+    try {
+      setLoading(true);
+      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
+      const data = res.data?.settings || res.data;
+      
+      if (data) {
+        setHolidayList(Array.isArray(data.holidays) ? data.holidays : []);
+      }
+    } catch (err) {
+      console.error("Fetch failure:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentTenantId]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+
+  const holidayDates = holidayList.map(h => new Date(h.date));
+
+// 🔥 Map for quick lookup (for tooltip)
+const holidayMap = {};
+holidayList.forEach(h => {
+  const key = new Date(h.date).toDateString();
+  holidayMap[key] = h.name;
+});
+
+
+const isHoliday = (date) =>
+  holidayDates.some(
+    h => h.toDateString() === date.toDateString()
+  );
+const isDisabledDate = (date) =>
+  isHoliday(date);
+
+
+
+
+
+
 
   const fetchMyTeam = useCallback(async () => {
     if (!currentAssignerId) return;
@@ -152,6 +207,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
       setSelectedHelpers([]);
       setDoerSearch('');
       setFollowerSearch('');
+      if (onSuccess) onSuccess();
     } catch (err) {
       alert("Error: " + (err.response?.data?.message || "Task Creation Failed"));
     } finally {
@@ -231,7 +287,122 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
 
         {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* RIGHT PANEL */}
+          <div className="space-y-5">
 
+            {/* ASSIGN */}
+            <div ref={doerDropdownRef} className="relative">
+              <label className="text-sm font-medium text-slate-600">Assign To</label>
+              <input
+                type="text"
+                value={doerSearch}
+                onFocus={() => setShowDoerDropdown(true)}
+                onChange={(e) => {
+                  setDoerSearch(e.target.value);
+                  setShowDoerDropdown(true);
+                }}
+                placeholder="Search user"
+                className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
+              />
+
+              {showDoerDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
+                  {filteredDoers.map(emp => (
+                    <div
+                      key={emp._id}
+                      onClick={() => handleSelectDoer(emp)}
+                      className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer"
+                    >
+                      {emp.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* DEADLINE */}
+            <div>
+              <label className="text-sm font-medium text-slate-600">Deadline <br></br></label>
+             <DatePicker
+  selected={task.deadline}
+  onChange={(date) => setTask({ ...task, deadline: date })}
+  showTimeSelect
+  minDate={new Date()}
+  dateFormat="dd MMM yyyy, h:mm aa"
+  placeholderText="Select deadline"
+  isClearable
+
+  // ✅ ADD THESE
+  showYearDropdown
+  showMonthDropdown
+  dropdownMode="select"
+  scrollableYearDropdown
+  yearDropdownItemNumber={50}
+
+  className="w-full mt-1 px-15 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
+    filterDate={(date) => !isDisabledDate(date)}
+   highlightDates={[
+  {
+    "react-datepicker__day--holiday": holidayDates
+  }
+  ]}
+  dayClassName={(date) => {
+    const key = date.toDateString();
+
+    if (holidayMap[key]) {
+      return "holiday-day";
+    }
+
+    return "";
+  }}
+  renderDayContents={(day, date) => {
+    const key = date.toDateString();
+    const holidayName = holidayMap[key];
+
+    return (
+      <span title={holidayName || ""}>
+        {day}
+      </span>
+    );
+  }}
+/>
+            </div>
+
+            {/* FILE */}
+            <div>
+              <label className="text-sm font-medium text-slate-600">Attachments</label>
+
+              <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center 
+              bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
+                
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+
+                <p className="text-sm text-slate-500 group-hover:text-primary transition">
+                  Click to upload files
+                </p>
+                <p className="text-xs text-slate-400">
+                  PDF, Images, Docs
+                </p>
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
+                      {f.name}
+                      <button onClick={() => removeFile(i)}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
           {/* FOLLOWERS */}
           <div className="lg:col-span-2 flex flex-col">
             <label className="text-sm font-medium text-slate-600">
@@ -290,107 +461,15 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees }) => {
               ))}
             </div>
           </div>
-
-          {/* RIGHT PANEL */}
-          <div className="space-y-5">
-
-            {/* ASSIGN */}
-            <div ref={doerDropdownRef} className="relative">
-              <label className="text-sm font-medium text-slate-600">Assign To</label>
-              <input
-                type="text"
-                value={doerSearch}
-                onFocus={() => setShowDoerDropdown(true)}
-                onChange={(e) => {
-                  setDoerSearch(e.target.value);
-                  setShowDoerDropdown(true);
-                }}
-                placeholder="Search user"
-                className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
-              />
-
-              {showDoerDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
-                  {filteredDoers.map(emp => (
-                    <div
-                      key={emp._id}
-                      onClick={() => handleSelectDoer(emp)}
-                      className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer"
-                    >
-                      {emp.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* DEADLINE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Deadline <br></br></label>
-             <DatePicker
-  selected={task.deadline}
-  onChange={(date) => setTask({ ...task, deadline: date })}
-  showTimeSelect
-  minDate={new Date()}
-  dateFormat="dd MMM yyyy, h:mm aa"
-  placeholderText="Select deadline"
-  isClearable
-
-  // ✅ ADD THESE
-  showYearDropdown
-  showMonthDropdown
-  dropdownMode="select"
-  scrollableYearDropdown
-  yearDropdownItemNumber={50}
-
-  className="w-full mt-1 px-15 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
-/>
-            </div>
-
-            {/* FILE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Attachments</label>
-
-              <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center 
-              bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
-                
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-
-                <p className="text-sm text-slate-500 group-hover:text-primary transition">
-                  Click to upload files
-                </p>
-                <p className="text-xs text-slate-400">
-                  PDF, Images, Docs
-                </p>
-              </div>
-
-              {selectedFiles.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
-                      {f.name}
-                      <button onClick={() => removeFile(i)}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
         </div>
 
         {/* FOOTER */}
         <div className="flex items-center justify-between pt-4 border-t border-border">
 
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-xl text-slate-600">
             <input
               type="checkbox"
-              className="accent-primary"
+              className="accent-primary "
               checked={task.isRevisionAllowed}
               onChange={(e) =>
                 setTask({ ...task, isRevisionAllowed: e.target.checked })

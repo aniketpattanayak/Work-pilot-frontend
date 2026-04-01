@@ -1,60 +1,65 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axiosConfig';
-import { 
-  LayoutDashboard, 
-  Users, 
-  CheckSquare, 
-  ListTodo, 
-  Settings, 
-  Eye, 
-  ClipboardList, 
-  UserCog, 
-  LayoutList, 
-  Activity, 
-  ChevronRight, 
-  RefreshCcw, 
-  ShieldCheck, 
-  Trophy, 
-  History as HistoryIcon, 
-  Star, 
-  Medal, 
-  Flame, 
-  Target, 
-  Rocket, 
-  ShieldCheck as ShieldCheckIcon, 
-  Award, 
-  Zap, 
-  Menu, 
-  X, 
+import {
+  LayoutDashboard,
+  Users,
+  CheckSquare,
+  ListTodo,
+  Settings,
+  Eye,
+  ClipboardList,
+  UserCog,
+  LayoutList,
+  Activity,
+  ChevronRight,
+  RefreshCcw,
+  ShieldCheck,
+  Trophy,
+  History as HistoryIcon,
+  Star,
+  Medal,
+  Flame,
+  Target,
+  Rocket,
+  ShieldCheck as ShieldCheckIcon,
+  Award,
+  Zap,
   LogOut,
   LifeBuoy,
   BarChart3,
   GitBranch,
-  FileText // NEW: Icon for Reports Hub
+  FileText,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 /**
- * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v1.9
- * Optimized for mobile responsiveness and dual-theme (Light/Dark) support.
- * Updated: Integrated Reports Hub exclusively for Admin roles.
+ * SIDEBAR: ADAPTIVE NAVIGATION COMMAND v2.0
+ * Feature: Collapsible — minimize to icon-rail (68px), expand to full panel (260px).
+ * Collapsed mode: icons only with native title tooltips.
+ * State persisted to localStorage so it survives page refresh.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === 'true'; } catch { return false; }
+  });
   const [factoryLogo, setFactoryLogo] = useState('');
   const [companyName, setCompanyName] = useState('WORK PILOT');
   const [loadingLogo, setLoadingLogo] = useState(false);
 
-  // Parse user session safely
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const safeRoles = Array.isArray(roles) ? roles : [];
+  const iconMap = { Star, Trophy, Medal, Zap, ShieldCheck: ShieldCheckIcon, Flame, Target, Rocket, Award };
 
-  const iconMap = {
-    Star, Trophy, Medal, Zap, 
-    ShieldCheck: ShieldCheckIcon, 
-    Flame, Target, Rocket, Award
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
   };
 
   const fetchFactoryBranding = useCallback(async () => {
@@ -67,7 +72,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         setCompanyName(res.data.companyName || 'WORK PILOT');
       }
     } catch (err) {
-      console.error("Sidebar Branding Fetch Error:", err);
+      console.error('Sidebar Branding Fetch Error:', err);
     } finally {
       setLoadingLogo(false);
     }
@@ -79,60 +84,44 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     return () => window.removeEventListener('brandingUpdated', fetchFactoryBranding);
   }, [fetchFactoryBranding]);
 
-  // CATEGORY DEFINITIONS
   const categories = [
     {
       label: 'Main',
       items: [
-        { name: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
-      ]
-    },
-    {
-      label: 'Delegation Task',
-      items: [
-        { name: 'Create Task', icon: <ListTodo />, roles: ['Admin', 'Assigner'] },
-        { name: 'Manage Tasks', icon: <ClipboardList />, roles: ['Admin', 'Assigner'] },
-        { name: 'My Tasks', icon: <CheckSquare />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-      ]
-    },
-    {
-      label: 'Checklist Task',
-      items: [
-        { name: 'Create Checklist', icon: <LayoutList />, roles: ['Admin'] },
-        { name: 'Manage Checklist', icon: <ClipboardList />, roles: ['Admin'] },
-        { name: 'My Checklist', icon: <ListTodo />, roles: [] },
-        { name: 'Checklist Monitor', icon: <Activity />, roles: ['Admin', 'Coordinator'] },
-      ]
+        { name: 'Dashboard',        icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
+        { name: 'Manage Tasks',     icon: <ClipboardList />,   roles: ['Admin', 'Assigner'] },
+        { name: 'Manage Checklist', icon: <LayoutList />,      roles: ['Admin'] },
+        { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'My Checklist',     icon: <ListTodo />,        roles: [] },
+      ],
     },
     {
       label: 'Administration',
       items: [
-        { name: 'Employees', icon: <Users />, roles: ['Admin'] },
-        { name: 'Mapping', icon: <UserCog />, roles: ['Admin'] },
-        { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
-        { name: 'Flow Management', icon: <GitBranch />, roles: ['Admin'] }, 
-        { name: 'Review Meeting', icon: <BarChart3 />, roles: ['Admin', 'Coordinator'] }, 
-        // NEW ITEM: Reports Hub (Admin Only)
-        { name: 'Reports Hub', icon: <FileText />, roles: ['Admin'] },
-        { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
-      ]
+        { name: 'Employees',         icon: <Users />,       roles: ['Admin'] },
+        { name: 'Mapping',           icon: <UserCog />,     roles: ['Admin'] },
+        { name: 'Tracking',          icon: <Eye />,         roles: ['Admin', 'Coordinator'] },
+        { name: 'Checklist Monitor', icon: <Activity />,    roles: ['Admin', 'Coordinator'] },
+        { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
+        { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'] },
+        { name: 'Reports Hub',       icon: <FileText />,    roles: ['Admin'] },
+        { name: 'Rewards Log',       icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Settings',          icon: <Settings />,    roles: ['Admin'] },
+      ],
     },
     {
       label: 'Support',
       items: [
         { name: 'Raise Ticket', icon: <LifeBuoy />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
-      ]
-    }
+      ],
+    },
   ];
 
   const getRoute = (itemName) => {
-    if (itemName === 'Dashboard') return '';
-    if (itemName === 'Create Checklist') return 'checklist-setup';
-    if (itemName === 'My Checklist') return 'checklist';
-    if (itemName === 'Flow Management') return 'fms-dashboard'; 
-    // Logic for the new Reports Hub route
-    if (itemName === 'Reports Hub') return 'reports';
+    if (itemName === 'Dashboard')       return '';
+    if (itemName === 'My Checklist')    return 'checklist';
+    if (itemName === 'Flow Management') return 'fms-dashboard';
+    if (itemName === 'Reports Hub')     return 'reports';
     return itemName.toLowerCase().replace(/\s+/g, '-');
   };
 
@@ -144,134 +133,154 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   };
 
   const handleNavigate = (itemName) => {
-    const route = getRoute(itemName);
-    navigate(`/dashboard/${route}`);
+    navigate(`/dashboard/${getRoute(itemName)}`);
   };
 
   return (
-    <aside className="w-[280px] bg-card text-card-foreground border-r border-border h-screen flex flex-col sticky top-0 z-[100] transition-all duration-500 overflow-hidden shadow-2xl dark:shadow-none">
-      
-      {/* BRANDING SECTION */}
-      <div className="px-6 py-8 flex flex-col justify-center min-h-[160px] border-b border-border/50">
-        {loadingLogo ? (
-          <div className="flex items-center gap-3">
-            <RefreshCcw className="animate-spin text-primary" size={20} />
-            <span className="text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest">Syncing Identity...</span>
-          </div>
-        ) : factoryLogo ? (
-          <div className="mb-4">
-            <img 
-              src={factoryLogo} 
-              alt="Logo" 
-              className="max-h-[45px] w-auto object-contain brightness-100 dark:brightness-110" 
+    <aside
+      style={{ width: collapsed ? '68px' : '260px' }}
+      className="bg-card text-card-foreground border-r border-border h-screen flex flex-col sticky top-0 z-[100] shadow-xl dark:shadow-none overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0"
+    >
+
+      {/* ── HEADER: LOGO + TOGGLE ─────────────────────────────── */}
+      <div className={`flex items-center border-b border-border/50 flex-shrink-0 transition-all duration-300 ${collapsed ? 'flex-col gap-3 px-2 py-4' : 'flex-row justify-between px-4 py-4'}`}>
+
+        {/* Logo area */}
+        <div className={`flex items-center gap-2.5 min-w-0 overflow-hidden ${collapsed ? 'justify-center' : 'flex-1'}`}>
+          {loadingLogo ? (
+            <RefreshCcw className="animate-spin text-primary flex-shrink-0" size={16} />
+          ) : factoryLogo ? (
+            <img
+              src={factoryLogo}
+              alt="Logo"
+              className={`object-contain flex-shrink-0 ${collapsed ? 'w-8 h-8 rounded-lg' : 'max-h-[34px] w-auto'}`}
             />
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-500/20">
-                <ShieldCheck size={24} />
-            </div>
-            <h2 className="text-lg font-black text-foreground tracking-tighter leading-tight uppercase">
-              {companyName}
-            </h2>
-          </div>
-        )}
-        
-        <div className="flex flex-wrap gap-1.5">
+          ) : (
+            <>
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center text-white shadow-md shadow-primary/20 flex-shrink-0">
+                <ShieldCheck size={15} />
+              </div>
+              {!collapsed && (
+                <span className="text-[13px] font-black text-foreground tracking-tight uppercase truncate">
+                  {companyName}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Toggle button */}
+        <button
+          onClick={toggleCollapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all duration-200 active:scale-90 flex-shrink-0"
+        >
+          {collapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+        </button>
+      </div>
+
+      {/* ── ROLE BADGES (expanded only) ───────────────────────── */}
+      {!collapsed && (
+        <div className="px-4 pt-3 pb-1 flex flex-wrap gap-1.5 flex-shrink-0 overflow-hidden">
           {safeRoles.length > 0 ? safeRoles.map((r, i) => (
-            <span key={i} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 shadow-sm">
+            <span key={i} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
               {r}
             </span>
           )) : (
-            <span className="text-[9px] font-bold text-red-500 px-2 py-1 bg-red-50 dark:bg-red-500/10 rounded-md border border-red-100 dark:border-red-500/20">
+            <span className="text-[8px] font-bold text-red-500 px-2 py-0.5 bg-red-50 dark:bg-red-500/10 rounded-md border border-red-200 dark:border-red-500/20">
               UNAUTHORIZED
             </span>
           )}
         </div>
-      </div>
+      )}
 
-      {/* PERFORMANCE SCORE & BADGES */}
-      {user?.totalPoints !== undefined && (
-        <div className="mx-4 mt-6 p-4 rounded-2xl bg-background border border-border shadow-inner transition-all duration-500">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 rounded-lg shadow-sm">
-              <Trophy size={16} className="text-amber-600 dark:text-amber-400" />
+      {/* ── PERFORMANCE SCORE (expanded only) ─────────────────── */}
+      {!collapsed && user?.totalPoints !== undefined && (
+        <div className="mx-3 mt-3 mb-1 p-3 rounded-xl bg-background border border-border flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-amber-500/10 rounded-lg flex-shrink-0">
+              <Trophy size={13} className="text-amber-500" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-500 dark:text-amber-500/60 uppercase tracking-[0.2em] leading-none mb-1">Performance</span>
-              <span className="text-lg font-black text-foreground leading-none tracking-tight">
-                {user.totalPoints} <span className="text-[10px] text-slate-400 font-bold ml-0.5">PTS</span>
-              </span>
+            <div>
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none mb-0.5">Performance</p>
+              <p className="text-sm font-black text-foreground leading-none">
+                {user.totalPoints} <span className="text-[9px] text-slate-400 font-bold">PTS</span>
+              </p>
             </div>
           </div>
-
           {user?.earnedBadges?.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-border">
-              <div className="flex flex-wrap gap-2">
-                {user.earnedBadges.map((badge, idx) => {
-                  const IconComponent = iconMap[badge.iconName] || Star;
-                  return (
-                    <div 
-                      key={idx} 
-                      title={`${badge.name}`}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center border bg-card transition-transform hover:scale-110 cursor-help"
-                      style={{ 
-                        backgroundColor: `${badge.color}15`, 
-                        borderColor: `${badge.color}30`,
-                      }}
-                    >
-                      <IconComponent 
-                        size={12} 
-                        color={badge.color} 
-                        style={{ filter: `drop-shadow(0 0 3px ${badge.color}60)` }} 
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="mt-2.5 pt-2 border-t border-border flex flex-wrap gap-1.5">
+              {user.earnedBadges.map((badge, idx) => {
+                const IconComponent = iconMap[badge.iconName] || Star;
+                return (
+                  <div key={idx} title={badge.name}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center border cursor-help hover:scale-110 transition-transform"
+                    style={{ backgroundColor: `${badge.color}15`, borderColor: `${badge.color}30` }}
+                  >
+                    <IconComponent size={10} color={badge.color} style={{ filter: `drop-shadow(0 0 3px ${badge.color}60)` }} />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* NAVIGATION SECTION */}
-      <nav className="flex-1 overflow-y-auto mt-6 px-3 custom-scrollbar">
+      {/* ── NAVIGATION ────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 custom-scrollbar">
         {categories.map((cat, catIdx) => {
-          const filteredItems = cat.items.filter(item => 
+          const filteredItems = cat.items.filter(item =>
             item.roles.some(r => safeRoles.includes(r))
           );
-
           if (filteredItems.length === 0) return null;
 
           return (
-            <div key={catIdx} className="mb-6">
-              <h3 className="px-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mb-3">
-                {cat.label}
-              </h3>
-              <ul className="space-y-1">
+            <div key={catIdx} className="mb-4">
+
+              {/* Category label */}
+              {!collapsed ? (
+                <p className="px-3 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mb-1.5 leading-none">
+                  {cat.label}
+                </p>
+              ) : (
+                /* Collapsed: thin divider between sections */
+                catIdx > 0 && <div className="h-px bg-border/60 mx-1 mb-2 mt-1" />
+              )}
+
+              <ul className="space-y-0.5">
                 {filteredItems.map((item, index) => {
                   const active = isActive(item.name);
                   return (
-                    <li 
-                      key={index} 
-                      onClick={() => handleNavigate(item.name)} 
-                      className={`
-                        group flex items-center justify-between px-4 py-3 cursor-pointer rounded-xl transition-all duration-500
-                        ${active 
-                          ? 'bg-primary/10 text-primary border border-primary/20 shadow-sm font-black' 
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 border border-transparent hover:translate-x-1'
-                        }
-                      `}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`transition-colors duration-500 ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-600 group-hover:text-primary'}`}>
-                           {React.cloneElement(item.icon, { size: 18, strokeWidth: active ? 2.5 : 2 })}
-                        </span>
-                        <span className={`text-[13px] tracking-tight transition-colors duration-500 ${active ? 'text-primary' : 'font-semibold group-hover:text-primary'}`}>
-                          {item.name}
-                        </span>
-                      </div>
-                      {active && <ChevronRight size={14} className="text-primary animate-pulse" />}
+                    <li key={index}>
+                      <button
+                        onClick={() => handleNavigate(item.name)}
+                        title={item.name}
+                        className={`
+                          w-full flex items-center rounded-xl border transition-all duration-200 active:scale-95
+                          ${collapsed
+                            ? 'justify-center px-0 py-2.5'
+                            : 'justify-between px-3 py-2.5 gap-3'
+                          }
+                          ${active
+                            ? 'bg-primary/10 border-primary/20 shadow-sm'
+                            : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/70'
+                          }
+                        `}
+                      >
+                        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                          <span className={`flex-shrink-0 transition-colors duration-200 ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary'}`}>
+                            {React.cloneElement(item.icon, { size: 17, strokeWidth: active ? 2.5 : 2 })}
+                          </span>
+                          {!collapsed && (
+                            <span className={`text-[12.5px] tracking-tight truncate transition-colors duration-200 ${active ? 'font-black text-primary' : 'font-semibold text-slate-600 dark:text-slate-400'}`}>
+                              {item.name}
+                            </span>
+                          )}
+                        </div>
+                        {!collapsed && active && (
+                          <ChevronRight size={13} className="text-primary flex-shrink-0" />
+                        )}
+                      </button>
                     </li>
                   );
                 })}
@@ -281,27 +290,29 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         })}
       </nav>
 
-      {/* LOGOUT ACTION */}
-      <div className="px-3 py-4 border-t border-border/50 mt-auto bg-card">
+      {/* ── LOGOUT ────────────────────────────────────────────── */}
+      <div className="border-t border-border/50 px-2 py-3 flex-shrink-0">
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all duration-300 font-semibold group"
+          title="Logout"
+          className={`
+            w-full flex items-center rounded-xl text-red-500
+            hover:bg-red-50 dark:hover:bg-red-500/10
+            border border-transparent hover:border-red-500/10
+            transition-all duration-200 active:scale-95
+            ${collapsed ? 'justify-center py-2.5' : 'gap-3 px-3 py-2.5'}
+          `}
         >
-          <LogOut size={18} className="group-hover:scale-110 transition-transform" />
-          <span className="text-[13px] tracking-tight">Logout</span>
+          <LogOut size={17} className="flex-shrink-0" />
+          {!collapsed && <span className="text-[12.5px] font-semibold tracking-tight">Logout</span>}
         </button>
       </div>
-      
+
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { 
-          background: rgba(148, 163, 184, 0.2); 
-          border-radius: 10px; 
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-          background: var(--color-primary); 
-        }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
       `}</style>
     </aside>
   );

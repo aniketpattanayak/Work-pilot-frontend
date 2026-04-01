@@ -173,11 +173,13 @@ const FmsDashboard = ({ tenantId }) => {
    * This logic handles the "Coming Soon" display while ensuring 100%
    * of the original code remains in the file for future activation.
    */
+
+  /** 
   return (
+  
     <div className="w-full h-full min-h-[85vh] relative flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-1000">
-      {/* 1. VISIBLE WRAPPER: COMING SOON UI */}
-      <div className="relative max-w-4xl w-full z-[100]">
-        {/* Background Glow */}
+      {/* 1. VISIBLE WRAPPER: COMING SOON UI */
+      /*<div className="relative max-w-4xl w-full z-[100]">
         <div className="absolute inset-0 bg-primary/10 rounded-full blur-[120px] -z-10" />
 
         <div className="bg-white border-2 border-slate-200 p-12 md:p-24 rounded-[4rem] shadow-2xl space-y-12 relative overflow-hidden">
@@ -200,10 +202,14 @@ const FmsDashboard = ({ tenantId }) => {
           
         </div>
       </div>
+      
 
-      {/* 2. HIDDEN DATA LAYER: ALL ORIGINAL CODE PRESERVED HERE */}
-      <div className="hidden pointer-events-none select-none overflow-hidden h-0 w-0 opacity-0 absolute inset-0">
-        {/* EXECUTIVE HEADER (PRESERVED) */}
+
+
+
+
+
+      <div className="pointer-events-none select-none overflow-hidden h-1000 w-200 opacity-100 absolute inset-0">
         <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border-b-4 border-primary gap-6">
           <div className="flex items-center gap-6">
             <div className="bg-primary/20 p-4 rounded-2xl border border-primary/30 shadow-inner">
@@ -242,7 +248,6 @@ const FmsDashboard = ({ tenantId }) => {
           </div>
         </div>
 
-        {/* CREATE VIEW (PRESERVED) */}
         {view === "Create" ? (
           <div className="bg-white border-2 border-slate-200 rounded-[3rem] p-10 md:p-14 shadow-2xl space-y-12 transition-all">
             <div className="space-y-8">
@@ -345,7 +350,6 @@ const FmsDashboard = ({ tenantId }) => {
           </div>
         )}
 
-        {/* MODAL (PRESERVED) */}
         {selectedFlow && (
           <div className="fixed inset-0 bg-slate-950/90 z-[9999]">
             <button onClick={() => setSelectedFlow(null)}>
@@ -366,6 +370,150 @@ const FmsDashboard = ({ tenantId }) => {
       `}</style>
     </div>
   );
+
+  */
+
+
+
+
+  return (
+  <div className="w-full h-full min-h-[85vh] relative flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-1000">
+
+    {/* EXECUTIVE HEADER */}
+    <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900 p-8 rounded-[2.5rem] shadow-2xl border-b-4 border-primary gap-6 w-full max-w-6xl">
+      <div className="flex items-center gap-6">
+        <div className="bg-primary/20 p-4 rounded-2xl border border-primary/30 shadow-inner">
+          <Layers className="text-primary" size={32} />
+        </div>
+        <div>
+          <h2 className="text-white text-3xl font-black uppercase tracking-tighter">
+            Workflow Orchestrator
+          </h2>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mt-1">
+            Sheet-Triggered Sequential Automation
+          </p>
+        </div>
+      </div>
+
+      <div className="flex bg-white/5 p-1.5 rounded-2xl border border-white/10">
+        <button
+          onClick={() => setView("Monitor")}
+          className={`px-10 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+            view === "Monitor"
+              ? "bg-primary text-white shadow-lg"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          Active Monitor
+        </button>
+
+        <button
+          onClick={() => setView("Create")}
+          className={`px-10 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+            view === "Create"
+              ? "bg-primary text-white shadow-lg"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          + Plan New Flow
+        </button>
+      </div>
+    </div>
+
+    {/* MAIN CONTENT */}
+    <div className="w-full max-w-6xl mt-10">
+
+      {view === "Create" ? (
+        <div className="bg-white border-2 border-slate-200 rounded-[3rem] p-10 md:p-14 shadow-2xl space-y-12 transition-all">
+
+          {/* STEP 0 */}
+          <div className="space-y-8">
+            <div className="flex items-center gap-3 border-l-4 border-primary pl-4">
+              <Globe className="text-primary" size={20} />
+              <h3 className="text-slate-900 font-black uppercase text-sm tracking-widest">
+                Step 0: Google Sheet Connection
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 bg-slate-50 p-8 rounded-[2rem] border border-slate-100 shadow-inner">
+              <input value={newFlow.flowName} onChange={(e)=>setNewFlow({...newFlow, flowName:e.target.value})}/>
+              <input value={newFlow.googleSheetId} onChange={(e)=>setNewFlow({...newFlow, googleSheetId:e.target.value})}/>
+              <input value={newFlow.scriptUrl} onChange={(e)=>setNewFlow({...newFlow, scriptUrl:e.target.value})}/>
+              <input value={newFlow.uniqueIdentifierColumn} onChange={(e)=>setNewFlow({...newFlow, uniqueIdentifierColumn:e.target.value})}/>
+              <input value={newFlow.tabName} onChange={(e)=>setNewFlow({...newFlow, tabName:e.target.value})}/>
+            </div>
+          </div>
+
+          {/* NODES */}
+          <div className="space-y-8">
+            {newFlow.nodes.map((node, idx) => (
+              <div key={idx}>
+                <input
+                  value={node.nodeName}
+                  onChange={(e)=>handleNodeChange(idx,"nodeName",e.target.value)}
+                />
+                <select
+                  value={node.emailColumn}
+                  onChange={(e)=>handleNodeChange(idx,"emailColumn",e.target.value)}
+                >
+                  {employees.map(emp => (
+                    <option key={emp._id} value={emp.email}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <button onClick={addNode}>Add Node</button>
+          </div>
+
+          <button onClick={saveBlueprint}>Save Blueprint</button>
+        </div>
+      ) : (
+        <div className="space-y-12">
+
+          <section className="space-y-6">
+            <Database size={20} />
+            {flows.map(flow => (
+              <div key={flow._id}>
+                <span onClick={()=>setSelectedFlow(flow)}>
+                  {flow.flowName}
+                </span>
+                <button onClick={()=>handleDeleteFlow(flow._id)}>
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            ))}
+          </section>
+
+          <section className="space-y-6">
+            <Activity size={20} />
+            {activeInstances.map(instance => (
+              <div key={instance._id}>
+                {instance.orderIdentifier}
+              </div>
+            ))}
+          </section>
+
+        </div>
+      )}
+    </div>
+
+    {/* MODAL */}
+    {selectedFlow && (
+      <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex flex-col items-center justify-center">
+        <button onClick={()=>setSelectedFlow(null)}>
+          <X size={32} />
+        </button>
+
+        {selectedFlow.nodes.map((node,i)=>(
+          <div key={i}>{node.nodeName}</div>
+        ))}
+      </div>
+    )}
+
+  </div>
+);
 };
 
 export default FmsDashboard;

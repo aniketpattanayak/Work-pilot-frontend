@@ -22,7 +22,8 @@ import {
   CalendarDays,
   ShieldAlert,
   Lock,
-  PlayCircle // Added for Custom Run icon
+  PlayCircle ,
+   ChevronDown, ChevronUp
 } from 'lucide-react';
 import RevisionPanel from '../components/RevisionPanel'; 
 
@@ -52,6 +53,15 @@ const ReviewMeeting = ({ tenantId }) => {
 
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+
+
+
+
+  const [expandedChecklistIds, setExpandedChecklistIds] = useState([]);
+
+
+
+
 
   const isAdmin = user.roles?.includes('Admin') || user.role === 'Admin';
 
@@ -195,19 +205,90 @@ const ReviewMeeting = ({ tenantId }) => {
     if (row.history.length > 0) fetchTaskDetails(row.employeeId, row.history[0].dates.start, row.history[0].dates.end, 0);
   };
 
+const [expandedChecklistId, setExpandedChecklistId] = useState(null);
+  const groupedChecklist = useMemo(() => {
+  const map = {};
+
+  deepDiveData.forEach(item => {
+    if (item.type === 'Checklist') {
+      if (!map[item.id]) {
+        map[item.id] = {
+          taskName: item.name,
+          instances: []
+        };
+      }
+      map[item.id].instances.push(item);
+    }
+  });
+
+  return Object.entries(map);
+}, [deepDiveData]);
+
+
+
+
+
+
+
+const auditStats = useMemo(() => {
+  if (!deepDiveData || deepDiveData.length === 0) {
+    return { total: 0, done: 0, overdue: 0, notDone: 0 };
+  }
+
+  // 🔹 DELEGATION
+  if (activePerson?.type === "Delegation") {
+    const filtered = deepDiveData.filter(t => t.type === "Delegation");
+
+    const total = filtered.length;
+    const done = filtered.filter(t => t.completedAt).length;
+    const overdue = filtered.filter(t => t.status === "OVERDUE").length;
+    const notDone = total - done;
+
+    return { total, done, overdue, notDone };
+  }
+
+  // 🔹 CHECKLIST (IMPORTANT)
+  if (activePerson?.type === "Checklist") {
+    let total = 0;
+    let done = 0;
+    let overdue = 0;
+
+    groupedChecklist.forEach(([_, task]) => {
+      task.instances.forEach(inst => {
+        total++;
+
+        if (inst.completedAt) done++;
+        if (inst.status === "OVERDUE") overdue++;
+      });
+    });
+
+    const notDone = total - done;
+
+    return { total, done, overdue, notDone };
+  }
+
+  return { total: 0, done: 0, overdue: 0, notDone: 0 };
+}, [deepDiveData, groupedChecklist, activePerson]);
+
+
+
+
+
+
+
   if (!isAdmin) return (
     <div className="w-full h-[70vh] flex flex-col items-center justify-center animate-in fade-in duration-500">
-      <div className="bg-white p-12 rounded-[3rem] border-2 border-slate-200 shadow-2xl flex flex-col items-center text-center max-w-lg space-y-6">
+      <div className="bg-card p-12 rounded-[3rem] border-2 border-border shadow-2xl flex flex-col items-center text-center max-w-lg space-y-6">
          <div className="bg-red-50 p-6 rounded-full border-4 border-red-100 shadow-inner">
             <Lock className="text-red-500" size={60} strokeWidth={1.5} />
          </div>
          <div>
-            <h3 className="text-slate-950 text-2xl font-black uppercase tracking-tighter">Access Restricted</h3>
-            <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em] mt-2 italic">
+            <h3 className="text-foreground text-2xl font-black uppercase tracking-tighter">Access Restricted</h3>
+            <p className="text-muted-foreground font-bold uppercase text-[10px] tracking-[0.2em] mt-2 italic">
                The Review Meeting module is reserved for Executive Admin Personnel only.
             </p>
          </div>
-         <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-200 text-slate-400 text-[9px] font-black uppercase tracking-widest">
+         <div className="bg-background px-6 py-3 rounded-2xl border border-border text-slate-400 text-[9px] font-black uppercase tracking-widest">
             Security Protocol: Node-Identity Verification Failed
          </div>
       </div>
@@ -227,45 +308,45 @@ const ReviewMeeting = ({ tenantId }) => {
       {/* MAIN PAGE HEADER */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-6">
         <div className="flex items-center gap-5">
-          <div className="bg-slate-950 p-4 rounded-xl shadow-lg"><BarChart3 className="text-white" size={32} /></div>
+          <div className="bg-primary p-4 rounded-xl shadow-lg"><BarChart3 className="text-white" size={32} /></div>
           <div>
-            <h2 className="text-slate-950 text-3xl font-black tracking-tighter uppercase leading-none">Review Meeting</h2>
+            <h2 className="text-foreground text-3xl font-black tracking-tighter uppercase leading-none">Review Meeting</h2>
             <p className="text-slate-600 text-sm font-bold uppercase tracking-widest mt-1 italic opacity-70">Live Compliance Ledger</p>
           </div>
         </div>
-        <button onClick={fetchAnalytics} className="bg-white border-2 border-slate-950 px-8 py-3 rounded-xl text-slate-950 font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 active:scale-95 shadow-md">
+        <button onClick={fetchAnalytics} className="bg-card border-2 border-slate-950 px-8 py-3 rounded-xl text-foreground font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 active:scale-95 shadow-md">
           <RefreshCcw size={18} /> Refresh
         </button>
       </div>
 
       {/* MAIN FILTERS */}
-      <div className="bg-slate-50 p-6 rounded-[2.5rem] border-2 border-slate-200 mb-10 space-y-6 shadow-sm">
+      <div className="bg-card p-6 border border-border rounded-[2.5rem] mb-10 space-y-6 shadow-sm">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="relative">
-            <input type="text" placeholder="Identity or Dept..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-white border-2 border-slate-200 text-slate-950 px-12 py-3 rounded-2xl outline-none focus:border-slate-950 transition-all font-black text-sm shadow-inner" />
+            <input type="text" placeholder="Identity or Dept..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-background border border-border text-foreground px-12 py-3 rounded-2xl outline-none focus:border-slate-950 transition-all font-black text-sm shadow-inner" />
             <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
-          <div className="flex bg-white p-1 rounded-2xl border-2 border-slate-200 shadow-inner">
+          <div className="flex bg-card p-1 rounded-2xl border-2 border-border shadow-inner">
              {['All', 'Delegation', 'Checklist'].map(cat => (
-               <button key={cat} onClick={() => setTaskCategory(cat)} className={`flex-1 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${taskCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-slate-950'}`}>{cat}</button>
+               <button key={cat} onClick={() => setTaskCategory(cat)} className={`flex-1 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${taskCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-foreground'}`}>{cat}</button>
              ))}
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-6">
-          <div className="flex bg-white p-1 rounded-2xl border-2 border-slate-200 shadow-inner max-w-md">
+        {/*<div className="grid grid-cols-1 gap-6">
+          <div className="flex bg-card p-1 rounded-2xl border-2 border-border shadow-inner max-w-md">
             {['All', 'Daily', 'Weekly', 'Monthly'].map(tab => (
               <button key={tab} onClick={() => setViewType(tab)} className={`flex-1 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${viewType === tab ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-400 hover:text-slate-950'}`}>{tab}</button>
             ))}
           </div>
-        </div>
+        </div>*/}
       </div>
 
       {/* SUMMARY TABLE */}
-      <div className="bg-white border-2 border-slate-200 rounded-[2.5rem] shadow-2xl border-b-8 border-b-slate-900 overflow-hidden relative">
+      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl border-b-8 border-b-slate-900 overflow-hidden relative">
         <div className="max-h-[700px] overflow-auto custom-scrollbar">
           <table className="w-full text-left border-collapse min-w-[1600px]">
-            <thead className="sticky top-0 z-40 bg-slate-900">
-              <tr className="text-white text-[10px] font-black uppercase tracking-[0.2em]">
+            <thead className="sticky top-0 z-40 bg-background text-foreground border-b border-border">
+              <tr className="text-foreground text-[10px] font-black uppercase tracking-[0.2em] ">
                 <th className="px-6 py-6 border-r border-slate-700 text-center w-20">NO.</th>
                 <th className="px-6 py-6 border-r border-slate-700">PERSONNEL IDENTITY</th>
                 <th className="px-6 py-6 border-r border-slate-700 text-center">LATE TARGET (%)</th>
@@ -282,24 +363,24 @@ const ReviewMeeting = ({ tenantId }) => {
               {summaryRows.map((row, index) => {
                 const isOverTarget = parseFloat(getPercentage(row.late, row.total)) > row.lateTarget;
                 return (
-                  <tr key={row.rowId} className="cursor-pointer hover:bg-slate-50 transition-all group">
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-center text-[10px] font-black text-slate-400 group-hover:text-primary">{String(index + 1).padStart(2, '0')}</td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 font-black text-slate-950 text-xs uppercase flex items-center gap-4">
+                  <tr key={row.rowId} className="cursor-pointer hover:bg-primary/5 transition-all group">
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-center text-[10px] font-black text-slate-400 group-hover:text-primary">{String(index + 1).padStart(2, '0')}</td>
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border font-black text-foreground text-xs uppercase flex items-center gap-4">
                         <ChevronRight size={16} className="text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         {row.name}
                     </td>
-                    <td className="px-6 py-5 border-r border-slate-200 text-center">
-                       <input type="number" defaultValue={row.lateTarget} onBlur={(e) => saveTarget(row.employeeId, e.target.value)} className="w-16 bg-slate-100 border-2 border-slate-200 rounded-lg text-center font-black text-xs py-1 focus:border-primary outline-none" />
+                    <td className="px-6 py-5 border-r border-border text-center">
+                       <input type="number" defaultValue={row.lateTarget} onBlur={(e) => saveTarget(row.employeeId, e.target.value)} className="w-16 bg-background border-2 border-border rounded-lg text-center font-black text-xs py-1 focus:border-primary outline-none" />
                     </td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-[10px] font-black uppercase text-slate-500">{row.dept}</td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-left">
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-[10px] font-black uppercase text-muted-foreground">{row.dept}</td>
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-left">
                       <span className={`px-3 py-1 rounded text-[9px] font-black uppercase border-2 ${row.type === 'Checklist' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>{row.type}</span>
                     </td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-center font-black text-xs">{row.total}</td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-center font-black text-xs text-emerald-600">{row.done}</td>
-                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-slate-200 text-center font-black text-xs text-red-600">{row.overdue}</td>
-                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 border-r border-slate-200 text-center font-black text-[11px] ${isOverTarget ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}`}>{getPercentage(row.late, row.total)} {isOverTarget && <ArrowUpRight size={12} className="inline ml-1" />}</td>
-                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 text-center font-black text-[11px] ${parseFloat(getPercentage(row.notDone, row.total)) > 20 ? 'text-red-600 bg-red-50/50' : 'text-slate-900'}`}>{getPercentage(row.notDone, row.total)} ({row.notDone})</td>
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-center font-black text-xs">{row.total}</td>
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-center font-black text-xs text-emerald-600">{row.done}</td>
+                    <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-center font-black text-xs text-red-600">{row.overdue}</td>
+                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 border-r border-border text-center font-black text-[11px] ${isOverTarget ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}`}>{getPercentage(row.late, row.total)} {isOverTarget && <ArrowUpRight size={12} className="inline ml-1" />}</td>
+                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 text-center font-black text-[11px] ${parseFloat(getPercentage(row.notDone, row.total)) > 20 ? 'text-red-600 bg-red-50/50' : 'text-foreground'}`}>{getPercentage(row.notDone, row.total)} ({row.notDone})</td>
                   </tr>
                 );
               })}
@@ -310,174 +391,373 @@ const ReviewMeeting = ({ tenantId }) => {
 
       {/* POPUP MODAL - CUSTOM DATE RANGE AUDIT INTEGRATED */}
       {showModal && activePerson && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-8 overflow-hidden animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white w-full max-w-[1680px] max-h-[92vh] rounded-[2rem] shadow-2xl flex flex-col border-2 border-white/20">
-            
-            {/* POPUP HEADER */}
-            <div className="bg-slate-900 p-6 flex justify-between items-center text-white border-b-2 border-primary z-50">
-               <div className="flex items-center gap-6">
-                  <div className="bg-primary/20 p-3 rounded-2xl"><User size={28} className="text-primary"/></div>
-                  <div>
-                     <h3 className="text-xl font-black uppercase tracking-tighter leading-none">{activePerson.name}</h3>
-                     <p className="text-primary text-[10px] font-bold uppercase tracking-[0.2em] mt-1">{activePerson.dept} • HISTORICAL COMPLIANCE AUDIT</p>
-                  </div>
-               </div>
+<div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
 
-               <div className="flex items-center gap-4">
-                  {/* NEW: CUSTOM DATE RANGE PICKER SECTION */}
-                  <div className="hidden xl:flex items-center bg-white/5 border border-white/10 px-6 py-2.5 rounded-2xl gap-6 group hover:border-primary transition-all shadow-inner">
-                    <div className="flex items-center gap-2">
-                       <Calendar size={16} className="text-primary" />
-                       <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Custom Range:</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <input type="date" value={modalStartDate} onChange={(e) => setModalStartDate(e.target.value)} className="bg-transparent text-white font-black text-xs outline-none border-b border-white/20 pb-1" />
-                       <span className="text-slate-600 font-bold text-xs">to</span>
-                       <input type="date" value={modalEndDate} onChange={(e) => setModalEndDate(e.target.value)} className="bg-transparent text-white font-black text-xs outline-none border-b border-white/20 pb-1" />
-                    </div>
-                    <button 
-                      onClick={() => fetchTaskDetails(activePerson.employeeId, modalStartDate, modalEndDate, null)}
-                      className="bg-primary text-slate-950 p-2 rounded-lg hover:scale-110 active:scale-95 transition-all flex items-center gap-2"
-                      title="Run Audit"
-                    >
-                       <PlayCircle size={18} fill="currentColor" />
-                    </button>
-                  </div>
+  {/* BACKDROP */}
+  <div
+    className="absolute inset-0"
+    onClick={() => setShowModal(false)}
+  />
 
-                  <button onClick={() => setShowModal(false)} className="bg-white/10 hover:bg-red-500 p-3 rounded-xl transition-all"><X size={20} /></button>
-               </div>
-            </div>
+  {/* MODAL */}
+  <div className="relative w-full max-w-[96vw] h-[94vh] bg-card rounded-[2rem] border border-border shadow-2xl flex flex-col overflow-hidden border border-white/20">
 
-            {/* POPUP BODY */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-12 custom-scrollbar bg-slate-100">
-               
-               {/* 1. WEEKLY SELECTOR TABLE */}
-               <div className="space-y-4">
-                  <div className="flex items-center gap-3 ml-4">
-                     <History size={18} className="text-slate-400" />
-                     <h4 className="text-sm font-black uppercase tracking-tighter text-slate-950">Quick Select (Weekly Breakdown)</h4>
-                  </div>
-                  <div className="bg-white border-2 border-slate-300 rounded-[1.5rem] shadow-xl overflow-hidden ring-4 ring-slate-200/30">
-                     <table className="w-full text-left border-collapse min-w-[1550px]">
-                        <thead className="sticky top-0 z-30 bg-slate-50 border-b-2 border-slate-200">
-                           <tr className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                              <th className="px-5 py-4 border-r border-slate-200 text-center w-20">NO.</th>
-                              <th className="px-5 py-4 border-r border-slate-200 bg-primary/5 text-primary text-left">PERIOD LABEL</th>
-                              <th className="px-5 py-4 border-r border-slate-200 text-center">TOTAL</th>
-                              <th className="px-5 py-4 border-r border-slate-200 text-center">DONE</th>
-                              <th className="px-5 py-4 border-r border-slate-200 text-center text-red-600">OVERDUE</th>
-                              <th className="px-5 py-4 text-center bg-red-50/20 text-slate-950">NOT DONE (%)</th>
-                              <th className="px-5 py-4 text-center">AUDIT</th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                           {activePerson.history.map((week, wIdx) => {
-                              const weekStats = activePerson.type === 'Checklist' ? week.checklist : week.delegation;
-                              const isSelected = activeWeekIndex === wIdx;
-                              return (
-                                 <tr key={wIdx} className={`text-xs font-black text-slate-950 transition-all ${isSelected ? 'bg-primary/5' : 'bg-white hover:bg-slate-50'}`}>
-                                    <td className="px-5 py-4 border-r border-slate-200 text-center text-slate-400">{String(wIdx + 1).padStart(2, '0')}</td>
-                                    <td className="px-5 py-4 border-r border-slate-200 font-black text-slate-950 text-[10px] uppercase italic">{getWeekLabel(wIdx)} • {week.period}</td>
-                                    <td className="px-5 py-4 border-r border-slate-200 text-center">{weekStats.total}</td>
-                                    <td className="px-5 py-4 border-r border-slate-200 text-center text-emerald-600">{weekStats.done}</td>
-                                    <td className="px-5 py-4 border-r border-slate-200 text-center text-red-600">{weekStats.overdue}</td>
-                                    <td className={`px-5 py-4 border-r border-slate-200 text-center font-bold ${parseFloat(getPercentage(weekStats.notDone, weekStats.total)) > 20 ? 'text-red-600' : ''}`}>{getPercentage(weekStats.notDone, weekStats.total)} ({weekStats.notDone})</td>
-                                    <td className="px-5 py-4 text-center">
-                                       <button onClick={() => fetchTaskDetails(activePerson.employeeId, week.dates.start, week.dates.end, wIdx)} className={`p-2 rounded-lg transition-all ${isSelected ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-400 hover:text-slate-950'}`}>
-                                          <Search size={14} />
-                                       </button>
-                                    </td>
-                                 </tr>
-                              );
-                           })}
-                        </tbody>
-                     </table>
-                  </div>
-               </div>
+    {/* ================= HEADER ================= */}
+    <div className="sticky top-0 z-50 bg-background text-foreground border-b border-border px-6 py-5 flex justify-between items-center border-b border-white/10">
 
-               {/* 2. COMPREHENSIVE AUDIT LEDGER */}
-               <div className="space-y-6 pb-20">
-                  <div className="flex items-center justify-between ml-4">
-                     <div className="flex items-center gap-4">
-                        <Layers size={20} className="text-slate-900"/>
-                        <h4 className="text-lg font-black uppercase tracking-tighter text-slate-950">Mission Audit Ledger (Period: {modalStartDate} to {modalEndDate})</h4>
-                     </div>
-                     <span className="bg-slate-950 text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">{deepDiveData.length} Missions Identified</span>
-                  </div>
-
-                  {loadingDeepDive ? (
-                     <div className="bg-white p-24 rounded-[3rem] border-4 border-dotted border-slate-200 flex flex-col items-center justify-center shadow-xl">
-                        <RefreshCcw className="animate-spin text-primary mb-4" size={32} />
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-400 italic">Syncing Production Logs...</span>
-                     </div>
-                  ) : deepDiveData.length > 0 ? (
-                     <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden border-2 border-slate-300">
-                        <table className="w-full text-left">
-                           <thead>
-                              <tr className="bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest">
-                                 <th className="px-6 py-5 border-r border-slate-800">Mission Name & Description</th>
-                                 <th className="px-6 py-5 border-r border-slate-800 text-center">Target Deadline</th>
-                                 <th className="px-6 py-5 border-r border-slate-800 text-center">Actual Completion</th>
-                                 <th className="px-6 py-5 border-r border-slate-800 text-center">Audit Drift (Live Counter)</th>
-                                 <th className="px-6 py-4 text-center">Mission State</th>
-                                 <th className="px-6 py-4 text-center">Action</th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-slate-200">
-                              {deepDiveData.map((task, tIdx) => {
-                                 const isUnfinished = !task.completedAt;
-                                 return (
-                                    <tr key={tIdx} className={`hover:bg-slate-50 transition-all text-xs ${isUnfinished ? 'bg-red-50/10' : ''}`}>
-                                       <td className="px-6 py-5 border-r border-slate-100">
-                                          <div className={`font-black uppercase tracking-tight mb-1 ${isUnfinished ? 'text-red-700' : 'text-slate-950'}`}>{task.name}</div>
-                                          <div className="text-[10px] text-slate-400 font-bold leading-relaxed max-w-[450px] italic">
-                                             {task.description || "Operational standard protocol. Follow SOP strictly."}
-                                          </div>
-                                       </td>
-                                       <td className="px-6 py-5 border-r border-slate-100 text-center font-bold text-slate-500 uppercase">{new Date(task.deadline).toLocaleDateString('en-GB')}</td>
-                                       <td className="px-6 py-5 border-r border-slate-100 text-center font-black">
-                                          {task.completedAt ? (
-                                            <div className="flex flex-col">
-                                               <span className="text-slate-950">{new Date(task.completedAt).toLocaleDateString('en-GB')}</span>
-                                               <span className="text-[9px] text-emerald-600 opacity-60 uppercase">{new Date(task.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                          ) : (
-                                            <span className="text-red-500 font-black animate-pulse uppercase text-[10px]">Pending Mission</span>
-                                          )}
-                                       </td>
-                                       <td className={`px-6 py-5 border-r border-slate-100 text-center font-black italic ${isUnfinished ? 'text-red-600' : 'text-slate-500'}`}>
-                                          {calculateDelay(task.deadline, task.completedAt)}
-                                       </td>
-                                       <td className="px-6 py-5 border-r border-slate-100 text-center">
-                                          <span className={`px-4 py-1 rounded-full text-[8px] font-black uppercase border-2 shadow-sm ${
-                                             task.status === 'LATE' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                             (task.status === 'OVERDUE' || isUnfinished) ? 'bg-red-600 text-white border-red-700' :
-                                             'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                          }`}>{task.status || (isUnfinished ? 'MISSING' : 'DONE')}</span>
-                                       </td>
-                                       <td className="px-6 py-5 text-center">
-                                          <button onClick={() => deleteTaskRecord(task.id, task.type)} className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition-all group">
-                                             <Trash2 size={16} className="group-hover:rotate-12 transition-transform" />
-                                          </button>
-                                       </td>
-                                    </tr>
-                                 );
-                              })}
-                           </tbody>
-                        </table>
-                     </div>
-                  ) : (
-                     <div className="bg-white p-24 rounded-[3rem] border-4 border-dotted border-slate-100 text-center">
-                        <AlertCircle className="mx-auto mb-3 text-slate-200" size={48} />
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-300">No missions identified for this custom range. Try different dates.</span>
-                     </div>
-                  )}
-               </div>
-            </div>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="bg-primary/20 p-3 rounded-xl">
+          <User size={22} className="text-primary" />
         </div>
+
+        <div>
+          <h2 className="text-lg font-black uppercase leading-tight">
+            {activePerson.name}
+          </h2>
+          <p className="text-[10px] tracking-widest text-slate-400 uppercase">
+            {activePerson.dept} • Historical Compliance Audit
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={() => setShowModal(false)}
+        className="bg-card/10 hover:bg-red-500 p-2 rounded-xl transition"
+      >
+        <X size={18} />
+      </button>
+    </div>
+
+    {/* ================= FILTER BAR ================= */}
+    <div className="sticky top-[72px] z-40 bg-card border-b border-border px-6 py-4 flex flex-wrap items-center gap-4">
+
+      <div className="flex items-center gap-2">
+        <Calendar size={16} className="text-primary" />
+        <span className="text-xs font-bold uppercase text-muted-foreground">
+          Date Range
+        </span>
+      </div>
+
+      <input
+        type="date"
+        value={modalStartDate}
+        onChange={(e) => setModalStartDate(e.target.value)}
+        className="border px-3 py-2 rounded-lg text-sm"
+      />
+
+      <input
+        type="date"
+        value={modalEndDate}
+        onChange={(e) => setModalEndDate(e.target.value)}
+        className="border px-3 py-2 rounded-lg text-sm"
+      />
+
+      <button
+        onClick={() =>
+          fetchTaskDetails(
+            activePerson.employeeId,
+            modalStartDate,
+            modalEndDate,
+            null
+          )
+        }
+        className="bg-primary text-black px-5 py-2 rounded-xl font-bold text-xs uppercase tracking-wide shadow hover:shadow-lg transition"
+      >
+        Run Audit
+      </button>
+
+      <div className="ml-auto text-xs font-bold text-muted-foreground">
+        {deepDiveData.length} Missions
+      </div>
+    </div>
+
+    {/* ================= BODY ================= */}
+    <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-background">
+
+      {/* ================= WEEKLY SELECT ================= */}
+      <div className="bg-card rounded-2xl shadow border p-4">
+        <h4 className="text-xs font-black uppercase text-muted-foreground mb-3">
+          Audit analysis
+        </h4>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-[1000px] w-full text-xs">
+
+            <thead className="bg-background text-muted-foreground uppercase text-[10px]">
+              <tr>
+                <th className="px-4 py-3 text-center">#</th>
+                <th className="px-4 py-3 text-center">Total</th>
+                <th className="px-4 py-3 text-center">Done</th>
+                <th className="px-4 py-3 text-center">Overdue</th>
+                <th className="px-4 py-3 text-center">Not Done (%)</th>
+              </tr>
+            </thead>
+             
+             
+              <tbody>
+  <tr className="border-t bg-primary/5">
+    
+    <td className="text-center px-4 py-3 text-slate-400">
+      01
+    </td>
+
+    <td className="text-center font-bold">
+      {auditStats.total}
+    </td>
+
+    <td className="text-center text-green-600 font-bold">
+      {auditStats.done}
+    </td>
+
+    <td className="text-center text-red-500 font-bold">
+      {auditStats.overdue}
+    </td>
+
+    <td className="text-center font-bold">
+      {auditStats.total
+        ? ((auditStats.notDone / auditStats.total) * 100).toFixed(1)
+        : 0
+      }% ({auditStats.notDone})
+    </td>
+  </tr>
+</tbody>
+
+          </table>
+        </div>
+      </div>
+
+      {/* ================= AUDIT LEDGER ================= */}
+      <div className="bg-card rounded-2xl shadow border overflow-hidden">
+
+        <div className="px-6 py-4 border-b flex justify-between items-center">
+          <h3 className="font-black text-sm uppercase">
+            Mission Audit Ledger ({modalStartDate} → {modalEndDate})
+          </h3>
+        </div>
+
+        {loadingDeepDive ? (
+  <div className="p-16 text-center text-slate-400 font-bold text-sm">
+    Syncing Logs...
+  </div>
+) : deepDiveData.length === 0 ? (
+  <div className="p-16 text-center text-slate-300 font-bold text-sm">
+    No missions found for selected range
+  </div>
+) : (
+  <>
+    {/* ✅ ONLY FOR DELEGATION */}
+    {activePerson.type === 'Delegation' && (
+      <div className="overflow-x-auto">
+        <table className="min-w-[1100px] w-full text-xs">
+          
+          <thead className="bg-background text-foreground border-b border-border text-[10px] uppercase">
+            <tr>
+              <th className="px-6 py-4 text-left">Mission</th>
+              <th className="px-6 py-4 text-center">Deadline</th>
+              <th className="px-6 py-4 text-center">Completed</th>
+              <th className="px-6 py-4 text-center">Drift</th>
+              <th className="px-6 py-4 text-center">Status</th>
+              <th className="px-6 py-4 text-center">Action</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {deepDiveData
+              .filter(t => t.type === 'Delegation')
+              .map((task, i) => {
+                const isUnfinished = !task.completedAt;
+
+                const status =
+                  task.status ||
+                  (isUnfinished ? "MISSING" : "DONE");
+
+                return (
+                  <tr
+                    key={i}
+                    className={`border-t hover:bg-primary/5 ${
+                      isUnfinished ? "bg-red-50/20" : ""
+                    }`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-bold max-w-[200px] truncate" title={task.name}>
+                        {task.name}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {task.description || "Operational standard protocol"}
+                      </div>
+                    </td>
+
+                    <td className="text-center">
+                      {new Date(task.deadline).toLocaleDateString("en-GB")}
+                    </td>
+
+                    <td className="text-center font-bold">
+                      {task.completedAt ? (
+                        <div className="flex flex-col">
+                          <span>
+                            {new Date(task.completedAt).toLocaleDateString("en-GB")}
+                          </span>
+                          <span className="text-[10px] text-green-600">
+                            {new Date(task.completedAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-red-500 uppercase text-[10px]">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="text-center font-bold">
+                      {calculateDelay(task.deadline, task.completedAt)}
+                    </td>
+
+                    <td className="text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                          status === "OVERDUE"
+                            ? "bg-red-500 text-white"
+                            : status === "LATE"
+                            ? "bg-yellow-400"
+                            : status === "MISSING"
+                            ? "bg-red-600 text-white"
+                            : "bg-green-500 text-white"
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </td>
+
+                    <td className="text-center">
+                      <button
+                        onClick={() => deleteTaskRecord(task.id, task.type)}
+                        className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
+    )}
+
+    {/* ✅ CHECKLIST UI (UNCHANGED) */}
+    {activePerson.type === 'Checklist' && (
+      <div className="space-y-4">
+        {groupedChecklist.map(([taskId, task]) => {
+          const isOpen = expandedChecklistIds.includes(taskId);
+
+          return (
+            <div
+              key={taskId}
+              className="bg-card border rounded-2xl shadow-sm hover:shadow-md transition"
+            >
+              <div className="flex items-center justify-between px-5 py-4">
+                <div>
+                  <h4 className="font-bold text-sm text-foreground">
+                    {task.taskName}
+                  </h4>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide">
+                    Checklist Task
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                  onClick={() => {
+  setExpandedChecklistIds(prev =>
+    prev.includes(taskId)
+      ? prev.filter(id => id !== taskId) // close only this one
+      : [...prev, taskId] // open without closing others
+  );
+}}
+                
+                className="p-3 bg-background hover:bg-slate-200 rounded-xl transition flex items-center justify-center"
+              >
+                {isOpen ? (
+                  <ChevronUp size={20} />
+                ) : (
+                  <ChevronDown size={20} />
+                )}
+              </button>
+
+                  <button
+                onClick={() => deleteTaskRecord(taskId, 'Checklist')}
+                className="p-3 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition flex items-center justify-center"
+              >
+                <Trash2 size={18} />
+              </button>
+                </div>
+              </div>
+
+              {isOpen && (
+                <div className="overflow-auto">
+                  <div className="min-w-[800px] max-h-[500px] w-full text-xs">
+                    <div className="border-t px-5 py-4 bg-background rounded-b-2xl">
+
+                      <div className="grid grid-cols-3 text-[10px] font-bold text-muted-foreground uppercase mb-2">
+                        <div>Date</div>
+                        <div>Status</div>
+                        <div>Completed</div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {task.instances.map((inst, i) => (
+                          <div
+                            key={i}
+                            className="grid grid-cols-3 text-xs bg-card border rounded-lg px-3 py-2"
+                          >
+                            <div>
+                              <b>{new Date(inst.deadline).toLocaleDateString()}</b>
+                            </div>
+
+                            <div>
+                              <span className={`font-bold ${
+                                inst.status === "OVERDUE"
+                                  ? "text-red-500"
+                                  : inst.status === "LATE"
+                                  ? "text-yellow-500"
+                                  : "text-green-600"
+                              }`}>
+                                {inst.status}
+                              </span>
+                            </div>
+
+                            <div>
+                              <b>
+                                {inst.completedAt
+                                  ? new Date(inst.completedAt).toLocaleString()
+                                  : "Pending"}
+                              </b>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </>
+)}
+      </div>
+
+    </div>
+  </div>
+</div>
       )}
+
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }

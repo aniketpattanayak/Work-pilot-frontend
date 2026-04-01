@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+.react-datepicker__day--holiday {
+  background-color: #ff4d4f !important;
+  color: white !important;
+  border-radius: 50%;
+}

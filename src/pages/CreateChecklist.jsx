@@ -24,7 +24,7 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   </div>
 ));
 
-const CreateChecklist = ({ tenantId }) => {
+const CreateChecklist = ({ tenantId, onSuccess }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,6 +57,53 @@ const CreateChecklist = ({ tenantId }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+
+  const [holidayList, setHolidayList] = useState([]);
+
+
+  const fetchSettings = useCallback(async () => {
+    if (!currentTenantId) return;
+    try {
+      setLoading(true);
+      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
+      const data = res.data?.settings || res.data;
+      
+      if (data) {
+        setHolidayList(Array.isArray(data.holidays) ? data.holidays : []);
+      }
+    } catch (err) {
+      console.error("Fetch failure:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentTenantId]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+
+  const holidayDates = holidayList.map(h => new Date(h.date));
+
+// 🔥 Map for quick lookup (for tooltip)
+const holidayMap = {};
+holidayList.forEach(h => {
+  const key = new Date(h.date).toDateString();
+  holidayMap[key] = h.name;
+});
+
+
+const isHoliday = (date) =>
+  holidayDates.some(
+    h => h.toDateString() === date.toDateString()
+  );
+
+const isDisabledDate = (date) =>
+  isHoliday(date) ||
+  (selectedEmployee && !selectedEmployee.workOnSunday && isSunday(date));
+
+
 
   const fetchEmployees = useCallback(async () => {
     if (!currentTenantId) return;
@@ -126,6 +173,7 @@ const CreateChecklist = ({ tenantId }) => {
         frequencyConfig: { daysOfWeek: [], daysOfMonth: [], month: 0 }
       });
       setSearchTerm('');
+      if (onSuccess) onSuccess();
     } catch (err) {
       alert("System Error: " + (err.response?.data?.message || err.message));
     } finally {
@@ -154,16 +202,10 @@ const CreateChecklist = ({ tenantId }) => {
 
   {/* HEADER */}
   <div className="mb-8 flex items-center gap-5">
-    <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner">
-      <Activity className="text-primary" size={28} />
-    </div>
     <div>
-      <h2 className="text-foreground text-2xl md:text-3xl font-black uppercase leading-none">
-        Initialize Checklist Task
+      <h2 className="text-foreground text-2xl md:text-3xl font-black uppercase leading-none ">
+        Create Checklist Task
       </h2>
-      <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm font-bold uppercase tracking-widest mt-2 opacity-80">
-        Provision recurring work schedules
-      </p>
     </div>
   </div>
 
@@ -273,6 +315,33 @@ const CreateChecklist = ({ tenantId }) => {
   showMonthDropdown
   dropdownMode="select"
   customInput={<CustomDateInput />}
+
+   filterDate={(date) => !isDisabledDate(date)}
+   highlightDates={[
+  {
+    "react-datepicker__day--holiday": holidayDates
+  }
+  ]}
+  dayClassName={(date) => {
+    const key = date.toDateString();
+
+    if (holidayMap[key]) {
+      return "holiday-day";
+    }
+
+    return "";
+  }}
+  renderDayContents={(day, date) => {
+    const key = date.toDateString();
+    const holidayName = holidayMap[key];
+
+    return (
+      <span title={holidayName || ""}>
+        {day}
+      </span>
+    );
+  }}
+
 />
         </div>
 
@@ -373,7 +442,7 @@ const CreateChecklist = ({ tenantId }) => {
           </div>
         ) : (
           <div className="bg-background p-4 rounded-xl border border-border text-xs font-bold text-slate-500">
-            Anchored to{" "}
+            Start Date {" "}
             <span className="text-foreground">
               {new Date(formData.startDate).toLocaleDateString()}
             </span>

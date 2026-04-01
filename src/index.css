@@ -156,3 +156,63 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* 🌙 DARK MODE DATEPICKER FIX */
+
+.dark .react-datepicker {
+  background-color: #0f172a; /* slate-900 */
+  border: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+.dark .react-datepicker__header {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
+.dark .react-datepicker__day,
+.dark .react-datepicker__time-name {
+  color: #e2e8f0;
+}
+
+.dark .react-datepicker__day:hover {
+  background-color: #334155;
+}
+
+.dark .react-datepicker__day--selected {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.dark .react-datepicker__day--keyboard-selected {
+  background-color: #2563eb;
+  color: white;
+}
+
+.dark .react-datepicker__current-month,
+.dark .react-datepicker__day-name {
+  color: #cbd5f5;
+}
+
+.dark .react-datepicker__time-container {
+  border-left: 1px solid #334155;
+}
+
+.dark .react-datepicker__time-box {
+  background-color: #0f172a;
+}
+
+.dark .react-datepicker__time-list-item:hover {
+  background-color: #334155;
+}

@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import API from '../api/axiosConfig';
+
+
+import RevisionPanel from '../components/RevisionPanel';
+
+
 import {
   CheckCircle,
   Clock,
@@ -42,6 +47,16 @@ import {
  * 2. Notification badges exclude Completed/Verified tasks.
  */
 const DoerChecklist = ({ doerId }) => {
+
+
+
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+const [selectedTask, setSelectedTask] = useState(null);
+const [employees, setEmployees] = useState([]);
+
+
+
+
   const [checklist, setChecklist] = useState([]);
   const [delegatedTasks, setDelegatedTasks] = useState([]);
   const [fmsMissions, setFmsMissions] = useState([]);
@@ -79,6 +94,12 @@ const DoerChecklist = ({ doerId }) => {
         API.get(`/tasks/doer/${currentDoerId}`).catch(() => ({ data: [] })),
         userEmail ? API.get(`/fms/my-missions/${userEmail}`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
       ]);
+
+
+      const employeesRes = await API.get('/employees').catch(() => ({ data: [] }));
+      setEmployees(employeesRes.data || []);
+
+
 
       const safeChecklist = Array.isArray(checklistRes.data) ? checklistRes.data : (checklistRes.data?.data || []);
       const safeDelegated = Array.isArray(delegationRes.data) ? delegationRes.data : (delegationRes.data?.tasks || delegationRes.data?.data || []);
@@ -185,7 +206,7 @@ const DoerChecklist = ({ doerId }) => {
         await API.put(`/tasks/respond`, formData);
       }
 
-      alert("Success: Mission telemetry synced.");
+      alert("Success: Mission Data synced.");
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
@@ -216,12 +237,12 @@ const DoerChecklist = ({ doerId }) => {
             <ClipboardCheck size={20} className="text-primary" />
           </div>
           <div>
-            <h2 className="text-foreground text-lg md:text-xl font-black tracking-tighter uppercase leading-none">Task Ledger</h2>
+            <h2 className="text-foreground text-lg md:text-xl font-black tracking-tighter uppercase leading-none">Task Hub</h2>
             <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
-        <button onClick={fetchAllTasks} className="group bg-card border border-border px-4 py-1.5 rounded-lg text-foreground font-black text-[9px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm">
-          <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Synchronize
+        <button onClick={fetchAllTasks} className="group bg-card border border-border px-4 py-1.5 rounded-lg text-foreground font-black text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm">
+          <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
@@ -233,10 +254,10 @@ const DoerChecklist = ({ doerId }) => {
             }`}
         >
           <Layers size={16} />
-          <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Checklist</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Checklist</span>
           {/* UPDATED: Notification only for incomplete items */}
           {pendingRoutinesCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
               {pendingRoutinesCount}
             </span>
           )}
@@ -248,10 +269,10 @@ const DoerChecklist = ({ doerId }) => {
             }`}
         >
           <Briefcase size={16} />
-          <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">Delegation</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Delegation</span>
           {/* UPDATED: Notification only for incomplete items */}
           {pendingDelegationsCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md animate-bounce">
               {pendingDelegationsCount}
             </span>
           )}
@@ -263,7 +284,7 @@ const DoerChecklist = ({ doerId }) => {
             }`}
         >
           <Activity size={16} className={activeCategory === 'FMS' ? 'animate-pulse' : ''} />
-          <span className="font-black text-[9px] sm:text-[10px] uppercase tracking-widest">FMS Missions</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">FMS Missions</span>
           {filteredData.fms.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md">
               {filteredData.fms.length}
@@ -278,7 +299,7 @@ const DoerChecklist = ({ doerId }) => {
           <button
             key={range}
             onClick={() => setTimeFilter(range)}
-            className={`px-3 py-1.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-widest border transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'
+            className={`px-3 py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'
               }`}
           >
             {range}
@@ -287,10 +308,10 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* EXCEL GRID HEADER */}
-      <div className="hidden lg:grid grid-cols-[2.5fr_1fr_1fr_1fr] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[8px] uppercase tracking-[0.25em] items-center">
+      <div className="hidden lg:grid grid-cols-[2.5fr_1fr_1fr_1fr] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
         <div>Mission Identifier</div>
         <div className="text-center">Protocol Date</div>
-        <div className="text-center">Priority / Node</div>
+        <div className="text-center">Priority / Status</div>
         <div className="text-right pr-4">Registry Action</div>
       </div>
 
@@ -336,13 +357,89 @@ const DoerChecklist = ({ doerId }) => {
                     <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
                   </div>
                   <div className="flex justify-end gap-2 w-full lg:w-auto">
+                   
+                   
+                   
                     {task.status === "Pending" && (
+                      <>
                       <button onClick={(e) => { e.stopPropagation(); API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks); }} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Accept</button>
+                      {/* 🔥 NEW REVISION BUTTON */}
+                      {task.isRevisionAllowed && (
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedTask(task);setShowRevisionModal(true);}}
+                          className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">
+                        Revise
+                      </button>
+                      )}
+                      </>
                     )}
                     {task.status === "Accepted" && (
                       <button onClick={(e) => { e.stopPropagation(); setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Complete</button>
                     )}
                   </div>
+
+
+{/*
+
+                  <div className="flex justify-end gap-2 w-full lg:w-auto">
+
+  {task.status === "Pending" && task.doerId?._id === currentDoerId && (
+    <>
+      <button 
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks); 
+        }} 
+        className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all"
+      >
+        Accept
+      </button>
+      <button 
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          const reason = prompt("Enter reason and proposed deadline (e.g., Proposed Deadline: 2026-04-01):");
+          if (reason) {
+            API.put(`/tasks/respond`, { 
+              taskId: task._id, 
+              status: 'Revision Requested', 
+              remarks: reason 
+            }).then(() => {
+              // Trigger the notification backend logic by calling handle-revision with neutral action
+              API.post(`/tasks/handle-revision`, { taskId: task._id, action: 'Notify' });
+              fetchAllTasks();
+            });
+          }
+        }} 
+        className="px-3 py-1 bg-amber-500 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95"
+      >
+        Request Revision
+      </button>
+    </>
+  )}
+  {task.status === "Revision Requested" && task.assignerId?._id === currentDoerId && (
+    <button 
+      onClick={(e) => { 
+        e.stopPropagation(); 
+        setSelectedTask(task);
+        setShowRevisionModal(true);
+      }} 
+      className="px-3 py-1 bg-rose-600 text-white animate-pulse rounded font-black text-[8px] uppercase tracking-widest shadow-md"
+    >
+      Intervene
+    </button>
+  )}
+
+  {task.status === "Accepted" && task.doerId?._id === currentDoerId && (
+    <button 
+      onClick={(e) => { e.stopPropagation(); setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} 
+      className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all"
+    >
+      Complete
+    </button>
+  )}
+</div>
+*/}
+
+
                 </div>
 
                 {/* EXPANDED VIEW: DELEGATION */}
@@ -579,6 +676,36 @@ const DoerChecklist = ({ doerId }) => {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.15); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       `}</style>
+
+
+
+      {showRevisionModal && selectedTask && (
+  <div className="fixed inset-0 z-[9999] bg-black/60 flex justify-center items-center p-6">
+    <div className="bg-card w-full max-w-2xl rounded-2xl p-6 relative">
+      
+      <button 
+        onClick={() => setShowRevisionModal(false)}
+        className="absolute top-4 right-4"
+      >
+        <X size={20} />
+      </button>
+
+      <RevisionPanel
+        task={selectedTask}
+        employees={employees}
+        assignerId={currentDoerId}
+        onSuccess={() => {
+          setShowRevisionModal(false);
+          fetchAllTasks();
+        }}
+        source="doer"
+      />
+    </div>
+  </div>
+)}
+
+
+
     </div>
   );
 };
