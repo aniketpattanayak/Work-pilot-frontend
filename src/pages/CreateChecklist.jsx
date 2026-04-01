@@ -233,7 +233,7 @@ const isDisabledDate = (date) =>
         </div>
 
         {/* DESCRIPTION */}
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
             Description
           </label>
@@ -243,7 +243,7 @@ const isDisabledDate = (date) =>
             className="w-full bg-background border border-border px-4 py-4 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold h-28 resize-none"
             placeholder="Task Description"
           />
-        </div>
+        </div> */}
 
         {/* DOER */}
         <div className="space-y-2 relative" ref={dropdownRef}>

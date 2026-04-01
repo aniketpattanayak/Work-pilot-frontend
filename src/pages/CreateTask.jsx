@@ -274,7 +274,7 @@ const isDisabledDate = (date) =>
         </div>
 
         {/* DESCRIPTION */}
-        <div className="relative">
+        {/* <div className="relative">
           <label className="text-sm font-medium text-slate-600"> Description </label>
           <textarea
             value={task.description}
@@ -283,7 +283,7 @@ const isDisabledDate = (date) =>
             focus:ring-2 focus:ring-primary/30 outline-none"
             placeholder="Enter Description"
           />
-        </div>
+        </div> */}
 
         {/* MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
