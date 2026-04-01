@@ -102,7 +102,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Mapping',           icon: <UserCog />,     roles: ['Admin'] },
         { name: 'Tracking',          icon: <Eye />,         roles: ['Admin', 'Coordinator'] },
         { name: 'Checklist Monitor', icon: <Activity />,    roles: ['Admin', 'Coordinator'] },
-        // { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
+        { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
         { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'] },
         { name: 'Reports Hub',       icon: <FileText />,    roles: ['Admin'] },
         { name: 'Rewards Log',       icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },

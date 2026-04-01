@@ -44,14 +44,8 @@ const ReportsTab = ({ tenantId }) => {
 
   // 3. Trigger a manual download of the "Who-Did-What" log
   const downloadManual = async (range) => {
-    // Uses Vite's env if it exists, otherwise falls back to your local port
-    //const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    
-    
-    
-    const baseUrl = 'http://localhost:5000/api'
-    
-    
+    // Uses VITE_API_URL from .env — make sure this is set to your production server URL
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
     // This opens the direct download link we created in the backend
     window.open(`${baseUrl}/reports/download/${tenantId}?range=${range}`, '_blank');
   };

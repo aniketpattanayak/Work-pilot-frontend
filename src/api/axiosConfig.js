@@ -1,9 +1,8 @@
 import axios from 'axios';
 
 const API = axios.create({
-  // Automatically uses AWS URL from .env or fallbacks to localhost
-  //baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  baseURL : 'http://localhost:5000/api'
+  // Uses VITE_API_URL from .env file — set this to your production server URL
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
 });
 
 // REQUEST INTERCEPTOR: Automatically attach Auth Token if it exists
