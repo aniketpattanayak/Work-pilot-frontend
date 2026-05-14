@@ -3,12 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import SuperAdmin from './pages/SuperAdmin';
-// NEW: Import ReviewMeeting to ensure the component is registered
 import ReviewMeeting from './pages/ReviewMeeting'; 
-// NEW: Import FmsDashboard to fix the blank page issue
 import FmsDashboard from './pages/FmsDashboard'; 
-// NEW: Import ReportsTab for factory-specific data logs
 import ReportsTab from './pages/ReportsTab';
+import SubscriptionPaused from './pages/SubscriptionPaused';
 import { getSubdomain } from './utils/subdomain';
 
 /**
@@ -25,22 +23,60 @@ function App() {
   const subdomain = getSubdomain();
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser     = localStorage.getItem('user');
     const savedTenantId = localStorage.getItem('tenantId');
-    const token = localStorage.getItem('token'); 
+    const token         = localStorage.getItem('token');
 
-    if (savedUser && savedUser !== "undefined") {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        if (parsedUser.isSuperAdmin) setIsSuperAuth(true);
-      } catch (e) {
-        console.error("Session restore error", e);
+    const init = async () => {
+      // Don't run subscription check on the suspended page itself (prevents redirect loop)
+      if (window.location.pathname === '/suspended') {
+        setIsLoading(false);
+        return;
       }
-    }
-    
-    if (savedTenantId) setTenantId(savedTenantId);
-    setIsLoading(false);
+
+      // Restore SuperAdmin session — check localStorage flag first (most reliable)
+      const isSuperAdminFlag = localStorage.getItem('isSuperAdmin') === 'true';
+
+      if (savedUser && savedUser !== 'undefined') {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          if (parsedUser.isSuperAdmin || isSuperAdminFlag) {
+            setIsSuperAuth(true);
+            setIsLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error('Session restore error', e);
+        }
+      }
+
+      // Check subscription status on every app load for non-superadmin users
+      if (subdomain && token) {
+        try {
+          const res = await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/tasks/verify/${subdomain}`
+          );
+          const data = await res.json();
+
+          if (data.subscription?.status === 'paused') {
+            sessionStorage.setItem('suspendedReason',      data.subscription.reason   || '');
+            sessionStorage.setItem('suspendedPausedAt',    data.subscription.pausedAt || '');
+            sessionStorage.setItem('suspendedCompanyName', data.companyName            || '');
+            setIsLoading(false);
+            window.location.replace('/suspended');
+            return;
+          }
+        } catch (e) {
+          // Network error — let normal flow continue
+        }
+      }
+
+      if (savedTenantId) setTenantId(savedTenantId);
+      setIsLoading(false);
+    };
+
+    init();
   }, []);
 
   const handleLoginSuccess = (userData, tId) => {
@@ -51,11 +87,14 @@ function App() {
   };
 
   const handleMasterLoginSuccess = (token, userData) => {
+    // Ensure isSuperAdmin flag is stored in the user object so it survives page refresh
+    const superUser = { ...userData, isSuperAdmin: true };
     setIsSuperAuth(true);
-    setUser(userData);
+    setUser(superUser);
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.removeItem('tenantId'); 
+    localStorage.setItem('user', JSON.stringify(superUser));
+    localStorage.setItem('isSuperAdmin', 'true');
+    localStorage.removeItem('tenantId');
   };
 
   const handleLogout = () => {
@@ -63,6 +102,7 @@ function App() {
     setTenantId(null);
     setIsSuperAuth(false);
     localStorage.clear();
+    sessionStorage.clear();
     window.location.href = subdomain ? "/login" : "/";
   };
 
@@ -104,6 +144,14 @@ function App() {
                   )
                 } 
               />
+
+              <Route path="/suspended" element={
+                <SubscriptionPaused
+                  reason={sessionStorage.getItem('suspendedReason') || ''}
+                  pausedAt={sessionStorage.getItem('suspendedPausedAt') || null}
+                  companyName={sessionStorage.getItem('suspendedCompanyName') || ''}
+                />
+              } />
 
               <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
             </>

@@ -92,6 +92,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Manage Tasks',     icon: <ClipboardList />,   roles: ['Admin', 'Assigner'] },
         { name: 'Manage Checklist', icon: <LayoutList />,      roles: ['Admin'] },
         { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'My Checklist',     icon: <ListTodo />,        roles: [] },
       ],
     },
@@ -101,7 +102,6 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Employees',         icon: <Users />,       roles: ['Admin'] },
         { name: 'Mapping',           icon: <UserCog />,     roles: ['Admin'] },
         { name: 'Tracking',          icon: <Eye />,         roles: ['Admin', 'Coordinator'] },
-        { name: 'Checklist Monitor', icon: <Activity />,    roles: ['Admin', 'Coordinator'] },
         { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
         { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'] },
         { name: 'Reports Hub',       icon: <FileText />,    roles: ['Admin'] },
@@ -120,7 +120,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const getRoute = (itemName) => {
     if (itemName === 'Dashboard')       return '';
     if (itemName === 'My Checklist')    return 'checklist';
-    if (itemName === 'Flow Management') return 'fms-dashboard';
+    if (itemName === 'Flow Management') return 'flow-management';   // updated: new FMS
+    if (itemName === 'My Flow Tasks')   return 'flow-tasks';
     if (itemName === 'Reports Hub')     return 'reports';
     return itemName.toLowerCase().replace(/\s+/g, '-');
   };
@@ -129,6 +130,9 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     const route = getRoute(itemName);
     const currentPath = location.pathname.split('/').pop() || '';
     if (route === '' && (currentPath === 'dashboard' || currentPath === '')) return true;
+    // Match flow-management also for sub-paths like /dashboard/flow-management
+    if (route === 'flow-management' && location.pathname.includes('flow-management')) return true;
+    if (route === 'flow-tasks'      && location.pathname.includes('flow-tasks'))      return true;
     return currentPath === route;
   };
 

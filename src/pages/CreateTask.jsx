@@ -19,17 +19,13 @@ import {
   Search,
   UserCheck
 } from "lucide-react";
-/**
- * CREATE TASK: DIRECTIVE PROVISIONING MODULE v1.8
- * Fix: Forced Z-Index to 999 for dropdown visibility.
- * Fix: Added Empty State check for filtered results.
- */
+
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
     <input
       value={value}
       readOnly
-      placeholder="Select Deadline Date & Time"
+      placeholder="Select Deadline Date"
       className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold cursor-pointer placeholder:text-slate-500 shadow-inner"
     />
     <CalendarDays className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-primary transition-colors pointer-events-none" size={18} />
@@ -61,8 +57,11 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
   const sessionUser = JSON.parse(localStorage.getItem("user") || "{}");
-  // Fixed: Corrected redundant fallback logic
   const currentAssignerId = assignerId || sessionUser?._id || sessionUser?.id;
+
+  // Working hours — loaded from settings
+  const [closeHour, setCloseHour] = useState(18); // default 6:00 PM
+  const [holidayList, setHolidayList] = useState([]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -74,25 +73,18 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-
-
-
-
-  
-
-  const [holidayList, setHolidayList] = useState([]);
-
-
   const fetchSettings = useCallback(async () => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
       const res = await API.get(`/superadmin/settings/${currentTenantId}`);
       const data = res.data?.settings || res.data;
-      
       if (data) {
         setHolidayList(Array.isArray(data.holidays) ? data.holidays : []);
+        // Read office closing hour for auto-deadline
+        if (data.workingHours?.close !== undefined) {
+          setCloseHour(Number(data.workingHours.close));
+        }
       }
     } catch (err) {
       console.error("Fetch failure:", err);
@@ -105,29 +97,27 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     fetchSettings();
   }, [fetchSettings]);
 
-
   const holidayDates = holidayList.map(h => new Date(h.date));
+  const holidayMap = {};
+  holidayList.forEach(h => {
+    const key = new Date(h.date).toDateString();
+    holidayMap[key] = h.name;
+  });
 
-// 🔥 Map for quick lookup (for tooltip)
-const holidayMap = {};
-holidayList.forEach(h => {
-  const key = new Date(h.date).toDateString();
-  holidayMap[key] = h.name;
-});
+  const isDisabledDate = (date) =>
+    holidayDates.some(h => h.toDateString() === date.toDateString());
 
-
-const isHoliday = (date) =>
-  holidayDates.some(
-    h => h.toDateString() === date.toDateString()
-  );
-const isDisabledDate = (date) =>
-  isHoliday(date);
-
-
-
-
-
-
+  // When a date is selected, auto-set time to office closing hour
+  const handleDateChange = (date) => {
+    if (!date) {
+      setTask({ ...task, deadline: null });
+      return;
+    }
+    // Set time to closing hour of the office, 0 minutes
+    const deadlineWithTime = new Date(date);
+    deadlineWithTime.setHours(closeHour, 0, 0, 0);
+    setTask({ ...task, deadline: deadlineWithTime });
+  };
 
   const fetchMyTeam = useCallback(async () => {
     if (!currentAssignerId) return;
@@ -192,9 +182,7 @@ const isDisabledDate = (date) =>
     formData.append("deadline", task.deadline.toISOString()); 
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
-
     if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
-    // Ensure "taskFiles" matches what your backend Multer is looking for
     selectedFiles.forEach((file) => formData.append("taskFiles", file));
 
     try {
@@ -223,277 +211,217 @@ const isDisabledDate = (date) =>
   );
 
   return (
-<div className="w-full px-1 py-3">
-  <div className="max-w-0.5xl mx-auto">
+    <div className="w-full px-1 py-3">
+      <div className="max-w-0.5xl mx-auto">
+        <div className="bg-card/80 backdrop-blur border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6 sm:p-8">
 
-    <div className="bg-card/80 backdrop-blur border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6 sm:p-8">
-
-      {/* HEADER */}
-      <div className="mb-6 border-b border-border pb-4">
-        <h2 className="text-2xl font-bold text-foreground">
-          Create New Deligation Task
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Assign work and track progress
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* TITLE + PRIORITY */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          {/* FLOATING INPUT */}
-          <div className="md:col-span-2 relative group">
-            <label className="text-sm font-medium text-slate-600"> Title </label>
-            <input
-              type="text"
-              required
-              value={task.title}
-              onChange={(e) => setTask({ ...task, title: e.target.value })}
-              className="peer w-full px-4 pt-3 pb-2 rounded-lg border border-border bg-background/70 text-sm outline-none
-              focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-              placeholder="Enter Title"
-            />
-            
+          {/* HEADER */}
+          <div className="mb-6 border-b border-border pb-4">
+            <h2 className="text-2xl font-bold text-foreground">Create New Delegation Task</h2>
+            <p className="text-sm text-slate-500 mt-1">Assign work and track progress</p>
           </div>
 
-          {/* PRIORITY */}
-          <div>
-            <label className="text-sm font-medium text-slate-600">Priority</label>
-            <select
-              value={task.priority}
-              onChange={(e) => setTask({ ...task, priority: e.target.value })}
-              className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-            </select>
-          </div>
-        </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* DESCRIPTION */}
-        {/* <div className="relative">
-          <label className="text-sm font-medium text-slate-600"> Description </label>
-          <textarea
-            value={task.description}
-            onChange={(e) => setTask({ ...task, description: e.target.value })}
-            className="peer w-full px-4 pt-5 pb-2 rounded-lg border border-border bg-background/70 text-sm min-h-[110px]
-            focus:ring-2 focus:ring-primary/30 outline-none"
-            placeholder="Enter Description"
-          />
-        </div> */}
-
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* RIGHT PANEL */}
-          <div className="space-y-5">
-
-            {/* ASSIGN */}
-            <div ref={doerDropdownRef} className="relative">
-              <label className="text-sm font-medium text-slate-600">Assign To</label>
-              <input
-                type="text"
-                value={doerSearch}
-                onFocus={() => setShowDoerDropdown(true)}
-                onChange={(e) => {
-                  setDoerSearch(e.target.value);
-                  setShowDoerDropdown(true);
-                }}
-                placeholder="Search user"
-                className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
-              />
-
-              {showDoerDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
-                  {filteredDoers.map(emp => (
-                    <div
-                      key={emp._id}
-                      onClick={() => handleSelectDoer(emp)}
-                      className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer"
-                    >
-                      {emp.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* DEADLINE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Deadline <br></br></label>
-             <DatePicker
-  selected={task.deadline}
-  onChange={(date) => setTask({ ...task, deadline: date })}
-  showTimeSelect
-  minDate={new Date()}
-  dateFormat="dd MMM yyyy, h:mm aa"
-  placeholderText="Select deadline"
-  isClearable
-
-  // ✅ ADD THESE
-  showYearDropdown
-  showMonthDropdown
-  dropdownMode="select"
-  scrollableYearDropdown
-  yearDropdownItemNumber={50}
-
-  className="w-full mt-1 px-15 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
-    filterDate={(date) => !isDisabledDate(date)}
-   highlightDates={[
-  {
-    "react-datepicker__day--holiday": holidayDates
-  }
-  ]}
-  dayClassName={(date) => {
-    const key = date.toDateString();
-
-    if (holidayMap[key]) {
-      return "holiday-day";
-    }
-
-    return "";
-  }}
-  renderDayContents={(day, date) => {
-    const key = date.toDateString();
-    const holidayName = holidayMap[key];
-
-    return (
-      <span title={holidayName || ""}>
-        {day}
-      </span>
-    );
-  }}
-/>
-            </div>
-
-            {/* FILE */}
-            <div>
-              <label className="text-sm font-medium text-slate-600">Attachments</label>
-
-              <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center 
-              bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
-                
+            {/* TITLE + PRIORITY */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 relative group">
+                <label className="text-sm font-medium text-slate-600">Title</label>
                 <input
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  type="text"
+                  required
+                  value={task.title}
+                  onChange={(e) => setTask({ ...task, title: e.target.value })}
+                  className="peer w-full px-4 pt-3 pb-2 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                  placeholder="Enter Title"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-600">Priority</label>
+                <select
+                  value={task.priority}
+                  onChange={(e) => setTask({ ...task, priority: e.target.value })}
+                  className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
 
-                <p className="text-sm text-slate-500 group-hover:text-primary transition">
-                  Click to upload files
-                </p>
-                <p className="text-xs text-slate-400">
-                  PDF, Images, Docs
-                </p>
+            {/* DESCRIPTION */}
+            <div className="relative">
+              <label className="text-sm font-medium text-slate-600">Description</label>
+              <textarea
+                value={task.description}
+                onChange={(e) => setTask({ ...task, description: e.target.value })}
+                className="peer w-full px-4 pt-5 pb-2 rounded-lg border border-border bg-background/70 text-sm min-h-[110px] focus:ring-2 focus:ring-primary/30 outline-none"
+                placeholder="Enter Description"
+              />
+            </div>
+
+            {/* MAIN GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-5">
+
+                {/* ASSIGN */}
+                <div ref={doerDropdownRef} className="relative">
+                  <label className="text-sm font-medium text-slate-600">Assign To</label>
+                  <input
+                    type="text"
+                    value={doerSearch}
+                    onFocus={() => setShowDoerDropdown(true)}
+                    onChange={(e) => { setDoerSearch(e.target.value); setShowDoerDropdown(true); }}
+                    placeholder="Search user"
+                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
+                  />
+                  {showDoerDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
+                      {filteredDoers.map(emp => (
+                        <div key={emp._id} onClick={() => handleSelectDoer(emp)}
+                          className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer">
+                          {emp.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* DEADLINE — date only, time auto-set to office closing hour */}
+                <div>
+                  <label className="text-sm font-medium text-slate-600">
+                    Deadline
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      (time auto-set to {closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`})
+                    </span>
+                  </label>
+
+                  <DatePicker
+                    selected={task.deadline}
+                    onChange={handleDateChange}
+                    dateFormat="dd MMM yyyy"
+                    placeholderText="Select deadline date"
+                    minDate={new Date()}
+                    isClearable
+                    showYearDropdown
+                    showMonthDropdown
+                    dropdownMode="select"
+                    scrollableYearDropdown
+                    yearDropdownItemNumber={10}
+                    filterDate={(date) => !isDisabledDate(date)}
+                    dayClassName={(date) => {
+                      const key = date.toDateString();
+                      return holidayMap[key] ? "holiday-day" : "";
+                    }}
+                    renderDayContents={(day, date) => {
+                      const key = date.toDateString();
+                      const holidayName = holidayMap[key];
+                      return <span title={holidayName || ""}>{day}</span>;
+                    }}
+                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                  />
+
+                  {/* Show selected date + auto time clearly */}
+                  {task.deadline && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <CalendarDays size={11} />
+                      Deadline set to:{" "}
+                      <span className="font-semibold text-foreground">
+                        {task.deadline.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}{" "}
+                        at {closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* FILE */}
+                <div>
+                  <label className="text-sm font-medium text-slate-600">Attachments</label>
+                  <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
+                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    <p className="text-sm text-slate-500 group-hover:text-primary transition">Click to upload files</p>
+                    <p className="text-xs text-slate-400">PDF, Images, Docs</p>
+                  </div>
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedFiles.map((f, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
+                          {f.name}
+                          <button type="button" onClick={() => removeFile(i)}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {selectedFiles.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
-                      {f.name}
-                      <button onClick={() => removeFile(i)}>✕</button>
-                    </div>
+              {/* FOLLOWERS */}
+              <div className="lg:col-span-2 flex flex-col">
+                <label className="text-sm font-medium text-slate-600">Followers</label>
+                {selectedHelpers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedHelpers.map((h) => (
+                      <div key={h.helperId} className="flex items-center gap-2 px-3 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                        {h.name}
+                        <button type="button" onClick={() => setSelectedHelpers(selectedHelpers.filter(x => x.helperId !== h.helperId))}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={followerSearch}
+                  onChange={(e) => setFollowerSearch(e.target.value)}
+                  placeholder="Search followers"
+                  className="w-full mt-2 px-4 py-2 rounded-lg border border-border text-sm bg-background/70 focus:ring-2 focus:ring-primary/30"
+                />
+                <div className="mt-2 h-40 overflow-y-auto border border-border rounded-lg p-1 space-y-1 custom-scrollbar">
+                  {filteredFollowers.map((emp) => (
+                    <label key={emp._id} className="flex justify-between items-center px-3 py-2 text-sm hover:bg-primary/5 cursor-pointer rounded-md transition">
+                      <span>{emp.name}</span>
+                      <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked={selectedHelpers.some(h => h.helperId === emp._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
+                          } else {
+                            setSelectedHelpers(selectedHelpers.filter(h => h.helperId !== emp._id));
+                          }
+                        }}
+                      />
+                    </label>
                   ))}
                 </div>
-              )}
-            </div>
-
-          </div>
-          {/* FOLLOWERS */}
-          <div className="lg:col-span-2 flex flex-col">
-            <label className="text-sm font-medium text-slate-600">
-              Followers
-            </label>
-
-            {/* SELECTED CHIPS */}
-            {selectedHelpers.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedHelpers.map((h) => (
-                  <div key={h.helperId} className="flex items-center gap-2 px-3 py-1 text-xs bg-primary/10 text-primary rounded-full">
-                    {h.name}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedHelpers(selectedHelpers.filter(x => x.helperId !== h.helperId))
-                      }
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
               </div>
-            )}
-
-            {/* SEARCH */}
-            <input
-              type="text"
-              value={followerSearch}
-              onChange={(e) => setFollowerSearch(e.target.value)}
-              placeholder="Search followers"
-              className="w-full mt-2 px-4 py-2 rounded-lg border border-border text-sm bg-background/70 focus:ring-2 focus:ring-primary/30"
-            />
-
-            {/* SCROLLABLE LIST */}
-            <div className="mt-2 h-40 overflow-y-auto border border-border rounded-lg p-1 space-y-1 custom-scrollbar">
-              {filteredFollowers.map((emp) => (
-                <label
-                  key={emp._id}
-                  className="flex justify-between items-center px-3 py-2 text-sm hover:bg-primary/5 cursor-pointer rounded-md transition"
-                >
-                  <span>{emp.name}</span>
-                  <input
-                    type="checkbox"
-                    className="accent-primary"
-                    checked={selectedHelpers.some(h => h.helperId === emp._id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
-                      } else {
-                        setSelectedHelpers(selectedHelpers.filter(h => h.helperId !== emp._id));
-                      }
-                    }}
-                  />
-                </label>
-              ))}
             </div>
-          </div>
+
+            {/* FOOTER */}
+            <div className="flex items-center justify-between pt-4 border-t border-border">
+              <label className="flex items-center gap-2 text-xl text-slate-600">
+                <input
+                  type="checkbox"
+                  className="accent-primary"
+                  checked={task.isRevisionAllowed}
+                  onChange={(e) => setTask({ ...task, isRevisionAllowed: e.target.checked })}
+                />
+                Allow deadline change
+              </label>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm hover:shadow-md"
+              >
+                {isSubmitting ? "Creating..." : "Create Task"}
+              </button>
+            </div>
+
+          </form>
         </div>
-
-        {/* FOOTER */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-
-          <label className="flex items-center gap-2 text-xl text-slate-600">
-            <input
-              type="checkbox"
-              className="accent-primary "
-              checked={task.isRevisionAllowed}
-              onChange={(e) =>
-                setTask({ ...task, isRevisionAllowed: e.target.checked })
-              }
-            />
-            Allow deadline change
-          </label>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2.5 rounded-lg bg-primary text-white text-sm font-medium 
-            hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm hover:shadow-md"
-          >
-            {isSubmitting ? "Creating..." : "Create Task"}
-          </button>
-
-        </div>
-
-      </form>
+      </div>
     </div>
-  </div>
-</div>
-
   );
 };
 

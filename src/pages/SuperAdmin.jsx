@@ -173,6 +173,31 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
     }
   };
 
+  const handlePause = async (id, name) => {
+    const reason = window.prompt(`Reason for pausing "${name}" (shown to users):`);
+    if (reason === null) return; // cancelled
+    try {
+      await API.put(`/superadmin/company/${id}/pause`, { reason: reason || 'Subscription paused by administrator' });
+      await fetchCompanies();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Unknown error';
+      alert(`Failed to pause: ${msg} (Status: ${err.response?.status})`);
+      console.error('Pause error:', err.response?.data, err.message);
+    }
+  };
+
+  const handleResume = async (id, name) => {
+    if (!window.confirm(`Resume subscription for "${name}"?`)) return;
+    try {
+      await API.put(`/superadmin/company/${id}/resume`);
+      await fetchCompanies();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Unknown error';
+      alert(`Failed to resume: ${msg} (Status: ${err.response?.status})`);
+      console.error('Resume error:', err.response?.data, err.message);
+    }
+  };
+
   const handleDelete = async (id, name) => {
     if (window.confirm(`PERMANENT DESTRUCTION: Purge ${name}?`)) {
       try {
@@ -272,25 +297,61 @@ const SuperAdmin = ({ isAuthenticated, onLogin, onLogout }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {companies.map(c => (
-                  <tr key={c._id} className="group hover:bg-primary/[0.02] transition-all">
+                {companies.map(c => {
+                  const isPaused = c.subscription?.status === 'paused';
+                  return (
+                  <tr key={c._id} className={`group hover:bg-primary/[0.02] transition-all ${isPaused ? 'opacity-60' : ''}`}>
                     <td className="px-6 py-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center p-2 border border-border shadow-lg shrink-0">{c.logo ? <img src={c.logo} alt="L" className="max-h-full object-contain" /> : <div className="text-[9px] font-black text-primary">NODE</div>}</div>
-                        <div className="min-w-0"><div className="text-foreground font-black text-sm uppercase truncate">{c.companyName}</div><div className="text-[9px] text-primary/60 font-bold truncate tracking-tight">{c.adminEmail}</div></div>
+                        <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center p-2 border border-border shadow-lg shrink-0 relative">
+                          {c.logo ? <img src={c.logo} alt="L" className="max-h-full object-contain" /> : <div className="text-[9px] font-black text-primary">NODE</div>}
+                          {isPaused && (
+                            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center text-white text-[8px]">⏸</span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className="text-foreground font-black text-sm uppercase truncate">{c.companyName}</div>
+                            {isPaused && (
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800 whitespace-nowrap">PAUSED</span>
+                            )}
+                          </div>
+                          <div className="text-[9px] text-primary/60 font-bold truncate tracking-tight">{c.adminEmail}</div>
+                          {isPaused && c.subscription?.reason && (
+                            <div className="text-[9px] text-amber-600 dark:text-amber-400 mt-0.5 truncate max-w-[200px]">{c.subscription.reason}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-6 font-mono text-slate-400 text-[10px] group-hover:text-primary transition-colors uppercase tracking-tighter">
                       {c.subdomain}.{window.location.hostname}
                     </td>
                     <td className="px-6 py-6 pr-10">
-                      <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => startEdit(c)} className="p-2.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm"><Edit3 size={14}/></button>
-                        <button onClick={() => handleDelete(c._id, c.companyName)} className="p-2.5 bg-red-500/5 text-red-500 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-sm"><Trash2 size={14}/></button>
+                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all flex-wrap">
+                        <button onClick={() => startEdit(c)} className="p-2.5 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm" title="Edit"><Edit3 size={14}/></button>
+                        {isPaused ? (
+                          <button
+                            onClick={() => handleResume(c._id, c.companyName)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all shadow-sm text-[10px] font-black uppercase tracking-widest"
+                            title="Resume subscription"
+                          >
+                            ▶ Resume
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handlePause(c._id, c.companyName)}
+                            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all shadow-sm text-[10px] font-black uppercase tracking-widest"
+                            title="Pause subscription"
+                          >
+                            ⏸ Pause
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(c._id, c.companyName)} className="p-2.5 bg-red-500/5 text-red-500 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all shadow-sm" title="Delete permanently"><Trash2 size={14}/></button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

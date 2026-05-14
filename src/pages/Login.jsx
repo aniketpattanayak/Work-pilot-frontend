@@ -77,6 +77,17 @@ const Login = ({ onLoginSuccess }) => {
       navigate('/dashboard');
     } catch (err) {
       console.error("Login Error Object:", err);
+
+      // Subscription paused — redirect to suspended screen immediately
+      if (err.response?.status === 403 && err.response?.data?.code === 'SUBSCRIPTION_PAUSED') {
+        const { reason, pausedAt } = err.response.data;
+        sessionStorage.setItem('suspendedReason',      reason   || '');
+        sessionStorage.setItem('suspendedPausedAt',    pausedAt || '');
+        sessionStorage.setItem('suspendedCompanyName', tenant?.companyName || '');
+        navigate('/suspended');
+        return;
+      }
+
       const errorMsg = err.response?.data?.message || err.message || "Connection to server failed";
       alert(errorMsg);
     } finally {

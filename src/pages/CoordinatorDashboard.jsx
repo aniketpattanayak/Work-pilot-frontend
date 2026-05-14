@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import API from '../api/axiosConfig';
 import { 
   ShieldCheck, 
@@ -47,6 +47,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [customMessage, setCustomMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState({}); // { taskId: Set of instanceDate strings }
+  const [bulkSubmitting, setBulkSubmitting] = useState({}); // { taskId: true }
+  const backlogRefs = useRef({}); // refs to scroll to backlog grid after mark done
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
   const coordinatorId = propCoordId || savedUser?._id || savedUser?.id;
@@ -183,6 +186,14 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     });
   }, [tasks, activeTab, searchTerm, tenantSettings]);
 
+  // Scroll to the backlog grid section after marking done
+  const scrollToTask = (taskId) => {
+    setTimeout(() => {
+      const el = backlogRefs.current[taskId];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 1800);
+  };
+
   const handleMarkDone = async (task, instanceDate = null) => {
     if (task.taskType === 'Checklist' && instanceDate) {
       const lockedInstancePattern = toLockPattern(instanceDate);
@@ -198,6 +209,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         await API.post("/tasks/checklist-done", formData);
         setRemarks(""); setSelectedFile(null);
         setTimeout(() => fetchTasks(), 1500);
+        scrollToTask(task._id);
         alert("Success! Registry Synchronized.");
       } catch (err) {
         alert("Error: Synchronization failed.");
@@ -219,6 +231,57 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         }
       }
     }
+  };
+
+  // Bulk mark selected backlog rows as done
+  const handleBulkDone = async (task) => {
+    const selected = bulkSelected[task._id];
+    if (!selected || selected.size === 0) return;
+    if (!window.confirm(`Mark ${selected.size} backlog item${selected.size > 1 ? 's' : ''} as done?`)) return;
+
+    setBulkSubmitting(prev => ({ ...prev, [task._id]: true }));
+    let successCount = 0;
+    for (const dateStr of selected) {
+      try {
+        const formData = new FormData();
+        formData.append('checklistId', task._id);
+        formData.append('instanceDate', dateStr);
+        formData.append('remarks', 'Bulk authorized by Coordinator');
+        formData.append('completedBy', coordinatorId);
+        await API.post('/tasks/checklist-done', formData);
+        successCount++;
+      } catch (err) {
+        console.error('Bulk done error for', dateStr, err.message);
+      }
+    }
+    setBulkSelected(prev => ({ ...prev, [task._id]: new Set() }));
+    setBulkSubmitting(prev => ({ ...prev, [task._id]: false }));
+    setTimeout(() => fetchTasks(), 1000);
+    scrollToTask(task._id);
+    alert(`${successCount} of ${selected.size} items marked as done.`);
+  };
+
+  const toggleBulkSelect = (taskId, dateStr) => {
+    setBulkSelected(prev => {
+      const current = Array.from(prev[taskId] || []);
+      const idx = current.indexOf(dateStr);
+      const updated = idx >= 0
+        ? current.filter(d => d !== dateStr)   // remove
+        : [...current, dateStr];                // add
+      return { ...prev, [taskId]: new Set(updated) };  // new Set = new reference
+    });
+  };
+
+  const toggleSelectAll = (task, instances) => {
+    const pendingDates = instances
+      .filter(i => i.status === 'PENDING' || i.status === 'Pending' || i.status === 'TODAY')
+      .map(i => toLockPattern(i.date));
+    const current = bulkSelected[task._id] || new Set();
+    const allSelected = pendingDates.every(d => current.has(d));
+    setBulkSelected(prev => ({
+      ...prev,
+      [task._id]: allSelected ? new Set([]) : new Set([...pendingDates])
+    }));
   };
 
   const openReminderModal = (task) => {
@@ -387,16 +450,41 @@ const completedCount = filteredTasks.filter(
 
       <div className="space-y-3">
 
-        {/* 🔥 HEADER */}
-        <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
-          <Layers size={12} /> Backlog Authorization Grid
-        </h5>
+        {/* HEADER + BULK DONE BUTTON */}
+        <div ref={el => backlogRefs.current[task._id] = el} className="flex items-center justify-between">
+          <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
+            <Layers size={12} /> Backlog Authorization Grid
+          </h5>
+          <div className="flex items-center gap-2">
+            {/* Bulk done button - shows when any items selected */}
+            {(bulkSelected[task._id]?.size || 0) > 0 && (
+              <button
+                onClick={() => handleBulkDone(task)}
+                disabled={bulkSubmitting[task._id]}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {bulkSubmitting[task._id] ? '...' : `✓ Mark ${bulkSelected[task._id].size} Done`}
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* TABLE */}
-        <div className="overflow-y-auto max-h-[280px]">
+        <div className="overflow-y-auto max-h-[320px]">
 
-          {/* MINI HEADER */}
-          <div className="grid grid-cols-[1.5fr_1fr_auto] px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border">
+          {/* MINI HEADER with Select All checkbox */}
+          <div className="grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border bg-muted/30">
+            <input
+              type="checkbox"
+              className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
+              checked={
+                instances.filter(i => i.status === 'PENDING').length > 0 &&
+                instances.filter(i => i.status === 'PENDING' || i.status === 'Pending' || i.status === 'TODAY')
+                  .every(i => (bulkSelected[task._id] || new Set()).has(toLockPattern(i.date)))
+              }
+              onChange={() => toggleSelectAll(task, instances)}
+              title="Select all pending"
+            />
             <span>Date</span>
             <span>Status</span>
             <span className="text-right">Action</span>
@@ -404,6 +492,9 @@ const completedCount = filteredTasks.filter(
 
           {/* ROWS */}
           {instances.map((instance, idx) => {
+            const dateStr = toLockPattern(instance.date);
+            const isChecked = (bulkSelected[task._id] || new Set()).has(dateStr);
+            const isPending = instance.status === 'PENDING' || instance.status === 'Pending' || instance.status === 'TODAY';
 
             const rowColor =
               instance.isPast
@@ -415,8 +506,25 @@ const completedCount = filteredTasks.filter(
             return (
               <div
                 key={idx}
-                className="grid grid-cols-[1.5fr_1fr_auto] items-center px-3 py-2 border-b border-border/50 hover:bg-muted/20 transition"
+                className={`grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 border-b border-border/50 transition cursor-pointer
+                  ${isChecked ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'hover:bg-muted/20'}`}
+                onClick={(e) => {
+                    if (e.target.type === 'checkbox') return;
+                    if (isPending) toggleBulkSelect(task._id, dateStr);
+                  }}
               >
+                {/* CHECKBOX */}
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
+                  checked={isChecked}
+                  disabled={!isPending}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    if (isPending) toggleBulkSelect(task._id, dateStr);
+                  }}
+                  onClick={e => e.stopPropagation()}
+                />
 
                 {/* DATE */}
                 <span className="text-sm font-medium text-foreground">
@@ -432,20 +540,21 @@ const completedCount = filteredTasks.filter(
                   {instance.status}
                 </span>
 
-                {/* ACTION */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handleMarkDone(task, instance.date)}
-                    className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest
-                      ${instance.isPast
-                        ? 'bg-red-600 text-white'
-                        : 'bg-emerald-600 text-white'
-                      }`}
-                  >
-                    DONE
-                  </button>
+                {/* ACTION — individual done button */}
+                <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                  {isPending ? (
+                    <button
+                      onClick={() => handleMarkDone(task, instance.date)}
+                      className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest
+                        ${instance.isPast ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'}
+                        hover:opacity-80 active:scale-95 transition-all`}
+                    >
+                      DONE
+                    </button>
+                  ) : (
+                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">✓ Done</span>
+                  )}
                 </div>
-
               </div>
             );
           })}

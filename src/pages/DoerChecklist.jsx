@@ -88,13 +88,15 @@ const [employees, setEmployees] = useState([]);
     }
     try {
       setLoading(true);
-      const userEmail = savedUser.email;
+      const userEmail = savedUser.email; console.log(savedUser);
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
         API.get(`/tasks/checklist/${currentDoerId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/doer/${currentDoerId}`).catch(() => ({ data: [] })),
-        userEmail ? API.get(`/fms/my-missions/${userEmail}`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+        //userEmail ?
+         API.get(`/fms/my-missions/${userEmail}`).catch(() => ({ data: [] })) //: Promise.resolve({ data: [] })
       ]);
 
+      console.log('fms',fmsRes);
 
       const employeesRes = await API.get('/employees').catch(() => ({ data: [] }));
       setEmployees(employeesRes.data || []);
@@ -197,7 +199,9 @@ const [employees, setEmployees] = useState([]);
         formData.append("instanceId", activeTask.instanceId);
         formData.append("stepIndex", activeTask.stepIndex);
         if (selectedFile) formData.append("evidence", selectedFile);
-        await API.post("/fms/complete-step", formData);
+        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+  remarks
+});
       } else {
         formData.append("taskId", activeTask._id);
         formData.append("status", "Completed");
@@ -226,6 +230,10 @@ const [employees, setEmployees] = useState([]);
       <p className="text-slate-500 font-black text-[8px] tracking-[0.4em] uppercase">Syncing Node...</p>
     </div>
   );
+
+
+  const isYesNo = activeTask?.inputType === "yesno";
+  const isPaused = activeTask?.isPaused;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 px-2 sm:px-6">
@@ -520,6 +528,14 @@ const [employees, setEmployees] = useState([]);
                   <div className="flex justify-end gap-2 w-full lg:w-auto">
                     <button onClick={(e) => { e.stopPropagation(); setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Done</button>
                   </div>
+                  {mission.isPaused && (
+  <span className="text-red-500 font-bold text-xs ml-2">
+    ⏸ PAUSED
+  </span>
+)}
+
+
+
                 </div>
 
                 {isExpanded && (
@@ -535,6 +551,26 @@ const [employees, setEmployees] = useState([]);
                           <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Phase</label>
                           <p className="text-[9px] font-black text-primary uppercase">Node {mission.stepIndex + 1}</p>
                         </div>
+
+                        {mission.previousRemarks && (
+  <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+    <p className="text-xs font-bold text-yellow-700">
+      Previous Step Note:
+    </p>
+    <p className="text-sm text-yellow-900">
+      {mission.previousRemarks}
+    </p>
+  </div>
+)}
+
+  <div className="bg-gray-50 p-3 rounded mt-2 text-xs">
+    <p><b>Customer:</b> {mission.sheetData?.["Customer Name"]}</p>
+    <p><b>Item:</b> {mission.sheetData?.["Item Name"]}</p>
+    <p><b>Qty:</b> {mission.sheetData?.["Entered Qty"]}</p>
+    <p><b>PO:</b> {mission.sheetData?.["PO Number"]}</p>
+  </div>
+
+
                         <div>
                           <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Identity</label>
                           <p className="text-[9px] font-bold text-foreground">SYNC-ACTIVE</p>
@@ -656,9 +692,123 @@ const [employees, setEmployees] = useState([]);
                 <Upload size={20} className="mx-auto text-slate-400 mb-2" />
                 <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
               </div>
-              <button disabled={uploading} className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all ${modalType === 'FMS' ? 'bg-slate-900' : activeTask?.isBacklog ? 'bg-amber-600' : 'bg-primary'}`}>
+              
+              
+              
+              
+              {/*<button disabled={uploading} className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all ${modalType === 'FMS' ? 'bg-slate-900' : activeTask?.isBacklog ? 'bg-amber-600' : 'bg-primary'}`}>
                 {uploading ? <RefreshCcw className="animate-spin mr-2 inline" size={16} /> : <ShieldCheck size={16} className="mr-2 inline" />} Finalize Result
-              </button>
+              </button>*/}
+
+
+
+
+
+
+              {modalType === "FMS" && isYesNo ? (
+
+  <div className="space-y-4">
+
+    {/* 🟢 YES BUTTON */}
+    {!isPaused && (
+    <>
+    {/*
+    <button
+       type="button"
+      onClick={async () => {
+
+         if (!remarks || !remarks.trim()) {
+          alert("Remarks are mandatory for this step");
+          return;
+        }
+
+        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+          stepIndex: activeTask.stepIndex,
+
+
+          decision: "Yes",
+          remarks
+        });
+        fetchAllTasks();
+        setShowModal(false);
+      }}
+      className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+    >
+      DONE
+    </button>*/}
+
+
+    <button
+       type="button"
+      onClick={handleFinalSubmit}
+      className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+    >
+      DONE
+    </button>
+
+    {/* 🔴 NO BUTTON */}
+    <button
+       type="button"
+          onClick={async () => {
+
+
+             if (!remarks || !remarks.trim()) {
+              alert("Remarks are mandatory for this step");
+              return;
+            }
+
+
+
+        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+          decision: "No",
+          remarks
+        });
+        fetchAllTasks();
+        setShowModal(false);
+      }}
+      className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+    >
+      ❌ NO – Pause Flow
+    </button>
+    </>
+    )}
+
+    {/* 🔵 CONTINUE BUTTON */}
+    {isPaused && (
+      <button
+       type="button"
+        onClick={async () => {
+          await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+            action: "continue"
+          });
+          fetchAllTasks();
+          setShowModal(false);
+        }}
+        className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+      >
+        🔄 CONTINUE – Resume Flow
+      </button>
+    )}
+
+  </div>
+
+) : (
+
+  /* DEFAULT BUTTON (existing) */
+  <button
+    disabled={uploading}
+    className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
+  >
+    Finalize Result
+  </button>
+
+)}
+
+
+
+
+
+
             </form>
           </div>
         </div>
@@ -703,9 +853,6 @@ const [employees, setEmployees] = useState([]);
     </div>
   </div>
 )}
-
-
-
     </div>
   );
 };
