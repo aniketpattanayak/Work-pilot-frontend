@@ -109,7 +109,18 @@ function TaskCard({ task, onComplete }) {
             <div className="text-sm font-medium py-1">{nodeConfig.question}</div>
           )}
 
-          {/* Input fields */}
+          {/* HOW TO COMPLETE — instructions from admin */}
+          {nodeConfig?.howToComplete && (
+            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-2.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-1">📋 How to complete this step</div>
+              <div className="text-sm text-blue-800 dark:text-blue-300 whitespace-pre-line">{nodeConfig.howToComplete}</div>
+            </div>
+          )}
+
+          {/* Collect fields — employee fills after completing */}
+          {(nodeConfig?.inputFields || []).length > 0 && (
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mt-1 mb-1">Fill before marking done</div>
+          )}
           {(nodeConfig?.inputFields || []).map(field => (
             <div key={field.id}>
               <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">

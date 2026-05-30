@@ -30,6 +30,7 @@ import {
   BarChart3,
   GitBranch,
   FileText,
+  ShoppingCart,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -102,6 +103,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Employees',         icon: <Users />,       roles: ['Admin'] },
         { name: 'Mapping',           icon: <UserCog />,     roles: ['Admin'] },
         { name: 'Tracking',          icon: <Eye />,         roles: ['Admin', 'Coordinator'] },
+        { name: 'Order Forms',       icon: <FileText />,    roles: ['Admin'] },
+        { name: 'New Order',          icon: <ShoppingCart />, roles: ['Admin', 'Assigner', 'Coordinator', 'OrderEntry'] },
         { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
         { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'] },
         { name: 'Reports Hub',       icon: <FileText />,    roles: ['Admin'] },
@@ -120,6 +123,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const getRoute = (itemName) => {
     if (itemName === 'Dashboard')       return '';
     if (itemName === 'My Checklist')    return 'checklist';
+    if (itemName === 'Order Forms')     return 'order-forms';
+    if (itemName === 'New Order')       return 'new-order';
     if (itemName === 'Flow Management') return 'flow-management';   // updated: new FMS
     if (itemName === 'My Flow Tasks')   return 'flow-tasks';
     if (itemName === 'Reports Hub')     return 'reports';

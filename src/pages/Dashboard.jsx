@@ -13,7 +13,9 @@ import ManageChecklist from "./ManageChecklist";
 import ChecklistMonitor from "./ChecklistMonitor";
 import ThemeToggle from "../components/ThemeToggle"; // Theme Engine
 import FmsDashboard from './FmsDashboard';
-import FlowManagement from './FlowManagement';
+import FlowManagement  from './FlowManagement';
+import OrderFormsPage  from './OrderFormsPage';
+import NewOrderPage    from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
 import ReportsTab from './ReportsTab';
 // Task components
@@ -591,6 +593,8 @@ useEffect(() => {
             <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
             <Route path="/reports" element={<ReportsTab tenantId={tenantId} />} />
             <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
+            <Route path="order-forms" element={<OrderFormsPage tenantId={tenantId} />} />
+            <Route path="new-order" element={<NewOrderPage tenantId={tenantId} />} />
             <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
             <Route path="flow-tasks" element={<FlowMyTasks employeeId={userId} />} />
           </Routes>

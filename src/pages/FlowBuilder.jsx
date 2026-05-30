@@ -74,13 +74,14 @@ const Sec = ({ title }) => (
 );
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function FlowBuilder({ tenantId, onFlowSaved }) {
+export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
   const svgRef    = useRef(null);
   const canvasRef = useRef(null);
 
   const [meta, setMeta] = useState({
     name: '', googleSheetId: '', scriptUrl: '', tabName: 'Sheet1',
-    uniqueIdColumn: 'Order ID',
+    uniqueIdColumn: 'Order ID', deadlineColumn: '', assignColumn: '',
+    dataSource: 'sheet',
     workingHours: { open: 9, close: 18, workDays: [1,2,3,4,5] },
   });
 
@@ -96,6 +97,15 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
   const [dragging, setDragging]     = useState(null);
   const justDragged = useRef(false);
 
+  // ── Auto-save key per tenant ──────────────────────────────────────────────
+  const DRAFT_KEY = `wp_flow_draft_${tenantId}`;
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+
+  // ── Form linking ─────────────────────────────────────────────────────────
+  const [allForms, setAllForms]           = useState([]);  // all forms for this tenant
+  const [selectedFormId, setSelectedFormId] = useState(''); // form linked to this flow
+  const [loadingForms, setLoadingForms]   = useState(false);
+
   // ── Pan & Zoom ──────────────────────────────────────────────────────────────
   const [pan, setPan]   = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -107,7 +117,75 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
     API.get(`/tasks/employees/${tenantId}`)
       .then(r => setEmployees(Array.isArray(r.data) ? r.data : r.data?.employees || []))
       .catch(() => {});
+    // Load all order forms so admin can link one to this flow
+    setLoadingForms(true);
+    API.get(`/fms2/forms/${tenantId}`)
+      .then(r => setAllForms(Array.isArray(r.data) ? r.data : r.data?.forms || []))
+      .catch(() => {})
+      .finally(() => setLoadingForms(false));
   }, [tenantId]);
+
+  // Pre-fill from wizardConfig OR restore draft from localStorage
+  useEffect(() => {
+    if (wizardConfig) {
+      const { flowName, dataSource, config, fieldMap, linkedFormId, existingTemplateId } = wizardConfig;
+      setMeta(prev => ({
+        ...prev,
+        name:            flowName || prev.name,
+        dataSource:      dataSource || 'sheet',
+        googleSheetId:   config?.googleSheetId   || prev.googleSheetId,
+        scriptUrl:       config?.scriptUrl        || prev.scriptUrl,
+        tabName:         config?.tabName          || prev.tabName,
+        uniqueIdColumn:  fieldMap?.uniqueIdColumn || config?.uniqueIdColumn || prev.uniqueIdColumn,
+        deadlineColumn:  fieldMap?.deadlineColumn || '',
+        assignColumn:    fieldMap?.assignColumn   || '',
+        workingHours: {
+          open:     fieldMap?.openHour  ?? 9,
+          close:    fieldMap?.closeHour ?? 18,
+          workDays: [1,2,3,4,5],
+        },
+      }));
+      if (linkedFormId) setSelectedFormId(linkedFormId);
+      // If editing existing template — nodes come directly from the template object
+      // wizardConfig passes the full template from FlowMonitor's templates list
+      if (existingTemplateId) {
+        // First try nodes passed directly in wizardConfig
+        if (wizardConfig.existingNodes?.length) {
+          setNodes(wizardConfig.existingNodes);
+        } else {
+          // Fallback: fetch from API using correct endpoint
+          API.get(`/fms2/templates/detail/${existingTemplateId}`)
+            .then(r => {
+              const tmpl = r.data?.template || r.data;
+              if (tmpl?.nodes?.length) setNodes(tmpl.nodes);
+            })
+            .catch(() => {});
+        }
+      }
+      return;
+    }
+    // No wizard — restore draft
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.meta)           setMeta(draft.meta);
+        if (draft.nodes)          setNodes(draft.nodes);
+        if (draft.selectedFormId) setSelectedFormId(draft.selectedFormId);
+        console.log('[FlowBuilder] Draft restored from localStorage');
+      }
+    } catch (e) {}
+  }, [DRAFT_KEY]);
+
+  // Auto-save to localStorage whenever meta or nodes change
+  useEffect(() => {
+    if (!meta.name && nodes.length === 0) return; // don't save empty state
+    try {
+      const now = Date.now();
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ meta, nodes, selectedFormId, savedAt: now }));
+      setDraftSavedAt(now);
+    } catch (e) {}
+  }, [meta, nodes, DRAFT_KEY]);
 
   // ── Node CRUD ─────────────────────────────────────────────────────────────
   const addNode = useCallback((type) => {
@@ -117,8 +195,8 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
       id, name: NODE_TYPES.find(t => t.type === type)?.label || type, type,
       position: { x: 100 + (i % 3) * 220, y: 80 + Math.floor(i / 3) * 160 },
       assignedTo: { type: 'employee', value: '' },
-      deadline: { mode: 'specific', value: 0, unit: 'hours', timeOfDay: 9, dateColumn: '' },
-      sheetColumnsToShow: [], inputFields: [], question: '',
+      deadline: { mode: 'wwh', value: 4, unit: 'hours', timeOfDay: 17, dateColumn: '' },
+      sheetColumnsToShow: [], inputFields: [], question: '', howToComplete: '',
       nextNodeId: null, yesNextNodeId: null, noNextNodeId: null,
       notifyChannel: 'both',
     }]);
@@ -278,22 +356,56 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
   // ── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setError('');
-    if (!meta.name || !meta.googleSheetId || !meta.scriptUrl) { setError('Fill in flow name, Sheet ID, and Script URL'); return; }
+    const needsSheet = meta.dataSource === 'sheet' || !meta.dataSource;
+    if (!meta.name) { setError('Enter a flow name'); return; }
+    if (needsSheet && (!meta.googleSheetId || !meta.scriptUrl)) { setError('Fill in Sheet ID and Script URL'); return; }
+    if (!nodes.length) { setError('Add at least one step node to the canvas'); return; }
     const startNode = nodes.find(n => n.type === 'start');
     if (!startNode) { setError('Add a Start node'); return; }
 
     setSaving(true);
     try {
-      await API.post('/fms2/templates', {
+      const existingId = wizardConfig?.existingTemplateId;
+      const payload = {
         tenantId, ...meta,
-        googleSheetId: meta.googleSheetId.trim(),
-        scriptUrl: meta.scriptUrl.trim(),
+        googleSheetId: (meta.googleSheetId || '').trim(),
+        scriptUrl:     (meta.scriptUrl || '').trim(),
         startNodeId: startNode.id,
-        nodes: nodes.map(n => ({ ...n, sheetColumnsToShow: n.sheetColumnsToShow || [], inputFields: n.inputFields || [] })),
-      });
+        linkedFormId: selectedFormId || null,
+        nodes: nodes.map(n => ({ ...n, sheetColumnsToShow: n.sheetColumnsToShow || [], inputFields: n.inputFields || [], howToComplete: n.howToComplete || '' })),
+      };
+
+      // PUT if editing existing, POST if creating new
+      const res = existingId
+        ? await API.put(`/fms2/templates/${existingId}`, payload)
+        : await API.post('/fms2/templates', payload);
+
+      const savedTemplateId = res.data?.template?._id || res.data?._id;
+
+      // If a form was linked, update the form's templateId — don't block deploy if this fails
+      if (selectedFormId && savedTemplateId) {
+        try {
+          // Find the form name first so we satisfy the name validation
+          const formRes = await API.get(`/fms2/forms/${tenantId}`);
+          const forms = Array.isArray(formRes.data) ? formRes.data : [];
+          const linkedForm = forms.find(f => f._id === selectedFormId);
+          await API.post('/fms2/forms', {
+            tenantId,
+            templateId: savedTemplateId,
+            formId: selectedFormId,
+            name: linkedForm?.name || 'Order Form',
+            _updateLink: true,
+          });
+        } catch(linkErr) {
+          console.warn('[FlowBuilder] Form link failed (non-critical):', linkErr?.response?.data?.message);
+        }
+      }
+
+      // Clear draft after successful deploy
+      try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
       onFlowSaved?.();
     } catch (err) {
-      setError(err.response?.data?.message || 'Save failed');
+      setError(err.response?.data?.message || 'Save failed — check server terminal for details');
     } finally { setSaving(false); }
   };
 
@@ -373,10 +485,28 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
             </div>
           )}
 
-          <div style={{ padding:8, borderTop:'1px solid var(--color-border)' }}>
+          <div style={{ padding:8, borderTop:'1px solid var(--color-border)', display:'flex', flexDirection:'column', gap:6 }}>
+            {draftSavedAt && (
+              <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 8px', background:'#EAF3DE', borderRadius:7 }}>
+                <span style={{ fontSize:12 }}>💾</span>
+                <span style={{ fontSize:10, color:'#27500A', fontWeight:500 }}>
+                  Draft saved at {new Date(draftSavedAt).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}
+                </span>
+              </div>
+            )}
             <button onClick={handleSave} disabled={saving}
               style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 12px', background:'var(--color-primary)', color:'white', borderRadius:10, border:'none', fontSize:12, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>
-              {saving ? '⏳ Deploying…' : '🚀 Deploy flow'}
+              {saving ? '⏳ Saving…' : wizardConfig?.existingTemplateId ? '💾 Save changes' : '🚀 Deploy flow'}
+            </button>
+            <button onClick={() => {
+              if (window.confirm('Clear draft and start fresh?')) {
+                try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+                setMeta({ name:'', googleSheetId:'', scriptUrl:'', tabName:'Sheet1', uniqueIdColumn:'Order ID', workingHours:{ open:9, close:18, workDays:[1,2,3,4,5] } });
+                setNodes([]);
+              }
+            }}
+              style={{ width:'100%', padding:'5px', background:'transparent', border:'1px solid var(--color-border)', borderRadius:8, fontSize:10, color:'var(--color-muted-foreground)', cursor:'pointer' }}>
+              🗑 Clear & start fresh
             </button>
           </div>
         </div>
@@ -509,11 +639,19 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
 
           {/* Flow settings — scrollable top section */}
           <div style={{ padding:12, borderBottom:'1px solid var(--color-border)', overflowY:'auto', maxHeight:'38%', flexShrink:0 }}>
-            <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--color-muted-foreground)', marginBottom:8 }}>Flow settings</div>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--color-muted-foreground)' }}>Flow settings</div>
+              {meta.dataSource && (
+                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'var(--color-muted)', color:'var(--color-muted-foreground)', border:'1px solid var(--color-border)' }}>
+                  {meta.dataSource === 'form' ? '📋 Form' : meta.dataSource === 'sheet' ? '📊 Sheet' : meta.dataSource === 'webhook' ? '🔗 Webhook' : meta.dataSource}
+                </span>
+              )}
+            </div>
             <div style={{ marginBottom:6 }}>
               <Label>Flow name *</Label>
               <Inp placeholder="e.g. Order to Delivery" value={meta.name} onChange={e => setMeta(p => ({ ...p, name: e.target.value }))} />
             </div>
+            {(meta.dataSource === 'sheet' || !meta.dataSource) && (<>
             <div style={{ marginBottom:6 }}>
               <Label>Sheet ID *</Label>
               <Inp placeholder="From sheet URL" value={meta.googleSheetId} onChange={e => setMeta(p => ({ ...p, googleSheetId: e.target.value }))} />
@@ -522,6 +660,7 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
               <Label>Script URL *</Label>
               <Inp placeholder="https://script.google.com/…" value={meta.scriptUrl} onChange={e => setMeta(p => ({ ...p, scriptUrl: e.target.value }))} />
             </div>
+            </>)}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:6 }}>
               <div><Label>Tab</Label><Inp placeholder="Sheet1" value={meta.tabName} onChange={e => setMeta(p => ({ ...p, tabName: e.target.value }))} /></div>
               <div><Label>ID column</Label><Inp placeholder="Order ID" value={meta.uniqueIdColumn} onChange={e => setMeta(p => ({ ...p, uniqueIdColumn: e.target.value }))} /></div>
@@ -534,6 +673,32 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
               style={{ width:'100%', padding:'6px 0', fontSize:10, fontWeight:600, border:'1px solid var(--color-border)', borderRadius:8, background:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:loadingCols?0.5:1 }}>
               {loadingCols ? '⏳' : '→'} {sheetCols.length ? `${sheetCols.length} columns loaded` : 'Load sheet columns'}
             </button>
+
+            {/* ── FORM LINKING ── */}
+            <div style={{ marginTop:10, padding:'10px 0 0', borderTop:'1px solid var(--color-border)' }}>
+              <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--color-muted-foreground)', marginBottom:6 }}>
+                Link Order Form (optional)
+              </div>
+              <select
+                value={selectedFormId}
+                onChange={e => setSelectedFormId(e.target.value)}
+                style={{ width:'100%', padding:'6px 8px', fontSize:12, background:'var(--color-background)', border:'1px solid var(--color-border)', borderRadius:8, color:'var(--color-foreground)' }}>
+                <option value="">No form — use Google Sheet</option>
+                {allForms.map(f => (
+                  <option key={f._id} value={f._id}>{f.name}</option>
+                ))}
+              </select>
+              {selectedFormId && (
+                <div style={{ fontSize:10, color:'#27500A', background:'#EAF3DE', borderRadius:6, padding:'4px 8px', marginTop:4 }}>
+                  ✓ Orders from this form will trigger this flow
+                </div>
+              )}
+              {!selectedFormId && (
+                <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:4 }}>
+                  Or go to 📋 Order Form tab to create a form and link it here
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Node config — THIS SCROLLS */}
@@ -563,57 +728,103 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
                   <Sec title="When — Deadline" />
                   <Sel value={selNode.deadline.mode || ''} onChange={e => updateNested(selNode.id, 'deadline', { mode: e.target.value || null })}>
                     <option value="">No deadline</option>
-                    <option value="specific">Fixed time of day</option>
-                    <option value="wwh">T+N — within working hours</option>
-                    <option value="wwh2">T+N — trigger outside hours</option>
-                    <option value="days">T+N working days</option>
-                    <option value="lead">T-N days before a date</option>
+                    <option value="wwh">Complete within X hours/mins after step starts</option>
+                    <option value="days">Complete within X working days</option>
+                    <option value="specific">By a fixed clock time on the same day</option>
+                    <option value="lead">X days before a date from the order</option>
+                    <option value="wwh2">Complete within X hours (step starts outside hours)</option>
                   </Sel>
 
-                  {selNode.deadline.mode === 'specific' && (
-                    <div style={{ marginTop:6 }}>
-                      <Label>Complete within</Label>
-                      <div style={{ display:'flex', gap:6, marginBottom:6 }}>
-                        <Inp type="number" min={0} value={selNode.deadline.value} style={{ flex:1 }} placeholder="Amount"
-                          onChange={e => updateNested(selNode.id, 'deadline', { value: +e.target.value })} />
-                        <Sel value={selNode.deadline.unit || 'hours'} style={{ flex:1 }} onChange={e => updateNested(selNode.id, 'deadline', { unit: e.target.value })}>
-                          <option value="mins">Minutes</option>
-                          <option value="hours">Hours</option>
-                          <option value="days">Days</option>
-                        </Sel>
-                      </div>
-                      <Label>Fixed time of day (24hr)</Label>
-                      <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                        <Inp type="number" min={0} max={23} value={selNode.deadline.timeOfDay ?? 9}
-                          onChange={e => updateNested(selNode.id, 'deadline', { timeOfDay: +e.target.value })} />
-                        <span style={{ fontSize:11, color:'var(--color-muted-foreground)', whiteSpace:'nowrap' }}>
-                          = {(selNode.deadline.timeOfDay??9) >= 12 ? `${(selNode.deadline.timeOfDay??9)===12?12:(selNode.deadline.timeOfDay??9)-12}:00 PM` : `${selNode.deadline.timeOfDay??9}:00 AM`}
-                        </span>
-                      </div>
+                  {/* Plain English explanation of selected mode */}
+                  {selNode.deadline.mode === 'wwh' && (
+                    <div style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', borderRadius:7, padding:'7px 10px', marginTop:6, lineHeight:1.6 }}>
+                      ⏱ Employee gets <strong>X hours/mins</strong> to complete this step from the moment it is assigned. E.g. order comes at 10 AM, deadline = 4 hours → must finish by 2 PM.
                     </div>
                   )}
-                  {selNode.deadline.mode && ['wwh','wwh2','days'].includes(selNode.deadline.mode) && (
-                    <div style={{ marginTop:6 }}>
-                      <Label>Complete within</Label>
-                      <div style={{ display:'flex', gap:6 }}>
-                        <Inp type="number" min={0} value={selNode.deadline.value} style={{ flex:1 }}
-                          onChange={e => updateNested(selNode.id, 'deadline', { value: +e.target.value })} />
-                        <Sel value={selNode.deadline.unit || 'hours'} style={{ flex:1 }} onChange={e => updateNested(selNode.id, 'deadline', { unit: e.target.value })}>
-                          <option value="mins">Minutes</option>
-                          <option value="hours">Hours</option>
-                          <option value="days">Days</option>
-                        </Sel>
-                      </div>
+                  {selNode.deadline.mode === 'days' && (
+                    <div style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', borderRadius:7, padding:'7px 10px', marginTop:6, lineHeight:1.6 }}>
+                      📅 Employee gets <strong>X working days</strong> to complete this step.
+                    </div>
+                  )}
+                  {selNode.deadline.mode === 'specific' && (
+                    <div style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', borderRadius:7, padding:'7px 10px', marginTop:6, lineHeight:1.6 }}>
+                      🕐 Step must be completed by a <strong>fixed time today</strong> (e.g. by 5 PM). If assigned after that time, deadline moves to the same time next working day.
                     </div>
                   )}
                   {selNode.deadline.mode === 'lead' && (
-                    <div style={{ marginTop:6 }}>
-                      <Label>Days before date</Label>
-                      <Inp type="number" min={0} value={selNode.deadline.value} style={{ marginBottom:6 }}
+                    <div style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', borderRadius:7, padding:'7px 10px', marginTop:6, lineHeight:1.6 }}>
+                      📦 Deadline = <strong>X days before a date in the order</strong> (e.g. 2 days before Promise Date of Delivery). Useful for steps that must happen before shipment.
+                    </div>
+                  )}
+                  {selNode.deadline.mode === 'wwh2' && (
+                    <div style={{ fontSize:11, background:'#FAEEDA', color:'#412402', borderRadius:7, padding:'7px 10px', marginTop:6, lineHeight:1.6 }}>
+                      🌙 Same as "Complete within X hours" but handles orders that arrive <strong>outside office hours</strong> — countdown starts from next working hour.
+                    </div>
+                  )}
+
+                  {/* Input fields for each mode */}
+                  {selNode.deadline.mode && ['wwh','wwh2'].includes(selNode.deadline.mode) && (
+                    <div style={{ marginTop:8 }}>
+                      <Label>Complete within</Label>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <Inp type="number" min={1} value={selNode.deadline.value || 4} style={{ flex:1 }}
+                          placeholder="e.g. 4"
+                          onChange={e => updateNested(selNode.id, 'deadline', { value: +e.target.value })} />
+                        <Sel value={selNode.deadline.unit || 'hours'} style={{ flex:1 }} onChange={e => updateNested(selNode.id, 'deadline', { unit: e.target.value })}>
+                          <option value="mins">Minutes</option>
+                          <option value="hours">Hours</option>
+                          <option value="days">Days</option>
+                        </Sel>
+                      </div>
+                      <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:4 }}>
+                        After step is assigned, employee has this much time to complete it.
+                      </div>
+                    </div>
+                  )}
+
+                  {selNode.deadline.mode === 'days' && (
+                    <div style={{ marginTop:8 }}>
+                      <Label>Number of working days</Label>
+                      <Inp type="number" min={1} value={selNode.deadline.value || 1}
+                        placeholder="e.g. 2"
                         onChange={e => updateNested(selNode.id, 'deadline', { value: +e.target.value })} />
-                      <Label>Date column from sheet</Label>
-                      <Inp placeholder="e.g. Ship Date" value={selNode.deadline.dateColumn || ''}
-                        onChange={e => updateNested(selNode.id, 'deadline', { dateColumn: e.target.value })} />
+                    </div>
+                  )}
+
+                  {selNode.deadline.mode === 'specific' && (
+                    <div style={{ marginTop:8 }}>
+                      <Label>Must finish by (24hr clock)</Label>
+                      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        <Inp type="number" min={0} max={23} value={selNode.deadline.timeOfDay ?? 17}
+                          placeholder="e.g. 17"
+                          onChange={e => updateNested(selNode.id, 'deadline', { timeOfDay: +e.target.value })} />
+                        <span style={{ fontSize:13, fontWeight:700, color:'var(--color-primary)', whiteSpace:'nowrap' }}>
+                          = {(() => {
+                            const h = selNode.deadline.timeOfDay ?? 17;
+                            return h === 0 ? '12:00 AM' : h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h-12}:00 PM`;
+                          })()}
+                        </span>
+                      </div>
+                      <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:4 }}>
+                        Step must be done by this time on the day it is assigned.
+                      </div>
+                    </div>
+                  )}
+
+                  {selNode.deadline.mode === 'lead' && (
+                    <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:8 }}>
+                      <div>
+                        <Label>Days before the date</Label>
+                        <Inp type="number" min={0} value={selNode.deadline.value || 2}
+                          placeholder="e.g. 2"
+                          onChange={e => updateNested(selNode.id, 'deadline', { value: +e.target.value })} />
+                      </div>
+                      <div>
+                        <Label>Which date column from the order?</Label>
+                        <Inp placeholder="e.g. Promise Date of Delivery"
+                          value={selNode.deadline.dateColumn || ''}
+                          onChange={e => updateNested(selNode.id, 'deadline', { dateColumn: e.target.value })} />
+                      </div>
                     </div>
                   )}
                 </>)}
@@ -626,11 +837,34 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
                 )}
 
                 {(selNode.type === 'action' || selNode.type === 'input' || selNode.type === 'yesno') && (<>
-                  <Sec title="How — Input fields (optional)" />
+
+                  {/* HOW — Instructions for the doer */}
+                  <Sec title="How — Instructions for doer" />
+                  <textarea
+                    placeholder={'e.g. Check in Tally\nVerify physically with waybill\nSend via WhatsApp/Call'}
+                    value={selNode.howToComplete || ''}
+                    onChange={e => updateNode(selNode.id, { howToComplete: e.target.value })}
+                    rows={3}
+                    style={{ width:'100%', padding:'7px 10px', fontSize:12, background:'var(--color-background)', border:'1px solid var(--color-border)', borderRadius:8, color:'var(--color-foreground)', outline:'none', resize:'vertical', lineHeight:1.6, fontFamily:'inherit', boxSizing:'border-box' }}
+                  />
+                  <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:3, lineHeight:1.5 }}>
+                    These instructions are shown to the employee when they open this step. Explain how they should complete it.
+                  </div>
+                  {selNode.howToComplete && (
+                    <div style={{ fontSize:11, background:'#EAF3DE', color:'#27500A', borderRadius:7, padding:'6px 10px', marginTop:4, lineHeight:1.6 }}>
+                      📋 Preview: <em>{selNode.howToComplete}</em>
+                    </div>
+                  )}
+
+                  {/* INPUT FIELDS — data collected after completing the step */}
+                  <Sec title="Collect — Fields to fill after completing" />
+                  <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginBottom:6, lineHeight:1.5 }}>
+                    Optional. Add fields the employee must fill when marking this step done — e.g. upload a photo, enter a number, confirm a value.
+                  </div>
                   {(selNode.inputFields || []).map(field => (
                     <div key={field.id} style={{ border:'1px solid var(--color-border)', borderRadius:8, padding:8, marginBottom:6 }}>
                       <div style={{ display:'flex', gap:4, marginBottom:4 }}>
-                        <Inp placeholder="Field label" value={field.label} onChange={e => updateField(selNode.id, field.id, { label: e.target.value })} />
+                        <Inp placeholder="Field label e.g. Invoice Number" value={field.label} onChange={e => updateField(selNode.id, field.id, { label: e.target.value })} />
                         <button onClick={() => deleteField(selNode.id, field.id)} style={{ padding:4, background:'none', border:'none', cursor:'pointer', color:'var(--color-muted-foreground)', flexShrink:0 }}>✕</button>
                       </div>
                       <Sel value={field.type} onChange={e => updateField(selNode.id, field.id, { type: e.target.value })} style={{ marginBottom:4 }}>
@@ -642,13 +876,13 @@ export default function FlowBuilder({ tenantId, onFlowSaved }) {
                       )}
                       <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:10, color:'var(--color-muted-foreground)', cursor:'pointer', marginTop:4 }}>
                         <input type="checkbox" checked={field.required} onChange={e => updateField(selNode.id, field.id, { required: e.target.checked })} />
-                        Required
+                        Required before marking done
                       </label>
                     </div>
                   ))}
                   <button onClick={() => addField(selNode.id)}
                     style={{ width:'100%', padding:'6px 0', fontSize:10, fontWeight:500, border:'1px dashed var(--color-border)', borderRadius:8, background:'transparent', cursor:'pointer', color:'var(--color-muted-foreground)', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }}>
-                    + Add input field
+                    + Add collect field
                   </button>
                 </>)}
 

@@ -136,14 +136,18 @@ function HistoryModal({ instance, template, onClose }) {
           )}
         </div>
       </div>
+
+
     </div>
   );
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function FlowMonitor({ tenantId, onCreateFlow }) {
+export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [instances, setInstances]   = useState([]);
   const [templates, setTemplates]   = useState([]);
+  const [activeTab, setActiveTab]   = useState('monitor'); // 'monitor' | 'flows'
+  const [deletingId, setDeletingId] = useState(null);
   const [stats, setStats]           = useState({ active: 0, onTrack: 0, overdue: 0, completed: 0 });
   const [loading, setLoading]       = useState(false);
   const [search, setSearch]         = useState('');
@@ -226,6 +230,70 @@ export default function FlowMonitor({ tenantId, onCreateFlow }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+
+        {/* ── TABS ── */}
+        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+          {[['monitor','📊 Live Orders'], ['flows','🔀 Manage Flows']].map(([id, label]) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              style={{ padding:'7px 18px', fontSize:12, fontWeight:600, borderRadius:8, border:'1px solid var(--color-border)', cursor:'pointer', background: activeTab===id ? 'var(--color-primary)' : 'var(--color-card)', color: activeTab===id ? 'white' : 'var(--color-muted-foreground)', transition:'all .15s' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── MANAGE FLOWS TAB ── */}
+        {activeTab === 'flows' && (
+          <div>
+            {templates.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'60px 20px', color:'var(--color-muted-foreground)', fontSize:14 }}>
+                No flows yet. Click "+ New flow" to create one.
+              </div>
+            ) : (
+              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                {templates.map(t => {
+                  const nodeCount = (t.nodes || []).filter(n => n.type !== 'start' && n.type !== 'end').length;
+                  const srcIcon = t.dataSource === 'form' ? '📋' : t.dataSource === 'webhook' ? '🔗' : '📊';
+                  const srcLabel = t.dataSource === 'form' ? 'WorkPilot Form' : t.dataSource === 'webhook' ? 'Webhook' : 'Google Sheet';
+                  return (
+                    <div key={t._id} style={{ border:'1px solid var(--color-border)', borderRadius:14, padding:'16px 20px', background:'var(--color-card)', display:'flex', alignItems:'center', gap:16 }}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:'var(--color-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{srcIcon}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{t.name}</div>
+                        <div style={{ fontSize:12, color:'var(--color-muted-foreground)' }}>
+                          {srcLabel} · {nodeCount} step{nodeCount !== 1 ? 's' : ''} · Created {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : 'unknown'}
+                        </div>
+                        {t.linkedFormId && (
+                          <div style={{ fontSize:11, color:'#27500A', marginTop:3 }}>✓ Order form linked</div>
+                        )}
+                      </div>
+                      <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                        <button onClick={() => onEditFlow?.(t)}
+                          style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', fontSize:12, fontWeight:600, border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)', cursor:'pointer', color:'var(--color-foreground)' }}>
+                          ✏️ Edit
+                        </button>
+                        <button onClick={() => {
+                          if (window.confirm(`Delete "${t.name}"? Active orders will continue but no new ones can start.`)) {
+                            setDeletingId(t._id);
+                            API.delete(`/fms2/templates/${t._id}`)
+                              .then(() => setTemplates(p => p.filter(x => x._id !== t._id)))
+                              .catch(e => alert(e.response?.data?.message || 'Delete failed'))
+                              .finally(() => setDeletingId(null));
+                          }
+                        }} disabled={deletingId === t._id}
+                          style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', fontSize:12, fontWeight:600, border:'1px solid #F09595', borderRadius:8, background:'transparent', cursor:'pointer', color:'#A32D2D', opacity: deletingId===t._id ? 0.5 : 1 }}>
+                          {deletingId === t._id ? '⏳' : '🗑 Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── LIVE ORDERS TAB ── */}
+        {activeTab === 'monitor' && <>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -328,7 +396,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow }) {
             </div>
           </div>
         )}
-      </div>
+
+      </> /* end monitor tab */}
 
       {/* History modal */}
       {selected && (
@@ -337,6 +406,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow }) {
           template={selected.template}
           onClose={() => setSelected(null)} />
       )}
+
+      </div>
     </div>
   );
 }
