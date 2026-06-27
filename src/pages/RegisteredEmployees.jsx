@@ -67,7 +67,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
     if (!selectedEmp) return;
     try {
       setIsUpdatingLeave(true);
-      await API.put(`/superadmin/employees/${selectedEmp._id}`, {
+      await API.put(`/tasks/employees/${selectedEmp._id}`, {
         ...selectedEmp,
         leaveStatus: leaveData
       });
@@ -84,7 +84,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
   const handleDelete = async (id, name) => {
     if (window.confirm(`PERMANENT ACTION: Remove ${name}? This will terminate all active task linkages.`)) {
       try {
-        await API.delete(`/superadmin/employees/${id}`);
+        await API.delete(`/tasks/employees/${id}`);
         fetchEmployees();
       } catch (err) {
         alert('System Error: Deletion failed.');

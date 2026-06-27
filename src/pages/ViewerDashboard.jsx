@@ -31,7 +31,7 @@ const ViewerDashboard = ({ tenantId }) => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      const res = await API.get(`/superadmin/company-overview/${currentTenantId}`);
+      const res = await API.get(`/tenants/${currentTenantId}`);
       
       const fetchedData = res.data || {};
       setData({

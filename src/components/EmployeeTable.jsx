@@ -29,7 +29,7 @@ const EmployeeTable = ({ tenantId, onEdit ,onAddNew }) => {
     setLoading(true);
     try {
       // Switched to centralized API instance for AWS/Prod readiness
-      const res = await API.get(`/superadmin/employees/${tenantId}`);
+      const res = await API.get(`/tasks/employees/${tenantId}`);
       setEmployees(res.data || []);
     } catch (err) {
       console.error("Failed to fetch employees", err);
@@ -45,7 +45,7 @@ const EmployeeTable = ({ tenantId, onEdit ,onAddNew }) => {
   const handleDelete = async (id, name) => {
     if (window.confirm(`SECURITY ALERT: Permanently remove ${name}? This will break all existing task linkages and organizational hierarchies.`)) {
       try {
-        await API.delete(`/superadmin/employees/${id}`);
+        await API.delete(`/tasks/employees/${id}`);
         alert("Success: Staff record decommissioned.");
         fetchEmployees(); 
       } catch (err) {

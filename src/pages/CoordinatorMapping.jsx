@@ -37,7 +37,7 @@ const CoordinatorMapping = ({ tenantId }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await API.get(`/superadmin/company-overview/${currentTenantId}`);
+      const res = await API.get(`/tenants/${currentTenantId}`);
       const emps = Array.isArray(res.data) 
         ? res.data 
         : (res.data?.employees || res.data?.data || []);

@@ -66,7 +66,7 @@ const CreateChecklist = ({ tenantId, onSuccess }) => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
+      const res = await API.get(`/tasks/settings/${currentTenantId}`);
       const data = res.data?.settings || res.data;
       
       if (data) {
@@ -108,7 +108,7 @@ const isDisabledDate = (date) =>
   const fetchEmployees = useCallback(async () => {
     if (!currentTenantId) return;
     try {
-      const res = await API.get(`/superadmin/employees/${currentTenantId}`);
+      const res = await API.get(`/tasks/employees/${currentTenantId}`);
       const rawData = Array.isArray(res.data) ? res.data : (res.data?.employees || res.data?.data || []);
       const filtered = rawData.filter(emp => {
         const rolesArr = Array.isArray(emp.roles) ? emp.roles : [];

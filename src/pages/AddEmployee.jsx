@@ -52,7 +52,7 @@ const AddEmployee = ({
   const fetchStaff = useCallback(async () => {
     if (!tenantId) return;
     try {
-      const res = await API.get(`/superadmin/employees/${tenantId}`);
+      const res = await API.get(`/tasks/employees/${tenantId}`);
       const data = Array.isArray(res.data)
         ? res.data
         : res.data?.employees || res.data?.data || [];
@@ -162,7 +162,7 @@ const AddEmployee = ({
 
       if (isEditing) {
         await API.put(
-          `/superadmin/employees/${selectedEmployee._id}`,
+          `/tasks/employees/${selectedEmployee._id}`,
           submissionData
         );
         alert("Success: Employee Profile Updated.");

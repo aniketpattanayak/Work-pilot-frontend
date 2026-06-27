@@ -91,7 +91,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch(() => ({ data: [] })),
         !isEmployee
-          ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+          ? API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] })
       ]);
 

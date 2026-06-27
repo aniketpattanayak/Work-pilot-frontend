@@ -202,8 +202,8 @@ const isNonWorkingDay = (date) => {
       setLoading(true);
       const [checkRes, empRes, settingsRes] = await Promise.all([
         API.get(`/tasks/checklist-all/${currentTenantId}`).catch(() => ({ data: [] })),
-        API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] })),
-        API.get(`/superadmin/settings/${currentTenantId}`).catch(() => ({ data: {} }))
+        API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] })),
+        API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
       setChecklists(Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []));
       setEmployees((Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || empRes.data?.data || [])).filter(e => {

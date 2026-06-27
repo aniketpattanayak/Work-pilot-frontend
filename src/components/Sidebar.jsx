@@ -68,7 +68,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     if (!currentTenantId) return;
     try {
       setLoadingLogo(true);
-      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
+      const res = await API.get(`/tasks/settings/${currentTenantId}`);
       if (res.data) {
         setFactoryLogo(res.data.logo || '');
         setCompanyName(res.data.companyName || 'WORK PILOT');

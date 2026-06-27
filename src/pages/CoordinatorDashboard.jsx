@@ -136,7 +136,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       // force_sync ensures fresh production data from Mumbai server
       const [res, settingsRes] = await Promise.all([
         API.get(`/tasks/coordinator/${coordinatorId}?force_sync=${Date.now()}`),
-        API.get(`/superadmin/settings/${savedUser?.tenantId}`).catch(() => ({ data: {} }))
+        API.get(`/tasks/settings/${savedUser?.tenantId}`).catch(() => ({ data: {} }))
       ]);
       const data = Array.isArray(res.data) ? res.data : (res.data?.tasks || res.data?.data || []);
       setTasks(data);

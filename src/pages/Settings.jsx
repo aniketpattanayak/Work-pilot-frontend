@@ -86,7 +86,7 @@ const Settings = ({ tenantId }) => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      const res = await API.get(`/superadmin/settings/${currentTenantId}`);
+      const res = await API.get(`/tasks/settings/${currentTenantId}`);
       const data = res.data?.settings || res.data;
       
       if (data) {
