@@ -38,7 +38,7 @@ const Login = ({ onLoginSuccess }) => {
     const fetchTenant = async () => {
       try {
         setLoading(true);
-        const res = await API.get(`/superadmin/verify/${subdomain}`);
+        const res = await API.get(`/tasks/verify/${subdomain}`);
         setTenant(res.data);
       } catch (err) {
         console.error("Factory verification failed:", err);
@@ -62,7 +62,7 @@ const Login = ({ onLoginSuccess }) => {
 
     try {
       setIsSubmitting(true);
-      const res = await API.post('/superadmin/login-employee', {
+      const res = await API.post('/tasks/login-employee', {
         email, 
         password, 
         subdomain

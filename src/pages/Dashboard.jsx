@@ -14,6 +14,8 @@ import ChecklistMonitor from "./ChecklistMonitor";
 import ThemeToggle from "../components/ThemeToggle"; // Theme Engine
 import FmsDashboard from './FmsDashboard';
 import FlowManagement  from './FlowManagement';
+import ChatPage        from './ChatPage';
+import FloatingChat    from '../components/FloatingChat';
 import OrderFormsPage  from './OrderFormsPage';
 import NewOrderPage    from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
@@ -593,6 +595,7 @@ useEffect(() => {
             <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
             <Route path="/reports" element={<ReportsTab tenantId={tenantId} />} />
             <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
+            <Route path="chat" element={<ChatPage currentUser={user} />} />
             <Route path="order-forms" element={<OrderFormsPage tenantId={tenantId} />} />
             <Route path="new-order" element={<NewOrderPage tenantId={tenantId} />} />
             <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
@@ -612,6 +615,7 @@ useEffect(() => {
         }
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
+      <FloatingChat currentUser={user} />
     </div>
   );
 };

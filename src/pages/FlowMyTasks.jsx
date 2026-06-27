@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig';
+import { useChat } from '../components/useChat';
 import { CheckCircle2, AlertCircle, Clock, RefreshCcw, ChevronDown } from 'lucide-react';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ function countdown(deadline) {
 }
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
-function TaskCard({ task, onComplete }) {
+function TaskCard({ task, onComplete, openThread }) {
   const [values, setValues]   = useState({});
   const [submitting, setSub]  = useState(false);
   const [error, setError]     = useState('');
@@ -158,6 +159,24 @@ function TaskCard({ task, onComplete }) {
             </div>
           )}
 
+          {/* Chat thread button */}
+          <button
+            onClick={() => openThread && openThread({
+              taskId:    task.instanceId,
+              taskType:  'flow',
+              taskTitle: `${task.orderIdentifier} — ${task.activeStep?.nodeName || 'Step'}`,
+              participants: [],
+            })}
+            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px',
+              border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)',
+              fontSize:12, fontWeight:500, color:'var(--color-muted-foreground)', cursor:'pointer',
+              marginBottom:8, transition:'all .12s' }}
+            onMouseEnter={e=>{ e.currentTarget.style.borderColor='#185FA5'; e.currentTarget.style.color='#185FA5'; }}
+            onMouseLeave={e=>{ e.currentTarget.style.borderColor='var(--color-border)'; e.currentTarget.style.color='var(--color-muted-foreground)'; }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            💬 Comments
+          </button>
+
           {/* Action buttons */}
           {isYesNo ? (
             <div className="grid grid-cols-2 gap-2 mt-1">
@@ -185,6 +204,7 @@ function TaskCard({ task, onComplete }) {
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function FlowMyTasks({ employeeId }) {
+  const { openTaskThread } = useChat();
   const [tasks, setTasks]     = useState([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab]         = useState('pending');
@@ -258,13 +278,13 @@ export default function FlowMyTasks({ employeeId }) {
             <>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-red-500 mb-1 mt-2">Overdue</div>
               {overdue.map(task => (
-                <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} />
+                <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskThread} />
               ))}
               {pending.length > 0 && <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 mt-4">On track</div>}
             </>
           )}
           {(tab === 'all' ? pending : displayed).map(task => (
-            <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} />
+            <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskThread} />
           ))}
         </div>
       )}

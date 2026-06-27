@@ -29,8 +29,10 @@ import {
 } from 'lucide-react';
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
+import { useChat } from '../components/useChat';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
+  const { openTaskThread } = useChat();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
@@ -296,6 +298,19 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             <XCircle size={18} />
                           </button>
                         </>)}
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            openTaskThread({
+                              taskId:    task._id,
+                              taskType:  'delegation',
+                              taskTitle: task.title || task.taskTitle || 'Task',
+                              participants: [task.doerId?._id, task.assignerId].filter(Boolean),
+                            });
+                          }}
+                          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                          💬 Comments
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id); }}
                           className="p-3 bg-background border border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all active:scale-90">
                           <Trash2 size={18} />
