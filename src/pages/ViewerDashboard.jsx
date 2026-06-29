@@ -31,7 +31,7 @@ const ViewerDashboard = ({ tenantId }) => {
     if (!currentTenantId) return;
     try {
       setLoading(true);
-      const res = await API.get(`/tenants/${currentTenantId}`);
+      const res = await API.get(`/tasks/settings/${currentTenantId}`);
       
       const fetchedData = res.data || {};
       setData({
