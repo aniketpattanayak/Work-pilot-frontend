@@ -167,7 +167,7 @@ const AddEmployee = ({
         );
         alert("Success: Employee Profile Updated.");
       } else {
-        await API.post("/superadmin/add-employee", submissionData);
+        await API.post("/tasks/add-employee", submissionData);
         alert("Success: New Employee Registered.");
       }
 
