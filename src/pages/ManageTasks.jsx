@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
+import BulkUpload from '../components/BulkUpload';
+import { Upload as UploadIcon } from 'lucide-react';
 import { useChat } from '../components/useChat';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
@@ -42,6 +44,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [expandedTaskId, setExpandedTaskId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [revisionModalTask, setRevisionModalTask] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -91,7 +94,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch(() => ({ data: [] })),
         !isEmployee
-          ? API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+          ? API.get(`/superadmin/employees/${currentTenantId}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] })
       ]);
 
@@ -178,11 +181,23 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-6 py-3 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
             <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
+          <button onClick={() => setShowBulk(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[11px] uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl">
+            <UploadIcon size={16} /> Bulk Upload
+          </button>
           <button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
             <Plus size={16} /> New Task
           </button>
         </div>
       </div>
+
+      {showBulk && (
+        <BulkUpload
+          tenantId={currentTenantId}
+          onClose={() => setShowBulk(false)}
+          onSuccess={() => { setShowBulk(false); fetchData(); }}
+          mode="tasks"
+        />
+      )}
 
       {/* ── FILTERS ROW — time filters + name search ── */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center">

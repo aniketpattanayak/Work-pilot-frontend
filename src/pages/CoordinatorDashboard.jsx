@@ -50,6 +50,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [bulkSelected, setBulkSelected] = useState({}); // { taskId: Set of instanceDate strings }
   const [bulkSubmitting, setBulkSubmitting] = useState({}); // { taskId: true }
   const backlogRefs = useRef({}); // refs to scroll to backlog grid after mark done
+  const [categoryFilter, setCategoryFilter] = useState('All'); // All | Delegation | Checklist | FMS
+  const [isSendingWA, setIsSendingWA] = useState(false);
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
   const coordinatorId = propCoordId || savedUser?._id || savedUser?.id;
@@ -103,7 +105,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     };
 
     let loopCount = 0;
-    while (pointer <= today && loopCount < 30) {
+    while (pointer <= today && loopCount < 500) {
       loopCount++;
       const currentPattern = toLockPattern(pointer);
       
@@ -134,12 +136,42 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     try {
       setLoading(true);
       // force_sync ensures fresh production data from Mumbai server
-      const [res, settingsRes] = await Promise.all([
+      const [res, settingsRes, fmsRes, fmsCompletedRes] = await Promise.all([
         API.get(`/tasks/coordinator/${coordinatorId}?force_sync=${Date.now()}`),
-        API.get(`/tasks/settings/${savedUser?.tenantId}`).catch(() => ({ data: {} }))
+        API.get(`/tasks/settings/${savedUser?.tenantId}`).catch(() => ({ data: {} })),
+        API.get(`/fms2/my-tasks/${coordinatorId}`).catch(() => ({ data: [] })),
+        API.get(`/fms2/completed-tasks/${coordinatorId}`).catch(() => ({ data: [] })),
       ]);
-      const data = Array.isArray(res.data) ? res.data : (res.data?.tasks || res.data?.data || []);
-      setTasks(data);
+      const delegationAndChecklist = Array.isArray(res.data) ? res.data : (res.data?.tasks || res.data?.data || []);
+      // Tag each task with its category
+      delegationAndChecklist.forEach(t => {
+        if (!t.taskType) t.taskType = t.frequency ? 'Checklist' : 'Delegation';
+      });
+      // Add FMS tasks
+      const fmsTasks = (Array.isArray(fmsRes.data) ? fmsRes.data : []).map(inst => ({
+        _id: inst.instanceId,
+        title: `${inst.orderIdentifier} — ${inst.activeStep?.nodeName || 'Step'}`,
+        taskType: 'FMS',
+        status: inst.isOverdue ? 'Overdue' : 'Active',
+        doerId: { name: inst.activeStep?.assigneeName || '—', whatsappNumber: inst.activeStep?.assigneePhone || '' },
+        assignerId: { name: inst.templateName || '—' },
+        deadline: inst.activeStep?.plannedDeadline,
+        flowName: inst.templateName,
+        stepName: inst.activeStep?.nodeName,
+        orderIdentifier: inst.orderIdentifier,
+      }));
+      const fmsCompletedTasks = (Array.isArray(fmsCompletedRes.data) ? fmsCompletedRes.data : []).map(inst => ({
+        _id: inst.instanceId || inst._id,
+        title: `${inst.orderIdentifier} — ${inst.templateName}`,
+        taskType: 'FMS',
+        status: 'Completed',
+        assigneeName: inst.activeStep?.assigneeName || '—',
+        doerId: { name: inst.activeStep?.assigneeName || '—', whatsappNumber: inst.activeStep?.assigneePhone || '' },
+        assignerId: { name: inst.templateName || '—' },
+        deadline: inst.completedAt,
+        completedAt: inst.completedAt,
+      }));
+      setTasks([...delegationAndChecklist, ...fmsTasks, ...fmsCompletedTasks]);
       setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
     } catch (err) {
       console.error("Dashboard Sync Failed:", err);
@@ -157,18 +189,27 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     const term = searchTerm.toLowerCase().trim();
 
     return tasks.filter(task => {
-      const isDone = task.status === 'Completed' || task.status === 'Verified';
+      // isDone logic per task type
+      const isDone = task.taskType === 'Checklist'
+        ? getPendingInstances(task).length === 0
+        : task.status === 'Completed' || task.status === 'Verified' || task.status === 'completed' || task.status === 'done';
+
       let matchesTab = false;
 
-      if (activeTab === 'Completed') matchesTab = isDone;
-      else if (activeTab === 'Pending') {
-        if (!isDone) {
+      if (activeTab === 'Completed') {
+        matchesTab = isDone;
+      } else if (activeTab === 'Pending') {
+        if (task.taskType === 'FMS') {
+          matchesTab = task.status === 'Active' || task.status === 'Pending';
+        } else if (!isDone) {
           const deadline = new Date(task.deadline || task.nextDueDate);
           deadline.setHours(0, 0, 0, 0);
           matchesTab = task.taskType === 'Checklist' ? getPendingInstances(task).length > 0 : deadline <= today;
         }
       } else if (activeTab === 'Upcoming') {
-        if (!isDone) {
+        if (task.taskType === 'FMS') {
+          matchesTab = false;
+        } else if (!isDone) {
           const deadline = new Date(task.deadline || task.nextDueDate);
           deadline.setHours(0, 0, 0, 0);
           matchesTab = task.taskType === 'Checklist' ? getPendingInstances(task).length === 0 && deadline > today : deadline > today;
@@ -176,6 +217,12 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       }
 
       if (!matchesTab) return false;
+
+      // Category filter — All, Delegation, Checklist, FMS
+      if (categoryFilter === 'Delegation' && task.taskType !== 'Delegation') return false;
+      if (categoryFilter === 'Checklist' && task.taskType !== 'Checklist') return false;
+      if (categoryFilter === 'FMS' && task.taskType !== 'FMS') return false;
+
       if (term === "") return true;
 
       // UPDATED SEARCH: Now checks both Doer and Assigner names (essential for mapped personnel)
@@ -184,7 +231,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
              (task.assignerId?.name || "").toLowerCase().includes(term) ||
              (task.doerId?.department || "").toLowerCase().includes(term);
     });
-  }, [tasks, activeTab, searchTerm, tenantSettings]);
+  }, [tasks, activeTab, searchTerm, tenantSettings, categoryFilter]);
 
   // Scroll to the backlog grid section after marking done
   const scrollToTask = (taskId) => {
@@ -294,10 +341,36 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     setIsModalOpen(true);
   };
 
-  const handleSendWhatsApp = () => {
+  const handleSendWhatsApp = async () => {
     if (!selectedTask) return;
-    window.open(`https://wa.me/${selectedTask.doerId.whatsappNumber}?text=${encodeURIComponent(customMessage)}`, '_blank');
-    setIsModalOpen(false);
+    setIsSendingWA(true);
+    try {
+      const coordinatorName = savedUser?.name || 'Coordinator';
+      const hostname = window.location.hostname;
+      const loginLink = hostname.includes('localhost')
+        ? `http://${hostname}:5173/login`
+        : `https://${hostname}/login`;
+
+      await API.post('/tenants/send-whatsapp-reminder', {
+        templateName: 'coordinator_manual_reminder',
+        toPhone: selectedTask.doerId?.whatsappNumber,
+        variables: [
+          selectedTask.doerId?.name || 'Team Member',  // {{1}} employee name
+          selectedTask.title || 'Task',                  // {{2}} task/work name
+          coordinatorName,                               // {{3}} coordinator name
+          customMessage,                                 // {{4}} custom message
+          loginLink,                                     // {{5}} login link
+        ],
+      });
+      alert('✅ WhatsApp reminder sent to ' + (selectedTask.doerId?.name || 'team member') + '!');
+      setIsModalOpen(false);
+      setCustomMessage('');
+    } catch (err) {
+      console.error('WhatsApp send error:', err);
+      alert('❌ Failed to send: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSendingWA(false);
+    }
   };
 
   if (loading) return (
@@ -311,7 +384,11 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
   /*
   const pendingCount = tasks.filter(t => (t.status === 'Pending' || t.status === 'Active') && (t.taskType !== 'Checklist' || getPendingInstances(t).length > 0)).length;
-  const completedCount = tasks.filter(t => t.status === 'Completed' || t.status === 'Verified').length;
+  const completedCount = tasks.filter(t =>
+    t.taskType === 'Checklist'
+      ? getPendingInstances(t).length === 0
+      : t.status === 'Completed' || t.status === 'Verified' || t.status === 'completed' || t.status === 'done'
+  ).length;
 
 
   */
@@ -375,6 +452,23 @@ const completedCount = filteredTasks.filter(
 
       {/* FILTER TABS */}
       <div className="flex flex-wrap gap-2 mb-8 bg-card/50 p-2.5 rounded-[2rem] border border-border w-fit">
+        {/* Category filter */}
+        <div className="flex gap-2 mb-3">
+          {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
+            <button key={cat} onClick={() => setCategoryFilter(cat)}
+              className={`px-4 py-1.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${
+                categoryFilter === cat
+                  ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
+                  : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
+                  : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
+                  : 'bg-primary text-white border-primary'
+                  : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
+              }`}>
+              {cat === 'All' ? '🔍 All' : cat === 'Delegation' ? '📋 Delegation' : cat === 'Checklist' ? '✅ Checklist' : '🔀 FMS'}
+            </button>
+          ))}
+        </div>
+
         {['Pending', 'Upcoming', 'Completed'].map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${activeTab === tab ? 'bg-primary text-white shadow-lg scale-105' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>{tab}</button>
         ))}
@@ -390,10 +484,11 @@ const completedCount = filteredTasks.filter(
               <tr className=" bg-background/50 border-b border-border">
                 <th className=" w-[60px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
                 <th className=" w-[180px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
-                <th className=" w-[160px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Personnel</th>
+                <th className=" w-[160px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned To</th>
+                <th className=" w-[160px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned By</th>
                 <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
                 <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
-                <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Ledger State</th>
+                <th className=" w-[140px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
                 <th className=" w-[150px] px-8 py-6  text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
               </tr>
             </thead>
@@ -408,7 +503,12 @@ const completedCount = filteredTasks.filter(
                   <React.Fragment key={task._id}>
                     <tr className="hover:bg-primary/[0.02] transition-all group">
                       <td className="px-4 py-3 min-w-0 break-words">
-                        <div className={`p-2 rounded-xl w-fit ${isChecklist ? 'bg-amber-500/10 text-amber-600' : 'bg-sky-500/10 text-sky-600'}`}>{isChecklist ? 'CHK': 'DLG'}</div>
+                        <div className={`p-2 rounded-xl w-fit text-[10px] font-black ${
+                          task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
+                          task.taskType === 'FMS' ? 'bg-purple-500/10 text-purple-600' :
+                          'bg-sky-500/10 text-sky-600'}`}>
+                          {task.taskType === 'Checklist' ? 'CHK' : task.taskType === 'FMS' ? 'FMS' : 'DLG'}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="relative group max-w-[180px]">
@@ -431,8 +531,22 @@ const completedCount = filteredTasks.filter(
                            <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-600">
+                          <UserCheck size={12} className="text-emerald-500" />
+                          {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.assignerId?.name || '—')}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 min-w-0 break-words text-center"><div className="inline-flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-primary font-black text-[11px] font-mono shadow-inner"><Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}</div></td>
-                      <td className="px-4 py-3 min-w-0 break-words"><div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]"><Clock size={14} className="text-primary/40" /> {task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'}</div></td>
+                      <td className="px-4 py-3 min-w-0 break-words"><div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]"><Clock size={14} className="text-primary/40" /> {
+                        task.taskType === 'Checklist'
+                          ? (() => {
+                              const pending = getPendingInstances(task);
+                              const next = pending[0]?.date || task.nextDueDate;
+                              return next ? new Date(next).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A';
+                            })()
+                          : task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'
+                      }</div></td>
                       <td className="px-4 py-3 min-w-0 break-words"><span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>{isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}</span></td>
                       <td className="px-4 py-3 min-w-0 break-words">
                         <div className="flex flex-wrap justify-end items-center gap-2 max-w-[220px] ml-auto">
@@ -446,7 +560,7 @@ const completedCount = filteredTasks.filter(
 
                    {isExpanded && instances.length > 0 && (
   <tr>
-    <td colSpan="7" className="px-4 py-3 bg-background/50 border-y border-border/10">
+    <td colSpan="8" className="px-4 py-3 bg-background/50 border-y border-border/10">
 
       <div className="space-y-3">
 

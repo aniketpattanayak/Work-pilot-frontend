@@ -26,7 +26,7 @@ function TaskCard({ task, onComplete, openThread }) {
   const [error, setError]     = useState('');
   const [expanded, setExp]    = useState(true);
 
-  const { activeStep, nodeConfig, rawSheetData, orderIdentifier, templateName, isOverdue, instanceId } = task;
+  const { activeStep, nodeConfig, rawSheetData, orderIdentifier, templateName, isOverdue, instanceId, visibleCollectedData } = task;
   const timer = countdown(activeStep?.plannedDeadline);
   const isYesNo = nodeConfig?.type === 'yesno';
   const isInput = nodeConfig?.type === 'input';
@@ -156,6 +156,31 @@ function TaskCard({ task, onComplete, openThread }) {
           {error && (
             <div className="flex items-center gap-2 text-[11px] text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
               <AlertCircle size={12} className="flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          {/* Collected data from previous steps shared with this step */}
+          {visibleCollectedData?.length > 0 && (
+            <div style={{ marginBottom:10, padding:'10px 14px', background:'#F0F9FF',
+              borderRadius:10, border:'1px solid #BAE6FD' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#0369A1', marginBottom:8,
+                display:'flex', alignItems:'center', gap:5 }}>
+                📋 Info from previous steps
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                {visibleCollectedData.map((item, i) => (
+                  <div key={i} style={{ display:'flex', flexDirection:'column', gap:1 }}>
+                    <div style={{ fontSize:10, color:'#0369A1', fontWeight:600 }}>
+                      {item.fromStep} → {item.fieldLabel}
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#0C4A6E',
+                      background:'white', padding:'4px 10px', borderRadius:6,
+                      border:'1px solid #BAE6FD' }}>
+                      {item.value}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

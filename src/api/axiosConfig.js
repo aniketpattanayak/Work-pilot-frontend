@@ -30,32 +30,22 @@ API.interceptors.response.use(
     const path   = window.location.pathname;
     const isSuperAdmin = localStorage.getItem('isSuperAdmin') === 'true';
 
-    // 401 handling
+    // 401 handling — clear token and redirect, never reload (reload causes blink loop)
     if (status === 401) {
-      // SuperAdmin pages: just clear the token and reload once — don't redirect to /
-      if (isSuperAdmin || path === '/') {
-        if (!redirecting) {
-          redirecting = true;
-          localStorage.removeItem('token');
-          localStorage.removeItem('isSuperAdmin');
-          localStorage.removeItem('user');
-          setTimeout(() => {
-            redirecting = false;
-            window.location.reload();
-          }, 300);
-        }
-        return Promise.reject(error);
-      }
-
-      // Regular users: redirect to login
-      if (!['/login', '/suspended'].includes(path)) {
+      if (!redirecting) {
         redirecting = true;
+        // Clear all auth data
         localStorage.removeItem('token');
+        localStorage.removeItem('isSuperAdmin');
+        localStorage.removeItem('user');
+        localStorage.removeItem('tenantId');
         setTimeout(() => {
           redirecting = false;
-          window.location.href = '/';
+          // SuperAdmin goes to root (shows login), regular users go to /login
+          window.location.href = isSuperAdmin ? '/' : '/login';
         }, 300);
       }
+      return Promise.reject(error);
     }
 
     // Subscription paused

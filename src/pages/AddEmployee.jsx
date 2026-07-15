@@ -205,27 +205,29 @@ const AddEmployee = ({
         {/*<div className=" bg-transparent shadow-none border-none w-full">*/}
           {/* bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500 */}
 
-      <div className="px-4 py-4 sm:px-6 sm:py-5 bg-primary/5 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-primary m-0 flex items-center gap-3 text-base sm:text-lg font-black tracking-tighter uppercase leading-tight">
-            <UserPlus size={24} className="sm:w-7 sm:h-7" />{" "}
-            {isEditing
-              ? `Modify: ${formData.name}`
-              : "Add New Employees "}
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-[9px] sm:text-xs font-medium uppercase tracking-tight opacity-80">
-            Configure authentication, company roles and organizational reporting lines
-          </p>
+      <div className="px-4 py-4 sm:px-6 sm:py-5 bg-primary/5 border-b border-border">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h2 className="text-primary m-0 flex items-center gap-3 text-base sm:text-lg font-black tracking-tighter uppercase leading-tight">
+              <UserPlus size={24} className="sm:w-7 sm:h-7 shrink-0" />{" "}
+              {isEditing
+                ? `Modify: ${formData.name}`
+                : "Add New Employees "}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-[9px] sm:text-xs font-medium uppercase tracking-tight opacity-80">
+              Configure authentication, company roles and organizational reporting lines
+            </p>
+          </div>
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => setShowBulk(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-card text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all shrink-0 whitespace-nowrap mr-10 sm:mr-12"
+            >
+              <Upload size={14} /> Bulk Upload
+            </button>
+          )}
         </div>
-        {!isEditing && (
-          <button
-            type="button"
-            onClick={() => setShowBulk(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary/30 bg-card text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all shrink-0"
-          >
-            <Upload size={14} /> Bulk Upload
-          </button>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 flex flex-col gap-5">
@@ -480,6 +482,7 @@ const AddEmployee = ({
       {showBulk && (
         <BulkUpload
           tenantId={tenantId}
+          mode="employees"
           onClose={() => setShowBulk(false)}
           onSuccess={() => {
             setShowBulk(false);

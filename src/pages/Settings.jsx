@@ -193,7 +193,7 @@ const Settings = ({ tenantId }) => {
       formData.append('companyName', branding.companyName);
       if (selectedLogo) formData.append('logo', selectedLogo);
 
-      await API.put('/superadmin/update-branding', formData, {
+      await API.put('/tasks/update-branding', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -232,7 +232,7 @@ const Settings = ({ tenantId }) => {
     try {
       setSaving(true);
       // SENDING WEEKENDS ARRAY TO SERVER
-      const response = await API.put('/superadmin/update-settings', {
+      const response = await API.put('/tasks/update-settings', {
         tenantId: currentTenantId,
         officeHours: hours,
         weekends: weekends, 

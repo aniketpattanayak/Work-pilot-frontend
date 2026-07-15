@@ -91,7 +91,7 @@ const CoordinatorMapping = ({ tenantId }) => {
     if (!selectedSupervisor) return alert("Identify a Supervisor node first.");
     setSaving(true);
     try {
-      await API.put('/superadmin/update-mapping', {
+      await API.put('/tasks/update-mapping', {
         employeeId: selectedSupervisor,
         targetIds: selectedTargets,
         mappingType: 'managedDoers' 

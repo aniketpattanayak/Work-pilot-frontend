@@ -40,19 +40,21 @@ function parseCSV(text) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function BulkUpload({ tenantId, onClose, onSuccess }) {
-  const [tab,     setTab]     = useState('employees');
+export default function BulkUpload({ tenantId, onClose, onSuccess, mode = 'all' }) {
+  const ALL_TABS = [
+    { id: 'employees', label: 'Employees',        icon: Users,        headers: EMPLOYEE_HEADERS,  sample: EMPLOYEE_SAMPLE,  file: 'employees_template.csv'  },
+    { id: 'tasks',     label: 'Delegation Tasks',  icon: CheckSquare,  headers: TASK_HEADERS,      sample: TASK_SAMPLE,      file: 'tasks_template.csv'      },
+    { id: 'checklist', label: 'Checklist Tasks',   icon: ClipboardList,headers: CHECKLIST_HEADERS, sample: CHECKLIST_SAMPLE, file: 'checklist_template.csv'  },
+  ];
+
+  const TABS = mode === 'all' ? ALL_TABS : ALL_TABS.filter(t => t.id === mode);
+
+  const [tab,     setTab]     = useState(TABS[0].id);
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(false);
   const [result,  setResult]  = useState(null);
   const [error,   setError]   = useState('');
   const fileRef = useRef();
-
-  const TABS = [
-    { id: 'employees', label: 'Employees',        icon: Users,        headers: EMPLOYEE_HEADERS,  sample: EMPLOYEE_SAMPLE,  file: 'employees_template.csv'  },
-    { id: 'tasks',     label: 'Delegation Tasks',  icon: CheckSquare,  headers: TASK_HEADERS,      sample: TASK_SAMPLE,      file: 'tasks_template.csv'      },
-    { id: 'checklist', label: 'Checklist Tasks',   icon: ClipboardList,headers: CHECKLIST_HEADERS, sample: CHECKLIST_SAMPLE, file: 'checklist_template.csv'  },
-  ];
 
   const activeTab = TABS.find(t => t.id === tab);
 
@@ -106,6 +108,7 @@ export default function BulkUpload({ tenantId, onClose, onSuccess }) {
         </div>
 
         {/* Tabs */}
+        {TABS.length > 1 && (
         <div style={{ display:'flex', borderBottom:'1px solid var(--color-border)', padding:'0 24px' }}>
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={()=>{ setTab(id); setRows([]); setResult(null); setError(''); }}
@@ -118,6 +121,7 @@ export default function BulkUpload({ tenantId, onClose, onSuccess }) {
             </button>
           ))}
         </div>
+        )}
 
         {/* Body */}
         <div style={{ flex:1, overflowY:'auto', padding:'20px 24px' }}>
