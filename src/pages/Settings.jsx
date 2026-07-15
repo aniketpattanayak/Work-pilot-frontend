@@ -197,7 +197,7 @@ const Settings = ({ tenantId }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      alert("Success: Factory Identity updated.");
+      alert("Success: Factory Identity updated."); setTimeout(() => window.location.reload(), 500);
       fetchSettings();
     } catch (err) {
       alert("Error: " + (err.response?.data?.message || err.message));
