@@ -34,7 +34,7 @@ import RevisionPanel from '../components/RevisionPanel';
  */
 const ReviewMeeting = ({ tenantId }) => {
   const [viewType, setViewType] = useState('All'); 
-  const [taskCategory, setTaskCategory] = useState('All'); 
+  const [taskCategory, setTaskCategory] = useState('All'); // All | Checklist | Delegation | FMS
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +168,7 @@ const ReviewMeeting = ({ tenantId }) => {
             lateTarget: item.weeklyLateTarget || 20,
             checklist: { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 },
             delegation: { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 },
+            fms: { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 },
             history: [] 
           };
         }
@@ -175,9 +176,10 @@ const ReviewMeeting = ({ tenantId }) => {
           period: item.periodName || "Current",
           dates: { start: item.periodStart, end: item.periodEnd },
           checklist: item.checklist || { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 },
-          delegation: item.delegation || { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 }
+          delegation: item.delegation || { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 },
+          fms: item.fms || { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 }
         });
-        ['checklist', 'delegation'].forEach(key => {
+        ['checklist', 'delegation', 'fms'].forEach(key => {
           if (item[key]) {
             personnelMap[name][key].total += item[key].total || 0;
             personnelMap[name][key].done += item[key].done || 0;
@@ -193,6 +195,7 @@ const ReviewMeeting = ({ tenantId }) => {
       p.history.sort((a, b) => b.period.localeCompare(a.period));
       if (taskCategory === 'All' || taskCategory === 'Checklist') finalSummaryList.push({ rowId: `${p.name}-chk`, type: 'Checklist', ...p, ...p.checklist });
       if (taskCategory === 'All' || taskCategory === 'Delegation') finalSummaryList.push({ rowId: `${p.name}-del`, type: 'Delegation', ...p, ...p.delegation });
+      if (taskCategory === 'All' || taskCategory === 'FMS') finalSummaryList.push({ rowId: `${p.name}-fms`, type: 'FMS', ...p, ...p.fms });
     });
     return finalSummaryList;
   }, [reportData, searchTerm, taskCategory]);
@@ -327,7 +330,7 @@ const auditStats = useMemo(() => {
             <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
           <div className="flex bg-card p-1 rounded-2xl border-2 border-border shadow-inner">
-             {['All', 'Delegation', 'Checklist'].map(cat => (
+             {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
                <button key={cat} onClick={() => setTaskCategory(cat)} className={`flex-1 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${taskCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-foreground'}`}>{cat}</button>
              ))}
           </div>
