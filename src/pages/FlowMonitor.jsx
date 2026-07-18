@@ -146,7 +146,7 @@ function HistoryModal({ instance, template, onClose }) {
 export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [instances, setInstances]   = useState([]);
   const [templates, setTemplates]   = useState([]);
-  const [activeTab, setActiveTab]   = useState('monitor'); // 'monitor' | 'flows'
+  const [activeTab, setActiveTab]   = useState('monitor'); // 'monitor' | 'flows' | 'global'
   const [deletingId, setDeletingId] = useState(null);
   const [stats, setStats]           = useState({ active: 0, onTrack: 0, overdue: 0, completed: 0 });
   const [loading, setLoading]       = useState(false);
@@ -154,18 +154,26 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [statusFilter, setStatusFilter] = useState('active');
   const [templateFilter, setTemplateFilter] = useState('');
   const [selected, setSelected]     = useState(null); // { instance, template }
+  const [globalInst, setGlobalInst] = useState(null); // for global detail view
+  const [allInstances, setAllInstances] = useState([]); // all statuses for global view
+  const [gSearch, setGSearch]           = useState('');
+  const [gStatus, setGStatus]           = useState('all'); // all | active | delayed | ontime | completed
+  const [gFlow,   setGFlow]             = useState('');    // template name filter
+  const [gAssign, setGAssign]           = useState('');    // assigned to filter
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
 
   const fetchAll = useCallback(async () => {
     if (!tenantId) return;
     setLoading(true);
     try {
-      const [instRes, statsRes, tmplRes] = await Promise.all([
+      const [instRes, statsRes, tmplRes, allInstRes] = await Promise.all([
         API.get(`/fms2/instances/${tenantId}`, { params: { status: statusFilter, templateId: templateFilter || undefined } }),
         API.get(`/fms2/monitor-stats/${tenantId}`),
         API.get(`/fms2/templates/${tenantId}`),
+        API.get(`/fms2/instances/${tenantId}`, { params: { status: 'all', limit: 200 } }),
       ]);
       setInstances(instRes.data?.instances || []);
+      setAllInstances(allInstRes.data?.instances || []);
       setPagination(instRes.data?.pagination || {});
       setStats(statsRes.data || {});
       setTemplates(tmplRes.data || []);
@@ -233,7 +241,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
 
         {/* ── TABS ── */}
         <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-          {[['monitor','📊 Live Orders'], ['flows','🔀 Manage Flows']].map(([id, label]) => (
+          {[['monitor','📊 Live Orders'], ['flows','🔀 Manage Flows'], ['global','🌐 Global View']].map(([id, label]) => (
             <button key={id} onClick={() => setActiveTab(id)}
               style={{ padding:'7px 18px', fontSize:12, fontWeight:600, borderRadius:8, border:'1px solid var(--color-border)', cursor:'pointer', background: activeTab===id ? 'var(--color-primary)' : 'var(--color-card)', color: activeTab===id ? 'white' : 'var(--color-muted-foreground)', transition:'all .15s' }}>
               {label}
@@ -411,6 +419,228 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
         )}
 
       </> /* end monitor tab */}
+
+      {/* ── GLOBAL VIEW TAB ─────────────────────────────────────── */}
+      {activeTab === 'global' && (
+        <div style={{ padding: '0 0 32px' }}>
+          {/* Summary cards */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:24 }}>
+            {[
+              { label:'Total Orders', value: allInstances.length, color:'#185FA5' },
+              { label:'Active', value: allInstances.filter(i=>i.status==='active').length, color:'#0369A1' },
+              { label:'Delayed', value: allInstances.filter(i=>i.status==='active'&&i.isOverdue).length, color:'#B91C1C' },
+              { label:'On Time', value: allInstances.filter(i=>i.status==='active'&&!i.isOverdue).length, color:'#059669' },
+              { label:'Completed', value: allInstances.filter(i=>i.status==='completed').length, color:'#7C3AED' },
+            ].map(card => (
+              <div key={card.label} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'16px 20px' }}>
+                <div style={{ fontSize:11, color:'var(--color-muted-foreground)', fontWeight:600, marginBottom:6 }}>{card.label}</div>
+                <div style={{ fontSize:28, fontWeight:800, color:card.color }}>{card.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Filter bar */}
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:20, alignItems:'center', background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'12px 16px' }}>
+            {/* Search */}
+            <input placeholder="🔍 Search order, customer, assignee..." value={gSearch} onChange={e=>setGSearch(e.target.value)}
+              style={{ flex:2, minWidth:200, padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, outline:'none' }} />
+            {/* Status */}
+            <select value={gStatus} onChange={e=>setGStatus(e.target.value)}
+              style={{ padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, cursor:'pointer' }}>
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="ontime">On Time</option>
+              <option value="delayed">Delayed</option>
+              <option value="completed">Completed</option>
+            </select>
+            {/* Flow */}
+            <select value={gFlow} onChange={e=>setGFlow(e.target.value)}
+              style={{ padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, cursor:'pointer' }}>
+              <option value="">All Flows</option>
+              {templates.map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
+            </select>
+            {/* Assignee search */}
+            <input placeholder="👤 Assignee name..." value={gAssign} onChange={e=>setGAssign(e.target.value)}
+              style={{ flex:1, minWidth:150, padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, outline:'none' }} />
+            {/* Clear */}
+            {(gSearch||gStatus!=='all'||gFlow||gAssign) && (
+              <button onClick={()=>{setGSearch('');setGStatus('all');setGFlow('');setGAssign('');}}
+                style={{ padding:'8px 14px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)', color:'var(--color-muted-foreground)', fontSize:12, cursor:'pointer' }}>
+                ✕ Clear
+              </button>
+            )}
+            <span style={{ fontSize:11, color:'var(--color-muted-foreground)', marginLeft:'auto' }}>{allInstances.filter(inst => { if(gSearch){const q=gSearch.toLowerCase();if(!inst.orderIdentifier?.toLowerCase().includes(q)&&!inst.activeStep?.assignedToName?.toLowerCase().includes(q))return false;} if(gStatus==='active'&&inst.status!=='active')return false; if(gStatus==='delayed'&&!(inst.status==='active'&&inst.isOverdue))return false; if(gStatus==='ontime'&&!(inst.status==='active'&&!inst.isOverdue))return false; if(gStatus==='completed'&&inst.status!=='completed')return false; if(gFlow&&inst.templateName!==gFlow)return false; return true; }).length} orders</span>
+          </div>
+
+          {/* Per-flow breakdown */}
+          <div style={{ marginBottom:24 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'var(--color-foreground)', marginBottom:12 }}>📋 Per Flow Breakdown</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:12 }}>
+              {templates.map(t => {
+                const flowInsts = allInstances.filter(i => i.templateId?.toString() === t._id?.toString() || i.templateName === t.name);
+                const active = flowInsts.filter(i=>i.status==='active').length;
+                const delayed = flowInsts.filter(i=>i.status==='active'&&i.isOverdue).length;
+                const completed = flowInsts.filter(i=>i.status==='completed').length;
+                return (
+                  <div key={t._id} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:16 }}>
+                    <div style={{ fontWeight:700, fontSize:14, marginBottom:8 }}>{t.name}</div>
+                    <div style={{ display:'flex', gap:16, fontSize:12 }}>
+                      <span style={{ color:'#0369A1' }}>Active: <b>{active}</b></span>
+                      <span style={{ color:'#B91C1C' }}>Delayed: <b>{delayed}</b></span>
+                      <span style={{ color:'#059669' }}>Done: <b>{completed}</b></span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* All instances table */}
+          <div style={{ fontSize:13, fontWeight:700, color:'var(--color-foreground)', marginBottom:12 }}>📦 All Orders — Full History</div>
+          <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, overflow:'hidden' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead>
+                <tr style={{ background:'var(--color-muted)' }}>
+                  {['Order ID','Flow','Current Step','Assigned To','Steps Done','Status','Deadline','Actions'].map(h => (
+                    <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontWeight:700, fontSize:10, color:'var(--color-muted-foreground)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--color-border)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {allInstances.filter(inst => {
+                  if (gSearch) { const q=gSearch.toLowerCase(); if (!inst.orderIdentifier?.toLowerCase().includes(q) && !inst.activeStep?.assignedToName?.toLowerCase().includes(q) && !Object.values(inst.rawSheetData||{}).some(v=>String(v).toLowerCase().includes(q))) return false; }
+                  if (gStatus==='active' && inst.status!=='active') return false;
+                  if (gStatus==='delayed' && !(inst.status==='active'&&inst.isOverdue)) return false;
+                  if (gStatus==='ontime' && !(inst.status==='active'&&!inst.isOverdue)) return false;
+                  if (gStatus==='completed' && inst.status!=='completed') return false;
+                  if (gFlow && inst.templateName!==gFlow) return false;
+                  if (gAssign && !inst.activeStep?.assignedToName?.toLowerCase().includes(gAssign.toLowerCase())) return false;
+                  return true;
+                }).map((inst, idx) => {
+                  const tmpl = templates.find(t => t._id?.toString() === inst.templateId?.toString() || t.name === inst.templateName);
+                  const totalSteps = tmpl?.nodes?.filter(n=>n.type!=='start'&&n.type!=='end').length || 0;
+                  const doneSteps = inst.nodeHistory?.length || 0;
+                  const isDone = inst.status === 'completed';
+                  const isDelayed = inst.status === 'active' && inst.isOverdue;
+                  return (
+                    <tr key={inst._id} style={{ borderBottom:'1px solid var(--color-border)', background: idx%2===0?'var(--color-card)':'var(--color-muted)' }}>
+                      <td style={{ padding:'10px 14px', fontWeight:700 }}>{inst.orderIdentifier}</td>
+                      <td style={{ padding:'10px 14px', color:'var(--color-muted-foreground)' }}>{inst.templateName}</td>
+                      <td style={{ padding:'10px 14px' }}>{isDone ? '✅ Completed' : (inst.activeStep?.nodeName || '—')}</td>
+                      <td style={{ padding:'10px 14px' }}>{isDone ? '—' : (inst.activeStep?.assignedToName || '—')}</td>
+                      <td style={{ padding:'10px 14px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                          <div style={{ flex:1, height:6, background:'var(--color-border)', borderRadius:3, overflow:'hidden' }}>
+                            <div style={{ height:'100%', background: isDone?'#059669':isDelayed?'#B91C1C':'#185FA5', width:`${totalSteps>0?Math.round((doneSteps/totalSteps)*100):0}%`, borderRadius:3 }}/>
+                          </div>
+                          <span style={{ fontSize:10, color:'var(--color-muted-foreground)', whiteSpace:'nowrap' }}>{doneSteps}/{totalSteps}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding:'10px 14px' }}>
+                        <span style={{ padding:'2px 8px', borderRadius:6, fontSize:10, fontWeight:700,
+                          background: isDone?'#ECFDF3':isDelayed?'#FEF2F2':'#EFF6FF',
+                          color: isDone?'#059669':isDelayed?'#B91C1C':'#185FA5' }}>
+                          {isDone?'Done':isDelayed?'Delayed':'Active'}
+                        </span>
+                      </td>
+                      <td style={{ padding:'10px 14px', color:'var(--color-muted-foreground)', fontSize:11 }}>
+                        {isDone ? fmt(inst.completedAt) : fmt(inst.activeStep?.plannedDeadline)}
+                      </td>
+                      <td style={{ padding:'10px 14px' }}>
+                        <button onClick={() => setGlobalInst(inst)}
+                          style={{ padding:'4px 10px', border:'1px solid var(--color-border)', borderRadius:6, background:'var(--color-card)', cursor:'pointer', fontSize:11, color:'var(--color-foreground)' }}>
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Global detail modal */}
+      {globalInst && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          onClick={e => e.target===e.currentTarget && setGlobalInst(null)}>
+          <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:16, width:'100%', maxWidth:700, maxHeight:'90vh', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            {/* Header */}
+            <div style={{ padding:'18px 22px', borderBottom:'1px solid var(--color-border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div>
+                <div style={{ fontWeight:800, fontSize:16 }}>{globalInst.orderIdentifier}</div>
+                <div style={{ fontSize:12, color:'var(--color-muted-foreground)', marginTop:2 }}>{globalInst.templateName} · {globalInst.nodeHistory?.length||0} steps completed</div>
+              </div>
+              <button onClick={() => setGlobalInst(null)} style={{ border:'none', background:'none', cursor:'pointer', fontSize:20, color:'var(--color-muted-foreground)' }}>✕</button>
+            </div>
+            <div style={{ overflowY:'auto', padding:22, display:'flex', flexDirection:'column', gap:20 }}>
+
+              {/* Sheet data */}
+              {globalInst.rawSheetData && Object.keys(globalInst.rawSheetData).length > 0 && (
+                <div>
+                  <div style={{ fontSize:11, fontWeight:700, color:'var(--color-muted-foreground)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>📄 Order Data</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))', gap:8 }}>
+                    {Object.entries(globalInst.rawSheetData).filter(([,v])=>v!=='').map(([k,v]) => (
+                      <div key={k} style={{ background:'var(--color-muted)', borderRadius:8, padding:'8px 12px' }}>
+                        <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginBottom:3 }}>{k}</div>
+                        <div style={{ fontSize:12, fontWeight:600, color:'var(--color-foreground)' }}>{String(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step timeline */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--color-muted-foreground)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>🔄 Step Timeline</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {/* Completed steps */}
+                  {(globalInst.nodeHistory||[]).map((h, i) => (
+                    <div key={i} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#ECFDF3', border:'2px solid #059669', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11, fontWeight:700, color:'#059669' }}>{i+1}</div>
+                      <div style={{ flex:1, background:'var(--color-muted)', borderRadius:10, padding:'10px 14px' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                          <div style={{ fontWeight:700, fontSize:13 }}>{h.nodeName}</div>
+                          <span style={{ fontSize:10, padding:'2px 7px', borderRadius:4, background: h.onTime?'#ECFDF3':'#FEF2F2', color: h.onTime?'#059669':'#B91C1C', fontWeight:700 }}>{h.onTime?'On Time':'Late'}</span>
+                        </div>
+                        <div style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>
+                          By: <b>{h.assignedToName}</b> · Done: {fmt(h.completedAt)}
+                          {h.inputs && Object.keys(h.inputs).length>0 && (
+                            <span> · Collected: {Object.entries(h.inputs).map(([k,v])=>`${k}: ${v}`).join(', ')}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Current active step */}
+                  {globalInst.status === 'active' && globalInst.activeStep && (
+                    <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#EFF6FF', border:'2px solid #185FA5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11, fontWeight:700, color:'#185FA5' }}>▶</div>
+                      <div style={{ flex:1, background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10, padding:'10px 14px' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                          <div style={{ fontWeight:700, fontSize:13, color:'#185FA5' }}>{globalInst.activeStep.nodeName} (Current)</div>
+                          <span style={{ fontSize:10, padding:'2px 7px', borderRadius:4, background: globalInst.isOverdue?'#FEF2F2':'#EFF6FF', color: globalInst.isOverdue?'#B91C1C':'#185FA5', fontWeight:700 }}>{globalInst.isOverdue?'Delayed':'Active'}</span>
+                        </div>
+                        <div style={{ fontSize:11, color:'#185FA5' }}>
+                          Assigned to: <b>{globalInst.activeStep.assignedToName}</b> · Deadline: {fmt(globalInst.activeStep.plannedDeadline)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Completed */}
+                  {globalInst.status === 'completed' && (
+                    <div style={{ display:'flex', gap:12, alignItems:'center' }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:'#059669', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14 }}>✓</div>
+                      <div style={{ fontWeight:700, fontSize:13, color:'#059669' }}>Flow completed · {fmt(globalInst.completedAt)}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History modal */}
       {selected && (
