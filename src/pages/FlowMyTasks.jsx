@@ -21,10 +21,10 @@ function countdown(deadline) {
 
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
 function TaskCard({ task, onComplete, openThread }) {
-  const [values, setValues]   = useState({});
-  const [submitting, setSub]  = useState(false);
-  const [error, setError]     = useState('');
-  const [expanded, setExp]    = useState(true);
+  const [values, setValues] = useState({});
+  const [submitting, setSub] = useState(false);
+  const [error, setError] = useState('');
+  const [expanded, setExp] = useState(true);
 
   const { activeStep, nodeConfig, rawSheetData, orderIdentifier, templateName, isOverdue, instanceId, visibleCollectedData } = task;
   const timer = countdown(activeStep?.plannedDeadline);
@@ -161,21 +161,27 @@ function TaskCard({ task, onComplete, openThread }) {
 
           {/* Collected data from previous steps shared with this step */}
           {visibleCollectedData?.length > 0 && (
-            <div style={{ marginBottom:10, padding:'10px 14px', background:'#F0F9FF',
-              borderRadius:10, border:'1px solid #BAE6FD' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#0369A1', marginBottom:8,
-                display:'flex', alignItems:'center', gap:5 }}>
+            <div style={{
+              marginBottom: 10, padding: '10px 14px', background: '#F0F9FF',
+              borderRadius: 10, border: '1px solid #BAE6FD'
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: '#0369A1', marginBottom: 8,
+                display: 'flex', alignItems: 'center', gap: 5
+              }}>
                 📋 Info from previous steps
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {visibleCollectedData.map((item, i) => (
-                  <div key={i} style={{ display:'flex', flexDirection:'column', gap:1 }}>
-                    <div style={{ fontSize:10, color:'#0369A1', fontWeight:600 }}>
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <div style={{ fontSize: 10, color: '#0369A1', fontWeight: 600 }}>
                       {item.fromStep} → {item.fieldLabel}
                     </div>
-                    <div style={{ fontSize:13, fontWeight:600, color:'#0C4A6E',
-                      background:'white', padding:'4px 10px', borderRadius:6,
-                      border:'1px solid #BAE6FD' }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 600, color: '#0C4A6E',
+                      background: 'white', padding: '4px 10px', borderRadius: 6,
+                      border: '1px solid #BAE6FD'
+                    }}>
                       {item.value}
                     </div>
                   </div>
@@ -187,18 +193,20 @@ function TaskCard({ task, onComplete, openThread }) {
           {/* Chat thread button */}
           <button
             onClick={() => openThread && openThread({
-              taskId:    task.instanceId,
-              taskType:  'flow',
+              taskId: task.instanceId,
+              taskType: 'flow',
               taskTitle: `${task.orderIdentifier} — ${task.activeStep?.nodeName || 'Step'}`,
               participants: [],
             })}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px',
-              border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)',
-              fontSize:12, fontWeight:500, color:'var(--color-muted-foreground)', cursor:'pointer',
-              marginBottom:8, transition:'all .12s' }}
-            onMouseEnter={e=>{ e.currentTarget.style.borderColor='#185FA5'; e.currentTarget.style.color='#185FA5'; }}
-            onMouseLeave={e=>{ e.currentTarget.style.borderColor='var(--color-border)'; e.currentTarget.style.color='var(--color-muted-foreground)'; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px',
+              border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-card)',
+              fontSize: 12, fontWeight: 500, color: 'var(--color-muted-foreground)', cursor: 'pointer',
+              marginBottom: 8, transition: 'all .12s'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#185FA5'; e.currentTarget.style.color = '#185FA5'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-muted-foreground)'; }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
             💬 Comments
           </button>
 
@@ -230,9 +238,9 @@ function TaskCard({ task, onComplete, openThread }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function FlowMyTasks({ employeeId }) {
   const { openTaskThread } = useChat();
-  const [tasks, setTasks]     = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab]         = useState('pending');
+  const [tab, setTab] = useState('pending');
 
   const fetchTasks = useCallback(async () => {
     if (!employeeId) return;
@@ -253,8 +261,8 @@ export default function FlowMyTasks({ employeeId }) {
     return () => clearInterval(id);
   }, [fetchTasks]);
 
-  const pending   = tasks.filter(t => !t.isOverdue);
-  const overdue   = tasks.filter(t => t.isOverdue);
+  const pending = tasks.filter(t => !t.isOverdue);
+  const overdue = tasks.filter(t => t.isOverdue);
   const displayed = tab === 'overdue' ? overdue : tab === 'pending' ? pending : tasks;
 
   return (
@@ -277,7 +285,7 @@ export default function FlowMyTasks({ employeeId }) {
       {/* Tabs */}
       <div className="flex bg-muted p-1 rounded-xl gap-0.5 mb-5">
         {[
-          { key: 'all',     label: `All (${tasks.length})` },
+          { key: 'all', label: `All (${tasks.length})` },
           { key: 'overdue', label: `Overdue (${overdue.length})` },
           { key: 'pending', label: `On track (${pending.length})` },
         ].map(t => (

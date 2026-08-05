@@ -382,6 +382,20 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
 
       const savedTemplateId = res.data?.template?._id || res.data?._id;
 
+      // Edits now apply live to any active instances — warn (don't block) if
+      // some of them were sitting on a step this edit just removed.
+      const orphaned = res.data?.orphanedInstances || [];
+      if (orphaned.length > 0) {
+        alert(
+          `Flow updated and is now live for ${res.data.activeInstanceCount} active order(s).\n\n` +
+          `Heads up: ${orphaned.length} order(s) were on a step that no longer exists in the new flow ` +
+          `and need manual attention:\n` +
+          orphaned.map(o => `• ${o.orderIdentifier} (was on "${o.currentStep}")`).join('\n')
+        );
+      } else if (res.data?.activeInstanceCount > 0) {
+        alert(`Flow updated — now live for ${res.data.activeInstanceCount} active order(s).`);
+      }
+
       // If a form was linked, update the form's templateId — don't block deploy if this fails
       if (selectedFormId && savedTemplateId) {
         try {

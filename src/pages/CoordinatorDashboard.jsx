@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import API from '../api/axiosConfig';
-import { 
+import {
   ShieldCheck, Send, CheckCircle2, Clock, User, UserCheck, AlertCircle,
   RefreshCcw, MessageCircle, Zap, X, Phone, MessageSquare, Layers,
   ChevronRight, ClipboardList, Target, Calendar, Upload,
@@ -11,8 +11,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const [activeTab, setActiveTab] = useState('Pending'); 
-  const [searchTerm, setSearchTerm] = useState(""); 
+  const [activeTab, setActiveTab] = useState('Pending');
+  const [searchTerm, setSearchTerm] = useState("");
   const [tenantSettings, setTenantSettings] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -86,23 +86,22 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   };
 
   // ── Get FUTURE upcoming instances (for Upcoming tab) ─────────────────────────
-  // Skips holidays and weekends, respects frequency config
   const getUpcomingInstances = (task, fromDate, toDate) => {
     if (task.taskType !== 'Checklist' || !task.nextDueDate) return [];
     const weekends = tenantSettings?.weekends || [0];
     const holidays = tenantSettings?.holidays || [];
-    const config   = task.frequencyConfig || {};
+    const config = task.frequencyConfig || {};
 
     const isNonWorkingDay = (d) => {
       const str = d.toISOString().split('T')[0];
       return weekends.includes(d.getDay()) ||
-             holidays.some(h => new Date(h.date).toISOString().split('T')[0] === str);
+        holidays.some(h => new Date(h.date).toISOString().split('T')[0] === str);
     };
 
     const matchesConfig = (d) => {
-      if (task.frequency === 'Weekly')  return config.daysOfWeek?.includes(d.getDay());
+      if (task.frequency === 'Weekly') return config.daysOfWeek?.includes(d.getDay());
       if (task.frequency === 'Monthly') return config.daysOfMonth?.includes(d.getDate());
-      return true; // Daily and others
+      return true;
     };
 
     const historyKeys = (task.history || [])
@@ -222,7 +221,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   useEffect(() => {
     if (activeTab === 'Upcoming') {
       const from = new Date();
-      const to   = new Date();
+      const to = new Date();
       to.setDate(to.getDate() + 5);
       setDateFrom(from.toISOString().split('T')[0]);
       setDateTo(to.toISOString().split('T')[0]);
@@ -238,12 +237,11 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     const term = searchTerm.toLowerCase().trim();
 
     return tasks.filter(task => {
-      // isDone per task type
       const isDone =
         task.taskType === 'Checklist'
           ? getPendingInstances(task).length === 0
           : task.status === 'Completed' || task.status === 'Verified' ||
-            task.status === 'completed' || task.status === 'done';
+          task.status === 'completed' || task.status === 'done';
 
       const deadline = new Date(task.deadline || task.nextDueDate || Date.now());
       deadline.setHours(0, 0, 0, 0);
@@ -251,33 +249,29 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       let matchesTab = false;
 
       if (activeTab === 'Completed') {
-        // All 3 types that are done
         matchesTab = isDone;
-
       } else if (activeTab === 'Pending') {
         if (isDone) {
           matchesTab = false;
         } else if (task.taskType === 'FMS') {
-          matchesTab = !isDone; // FMS pending = all active steps (delayed + on time)
+          matchesTab = !isDone;
         } else if (task.taskType === 'Checklist') {
           const pending = getPendingInstances(task);
-          matchesTab = pending.some(p => new Date(p.date) <= today); // has overdue instances
+          matchesTab = pending.some(p => new Date(p.date) <= today);
         } else {
-          matchesTab = !isDone; // Delegation: all incomplete
+          matchesTab = !isDone;
         }
-
       } else if (activeTab === 'Upcoming') {
         if (isDone) {
           matchesTab = false;
         } else if (task.taskType === 'FMS') {
-          matchesTab = !task.isOverdue; // FMS upcoming = on time only, not overdue
+          matchesTab = !task.isOverdue;
         } else if (task.taskType === 'Checklist') {
           const from = dateFrom ? new Date(dateFrom) : today;
-          const to   = dateTo   ? new Date(dateTo)   : new Date(today.getTime() + 5 * 86400000);
+          const to = dateTo ? new Date(dateTo) : new Date(today.getTime() + 5 * 86400000);
           const upcoming = getUpcomingInstances(task, from, to);
           matchesTab = upcoming.length > 0;
         } else {
-          // Delegation: future deadline
           matchesTab = !isDone && deadline > today;
         }
       }
@@ -286,15 +280,34 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
       // Category filter
       if (categoryFilter === 'Delegation' && task.taskType !== 'Delegation') return false;
-      if (categoryFilter === 'Checklist'  && task.taskType !== 'Checklist')  return false;
-      if (categoryFilter === 'FMS'        && task.taskType !== 'FMS')        return false;
+      if (categoryFilter === 'Checklist' && task.taskType !== 'Checklist') return false;
+      if (categoryFilter === 'FMS' && task.taskType !== 'FMS') return false;
+
+      // Date Range Filter
+      if (dateFrom || dateTo) {
+        // Skip parent date filtering for checklists in Upcoming tab, since instances are generated dynamically
+        if (!(activeTab === 'Upcoming' && task.taskType === 'Checklist')) {
+          const taskDate = new Date(task.completedAt || task.deadline || task.nextDueDate || Date.now());
+          taskDate.setHours(0, 0, 0, 0);
+          if (dateFrom) {
+            const fDate = new Date(dateFrom);
+            fDate.setHours(0, 0, 0, 0);
+            if (taskDate < fDate) return false;
+          }
+          if (dateTo) {
+            const tDate = new Date(dateTo);
+            tDate.setHours(23, 59, 59, 999);
+            if (taskDate > tDate) return false;
+          }
+        }
+      }
 
       // Search filter
       if (term === "") return true;
       return (task.title || "").toLowerCase().includes(term) ||
-             (task.doerId?.name || "").toLowerCase().includes(term) ||
-             (task.assignerId?.name || "").toLowerCase().includes(term) ||
-             (task.doerId?.department || "").toLowerCase().includes(term);
+        (task.doerId?.name || "").toLowerCase().includes(term) ||
+        (task.assignerId?.name || "").toLowerCase().includes(term) ||
+        (task.doerId?.department || "").toLowerCase().includes(term);
     });
   }, [tasks, activeTab, searchTerm, tenantSettings, categoryFilter, dateFrom, dateTo]);
 
@@ -443,14 +456,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     }
   };
 
-  const pendingCount = filteredTasks.filter(
-    t => (t.status === 'Pending' || t.status === 'Active' || t.status === 'Overdue') &&
-         (t.taskType !== 'Checklist' || getPendingInstances(t).length > 0)
-  ).length;
-  const completedCount = filteredTasks.filter(
-    t => t.status === 'Completed' || t.status === 'Verified'
-  ).length;
-
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[400px] gap-6">
       <RefreshCcw className="animate-spin text-primary" size={40} />
@@ -482,39 +487,19 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         {searchTerm && <button onClick={() => setSearchTerm("")} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-red-500"><X size={20} /></button>}
       </div>
 
-      {/* STATS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-card p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 text-primary group-hover:scale-110 transition-transform"><Layers size={60} /></div>
-          <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Total Directives</span>
-          <div className="text-3xl md:text-4xl font-black text-foreground mt-2 tracking-tighter">{filteredTasks.length}</div>
-        </div>
-        <div className="bg-card p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:scale-110 transition-transform"><Clock size={60} /></div>
-          <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Pending Backlogs</span>
-          <div className="text-3xl md:text-4xl font-black text-red-600 mt-2 tracking-tighter">{pendingCount}</div>
-        </div>
-        <div className="bg-card p-8 rounded-[2rem] border border-border shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-500 group-hover:scale-110 transition-transform"><CheckCircle2 size={60} /></div>
-          <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Sync Verified</span>
-          <div className="text-3xl md:text-4xl font-black text-emerald-600 mt-2 tracking-tighter">{completedCount}</div>
-        </div>
-      </div>
-
       {/* FILTERS */}
       <div className="flex flex-col gap-3 mb-8">
         {/* Row 1: Category filter + Date range */}
         <div className="flex flex-wrap items-center gap-2">
           {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
             <button key={cat} onClick={() => setCategoryFilter(cat)}
-              className={`px-4 py-1.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${
-                categoryFilter === cat
+              className={`px-4 py-1.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
                   ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
-                  : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
-                  : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
-                  : 'bg-primary text-white border-primary'
+                    : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
+                      : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
+                        : 'bg-primary text-white border-primary'
                   : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
-              }`}>
+                }`}>
               {cat === 'All' ? '🔍 All' : cat === 'Delegation' ? '📋 Delegation' : cat === 'Checklist' ? '✅ Checklist' : '🔀 FMS'}
             </button>
           ))}
@@ -577,8 +562,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                   const instances = isChecklist
                     ? (activeTab === 'Upcoming'
                       ? getUpcomingInstances(task,
-                          dateFrom ? new Date(dateFrom) : new Date(),
-                          dateTo   ? new Date(dateTo)   : new Date(Date.now() + 5 * 86400000))
+                        dateFrom ? new Date(dateFrom) : new Date(),
+                        dateTo ? new Date(dateTo) : new Date(Date.now() + 5 * 86400000))
                       : getPendingInstances(task))
                     : [];
                   const isExpanded = expandedTaskId === task._id;
@@ -588,10 +573,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                     <React.Fragment key={task._id}>
                       <tr className="hover:bg-primary/[0.02] transition-all group">
                         <td className="px-4 py-3 min-w-0 break-words">
-                          <div className={`p-2 rounded-xl w-fit text-[10px] font-black ${
-                            task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
-                            task.taskType === 'FMS'       ? 'bg-purple-500/10 text-purple-600' :
-                            'bg-sky-500/10 text-sky-600'}`}>
+                          <div className={`p-2 rounded-xl w-fit text-[10px] font-black ${task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
+                              task.taskType === 'FMS' ? 'bg-purple-500/10 text-purple-600' :
+                                'bg-sky-500/10 text-sky-600'}`}>
                             {task.taskType === 'Checklist' ? 'CHK' : task.taskType === 'FMS' ? 'FMS' : 'DLG'}
                           </div>
                         </td>
@@ -601,12 +585,12 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                             <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-card border border-border rounded-lg p-2 text-xs shadow-xl z-50 w-max max-w-[300px]">{task.title}</div>
                           </div>
                           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-  {task.taskType === 'FMS'
-    ? `${task.flowName || task.templateName || ''} — ${task.stepName || ''}`
-    : isChecklist
-    ? `Cycle: ${task.frequency}`
-    : `ID: ${task._id?.slice(-6).toUpperCase()}`}
-</div>
+                            {task.taskType === 'FMS'
+                              ? `${task.flowName || task.templateName || ''} — ${task.stepName || ''}`
+                              : isChecklist
+                                ? `Cycle: ${task.frequency}`
+                                : `ID: ${task._id?.slice(-6).toUpperCase()}`}
+                          </div>
                         </td>
                         <td className="px-4 py-3 min-w-0 break-words">
                           <div className="flex flex-wrap items-center gap-2 text-[11px] font-black">
@@ -632,17 +616,16 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                             <Clock size={14} className="text-primary/40" />
                             {task.taskType === 'Checklist'
                               ? (() => {
-                                  const pending = getPendingInstances(task);
-                                  const next = pending[0]?.date || task.nextDueDate;
-                                  return next ? new Date(next).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A';
-                                })()
-                              : task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', {day: '2-digit', month: 'short', year: 'numeric'}) : 'N/A'
+                                const pending = getPendingInstances(task);
+                                const next = pending[0]?.date || task.nextDueDate;
+                                return next ? new Date(next).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+                              })()
+                              : task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
                             }
                           </div>
                         </td>
                         <td className="px-4 py-3 min-w-0 break-words">
-                          <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${
-                            isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>
+                          <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>
                             {isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}
                           </span>
                         </td>
@@ -681,7 +664,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                 <div className="flex items-center gap-2">
                                   {(bulkSelected[task._id]?.size || 0) > 0 && (
                                     <button onClick={() => handleBulkDone(task)} disabled={bulkSubmitting[task._id]}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 active:scale-95 transition-all disabled:opacity-50">
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-70 active:scale-95 transition-all disabled:opacity-50">
                                       {bulkSubmitting[task._id] ? '...' : `✓ Mark ${bulkSelected[task._id].size} Done`}
                                     </button>
                                   )}

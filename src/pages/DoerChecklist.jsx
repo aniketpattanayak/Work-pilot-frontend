@@ -1,10 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import API from '../api/axiosConfig';
-
-
 import RevisionPanel from '../components/RevisionPanel';
-
-
 import {
   CheckCircle,
   Clock,
@@ -40,30 +36,24 @@ import {
 } from "lucide-react";
 
 /**
- * DOER CHECKLIST: MISSION TERMINAL v3.0
+ * DOER CHECKLIST: MISSION TERMINAL v3.5
  * Purpose: High-density Excel-style grid for Doer tasks + FMS Integration.
- * Updated: 
- * 1. Assigner name visible on collapsed Delegation rows.
- * 2. Notification badges exclude Completed/Verified tasks.
  */
 const DoerChecklist = ({ doerId }) => {
-
-
-
   const [showRevisionModal, setShowRevisionModal] = useState(false);
-const [selectedTask, setSelectedTask] = useState(null);
-const [employees, setEmployees] = useState([]);
-
-
-
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [employees, setEmployees] = useState([]);
 
   const [checklist, setChecklist] = useState([]);
   const [delegatedTasks, setDelegatedTasks] = useState([]);
   const [fmsMissions, setFmsMissions] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
-  const [activeCategory, setActiveCategory] = useState('Checklist');
+  const [activeCategory, setActiveCategory] = useState('All Data');
   const [loading, setLoading] = useState(true);
-  const [expandedTaskId, setExpandedTaskId] = useState(null);
+
+  // Custom Date Range Filters
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
@@ -76,11 +66,6 @@ const [employees, setEmployees] = useState([]);
   const savedUser = JSON.parse(localStorage.getItem("user")) || {};
   const currentDoerId = doerId || savedUser._id || savedUser.id;
 
-  const truncateText = (text, length = 50) => {
-    if (!text) return "";
-    return text.length > length ? text.substring(0, length) + "..." : text;
-  };
-
   const fetchAllTasks = useCallback(async () => {
     if (!currentDoerId) {
       setLoading(false);
@@ -88,20 +73,15 @@ const [employees, setEmployees] = useState([]);
     }
     try {
       setLoading(true);
-      const userEmail = savedUser.email; console.log(savedUser);
+      const userEmail = savedUser.email;
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
         API.get(`/tasks/checklist/${currentDoerId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/doer/${currentDoerId}`).catch(() => ({ data: [] })),
-        //userEmail ?
-         API.get(`/fms/my-missions/${userEmail}`).catch(() => ({ data: [] })) //: Promise.resolve({ data: [] })
+        API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => ({ data: [] }))
       ]);
-
-      console.log('fms',fmsRes);
 
       const employeesRes = await API.get('/employees').catch(() => ({ data: [] }));
       setEmployees(employeesRes.data || []);
-
-
 
       const safeChecklist = Array.isArray(checklistRes.data) ? checklistRes.data : (checklistRes.data?.data || []);
       const safeDelegated = Array.isArray(delegationRes.data) ? delegationRes.data : (delegationRes.data?.tasks || delegationRes.data?.data || []);
@@ -114,7 +94,7 @@ const [employees, setEmployees] = useState([]);
     } finally {
       setLoading(false);
     }
-  }, [currentDoerId]);
+  }, [currentDoerId, savedUser.email]);
 
   useEffect(() => { fetchAllTasks(); }, [fetchAllTasks]);
 
@@ -122,8 +102,19 @@ const [employees, setEmployees] = useState([]);
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    const filterByDate = (dateStr) => {
+    const filterByDateAndStatus = (dateStr, isCompleted, isPendingWorkCondition) => {
+      if (startDate || endDate) {
+        if (!dateStr) return false;
+        const targetDate = new Date(dateStr);
+        targetDate.setHours(0, 0, 0, 0);
+        if (startDate && targetDate < new Date(startDate)) return false;
+        if (endDate && targetDate > new Date(endDate)) return false;
+        return true;
+      }
+
       if (timeFilter === 'All') return true;
+      if (timeFilter === 'Completed') return isCompleted;
+
       if (!dateStr) return false;
       const target = new Date(dateStr);
       target.setHours(0, 0, 0, 0);
@@ -132,7 +123,10 @@ const [employees, setEmployees] = useState([]);
       today.setHours(0, 0, 0, 0);
 
       if (timeFilter === 'Pending Work') {
-        return target.getTime() < today.getTime();
+        return target.getTime() < today.getTime() && isPendingWorkCondition;
+      }
+      if (timeFilter === 'Upcoming') {
+        return target.getTime() > today.getTime();
       }
       if (timeFilter === 'Today') {
         return target.getTime() === today.getTime();
@@ -140,40 +134,58 @@ const [employees, setEmployees] = useState([]);
       if (timeFilter === 'Next 7 Days') {
         const nextWeek = new Date(today);
         nextWeek.setDate(today.getDate() + 7);
-        // From tomorrow to next 7 days
         return target.getTime() > today.getTime() && target.getTime() <= nextWeek.getTime();
       }
       return true;
     };
 
-    const filteredAssignments = timeFilter === 'Pending Work'
-      ? delegatedTasks.filter(item => (item.status !== 'Completed' && item.status !== 'Verified') && filterByDate(item.deadline))
-      : delegatedTasks.filter(item => filterByDate(item.deadline));
+    const filteredAssignments = delegatedTasks.filter(item => {
+      const isCompleted = item.status === 'Completed' || item.status === 'Verified';
+      const isPending = !isCompleted;
+      return filterByDateAndStatus(item.deadline, isCompleted, isPending);
+    });
 
     const filteredChecklist = checklist.filter(item => {
-      const basicMatch = filterByDate(item.instanceDate || item.nextDueDate);
-      if (timeFilter === 'Pending Work') {
-        return basicMatch && !item.isDone;
-      }
-      return basicMatch;
+      const isCompleted = item.isDone;
+      const isPending = !isCompleted;
+      return filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
+    });
+
+    const filteredFms = fmsMissions.filter(item => {
+      const isCompleted = item.status === 'completed';
+      const isPending = !isCompleted;
+      const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
+      return filterByDateAndStatus(deadlineDate, isCompleted, isPending);
     });
 
     return {
       routines: filteredChecklist,
       assignments: filteredAssignments,
-      fms: fmsMissions.filter(item => filterByDate(item.plannedDeadline))
+      fms: filteredFms,
+      all: [
+        ...filteredChecklist.map(i => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.assignerId?.name || '-' })),
+        ...filteredAssignments.map(i => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-' })),
+        ...filteredFms.map(i => ({
+          ...i,
+          dataType: 'FMS',
+          uniqueKey: i.instanceId || i._id,
+          title: `${i.activeStep?.nodeName || i.templateName || i.nodeName} (#${i.orderIdentifier})`,
+          description: i.rawSheetData?.["Item Name"] || i.sheetData?.["Item Name"] ? `Item: ${i.rawSheetData?.["Item Name"] || i.sheetData?.["Item Name"]}` : 'FMS Mission Sequence',
+          deadlineDate: i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline,
+          statusLabel: i.status || 'Active',
+          assignerName: i.activeStep?.assignedToName || i.assignerName || 'System'
+        }))
+      ]
     };
-  }, [checklist, delegatedTasks, fmsMissions, timeFilter]);
+  }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate]);
 
-  // Derived notification counts (Excluding completed items)
-  // These should represent TOTAL pending counts regardless of the active time filter
   const pendingRoutinesCount = checklist.filter(item => {
     if (item.isDone) return false;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const target = new Date(item.instanceDate || item.nextDueDate);
     target.setHours(0, 0, 0, 0);
-    return target.getTime() <= now.getTime(); // Only Today and Pending Work
+    return target.getTime() <= now.getTime();
   }).length;
 
   const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified').length;
@@ -199,9 +211,7 @@ const [employees, setEmployees] = useState([]);
         formData.append("instanceId", activeTask.instanceId);
         formData.append("stepIndex", activeTask.stepIndex);
         if (selectedFile) formData.append("evidence", selectedFile);
-        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-  remarks
-});
+        await API.put(`/fms/execute-step/${activeTask.instanceId}`, { remarks });
       } else {
         formData.append("taskId", activeTask._id);
         formData.append("status", "Completed");
@@ -210,7 +220,6 @@ const [employees, setEmployees] = useState([]);
         await API.put(`/tasks/respond`, formData);
       }
 
-      alert("Success: Mission Data synced.");
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
@@ -230,7 +239,6 @@ const [employees, setEmployees] = useState([]);
       <p className="text-slate-500 font-black text-[8px] tracking-[0.4em] uppercase">Syncing Node...</p>
     </div>
   );
-
 
   const isYesNo = activeTask?.inputType === "yesno";
   const isPaused = activeTask?.isPaused;
@@ -254,16 +262,22 @@ const [employees, setEmployees] = useState([]);
         </button>
       </div>
 
-      {/* CATEGORY TABS */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      {/* CATEGORY TABS SEQUENCE */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        <button
+          onClick={() => { setActiveCategory('All Data'); setTimeFilter('All'); }}
+          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
+        >
+          <LayoutGrid size={16} />
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">All Data</span>
+        </button>
+
         <button
           onClick={() => { setActiveCategory('Checklist'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'
-            }`}
+          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Layers size={16} />
           <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Checklist</span>
-          {/* UPDATED: Notification only for incomplete items */}
           {pendingRoutinesCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
               {pendingRoutinesCount}
@@ -273,12 +287,10 @@ const [employees, setEmployees] = useState([]);
 
         <button
           onClick={() => { setActiveCategory('Delegation'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'
-            }`}
+          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Briefcase size={16} />
           <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Delegation</span>
-          {/* UPDATED: Notification only for incomplete items */}
           {pendingDelegationsCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md animate-bounce">
               {pendingDelegationsCount}
@@ -288,8 +300,7 @@ const [employees, setEmployees] = useState([]);
 
         <button
           onClick={() => { setActiveCategory('FMS'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'
-            }`}
+          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Activity size={16} className={activeCategory === 'FMS' ? 'animate-pulse' : ''} />
           <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">FMS Missions</span>
@@ -301,368 +312,258 @@ const [employees, setEmployees] = useState([]);
         </button>
       </div>
 
-      {/* FILTERS */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {['Today', 'Next 7 Days', 'Pending Work', 'All'].map(range => (
-          <button
-            key={range}
-            onClick={() => setTimeFilter(range)}
-            className={`px-3 py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'
-              }`}
-          >
-            {range}
-          </button>
-        ))}
+      {/* FILTERS & DATE RANGE INPUTS ROW */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card/40 p-3 rounded-xl border border-border">
+        <div className="flex flex-wrap items-center gap-2">
+          {['All', 'Completed', 'Today', 'Next 7 Days', 'Pending Work', 'Upcoming'].map(range => (
+            <button
+              key={range}
+              onClick={() => { setTimeFilter(range); setStartDate(''); setEndDate(''); }}
+              className={`px-3 py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+
+        {/* Date Filter From - To */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg">
+            <span className="text-[8px] font-black uppercase text-slate-400">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
+              className="bg-transparent text-xs text-foreground font-semibold outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg">
+            <span className="text-[8px] font-black uppercase text-slate-400">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
+              className="bg-transparent text-xs text-foreground font-semibold outline-none"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(''); setEndDate(''); setTimeFilter('All'); }}
+              className="text-[9px] font-black uppercase text-red-500 hover:underline px-2"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* EXCEL GRID HEADER */}
-      <div className="hidden lg:grid grid-cols-[2.5fr_1fr_1fr_1fr] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
+      {/* EXCEL GRID HEADER WITH RESPONSIVE FLUID TRACKS */}
+      <div className="hidden lg:grid grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
+        <div>#</div>
         <div>Mission Identifier</div>
+        <div className="text-center">Assigned By</div>
+        <div className="text-center">Description</div>
         <div className="text-center">Protocol Date</div>
         <div className="text-center">Priority / Status</div>
         <div className="text-right pr-4">Registry Action</div>
       </div>
 
       {/* DATA TERMINAL */}
-      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl">
-        {activeCategory === 'Delegation' ? (
-          filteredData.assignments.length > 0 ? filteredData.assignments.map((task) => {
-            const isExpanded = expandedTaskId === task._id;
+      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full">
+        {activeCategory === 'All Data' ? (
+          filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
+            const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
+            return (
+              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
+                <div className="text-xs font-black text-slate-400">
+                  {index + 1}
+                </div>
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                    {item.title}
+                  </span>
+                  <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">
+                    Type: {item.dataType}
+                  </span>
+                </div>
+                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {item.assignerName || '-'}
+                </div>
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
+                  {item.description || "No description provided."}
+                </div>
+                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                  <Calendar size={12} className="text-primary/30 shrink-0" />
+                  <p className="uppercase tracking-tighter text-slate-500 truncate">
+                    {item.deadlineDate ? new Date(item.deadlineDate).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                  </p>
+                </div>
+                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                  <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border text-primary border-primary/20 bg-primary/5">
+                    {item.priority || item.dataType}
+                  </span>
+                  <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
+                </div>
+                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                  {item.dataType === 'Delegation' && item.status === "Pending" && (
+                    <button onClick={() => API.put(`/tasks/respond`, { taskId: item._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks)} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Accept</button>
+                  )}
+                  {item.dataType === 'Delegation' && item.status === "Accepted" && (
+                    <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                  )}
+                  {item.dataType === 'Checklist' && !item.isDone && (
+                    <button onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }} className="px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white bg-emerald-600">Submit</button>
+                  )}
+                  {item.dataType === 'FMS' && (
+                    <button onClick={() => { setActiveTask(item); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
+                  )}
+                </div>
+              </div>
+            );
+          }) : (
+            <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">No Consolidated Data Found</p></div>
+          )
+        ) : activeCategory === 'Delegation' ? (
+          filteredData.assignments.length > 0 ? filteredData.assignments.map((task, index) => {
             const isPastDue = new Date(task.deadline) < new Date();
 
-            const acceptedBy = task.history?.find(h => h.action === 'Accepted')?.performedBy?.name;
-            const completedBy = task.history?.find(h => h.action === 'Completed')?.performedBy?.name;
-
             return (
-              <div key={task._id} className="flex flex-col border-b border-border last:border-0 group">
-                <div
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task._id)}
-                  className={`flex flex-col lg:grid lg:grid-cols-[2.5fr_1fr_1fr_1fr] items-start lg:items-center px-4 py-2.5 lg:px-6 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-primary/[0.02] ${isExpanded ? 'bg-slate-100/50 dark:bg-primary/[0.05]' : ''}`}
-                >
-                  <div className="flex items-center gap-3 w-full lg:w-auto mb-1 lg:mb-0 min-w-0">
-                    <div className="shrink-0">{isExpanded ? <ChevronUp size={14} className="text-primary" /> : <ChevronDown size={14} className="text-slate-400" />}</div>
-
-                    {/* UPDATED: Collapsed row now shows Assigner for quick reference */}
-                    <div className="flex flex-col min-w-0">
-                      <span className={`font-black text-[10px] uppercase tracking-tight truncate leading-none ${isExpanded ? 'text-primary' : 'text-foreground'}`}>
-                        {task.title}
-                      </span>
-                      <span className="text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
-                        Given By: {task.assignerId?.name || "Registry Admin"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
-                    <Calendar size={12} className="text-primary/30" />
-                    <p className={`uppercase tracking-tighter ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
-                      {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
-                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDue ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>
-                      {task.priority || 'Standard'}
-                    </span>
-                    <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
-                  </div>
-                  <div className="flex justify-end gap-2 w-full lg:w-auto">
-                   
-                   
-                   
-                    {task.status === "Pending" && (
-                      <>
-                      <button onClick={(e) => { e.stopPropagation(); API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks); }} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Accept</button>
-                      {/* 🔥 NEW REVISION BUTTON */}
-                      {task.isRevisionAllowed && (
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedTask(task);setShowRevisionModal(true);}}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">
-                        Revise
-                      </button>
-                      )}
-                      </>
-                    )}
-                    {task.status === "Accepted" && (
-                      <button onClick={(e) => { e.stopPropagation(); setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Complete</button>
-                    )}
-                  </div>
-
-
-{/*
-
-                  <div className="flex justify-end gap-2 w-full lg:w-auto">
-
-  {task.status === "Pending" && task.doerId?._id === currentDoerId && (
-    <>
-      <button 
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks); 
-        }} 
-        className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all"
-      >
-        Accept
-      </button>
-      <button 
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          const reason = prompt("Enter reason and proposed deadline (e.g., Proposed Deadline: 2026-04-01):");
-          if (reason) {
-            API.put(`/tasks/respond`, { 
-              taskId: task._id, 
-              status: 'Revision Requested', 
-              remarks: reason 
-            }).then(() => {
-              // Trigger the notification backend logic by calling handle-revision with neutral action
-              API.post(`/tasks/handle-revision`, { taskId: task._id, action: 'Notify' });
-              fetchAllTasks();
-            });
-          }
-        }} 
-        className="px-3 py-1 bg-amber-500 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95"
-      >
-        Request Revision
-      </button>
-    </>
-  )}
-  {task.status === "Revision Requested" && task.assignerId?._id === currentDoerId && (
-    <button 
-      onClick={(e) => { 
-        e.stopPropagation(); 
-        setSelectedTask(task);
-        setShowRevisionModal(true);
-      }} 
-      className="px-3 py-1 bg-rose-600 text-white animate-pulse rounded font-black text-[8px] uppercase tracking-widest shadow-md"
-    >
-      Intervene
-    </button>
-  )}
-
-  {task.status === "Accepted" && task.doerId?._id === currentDoerId && (
-    <button 
-      onClick={(e) => { e.stopPropagation(); setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} 
-      className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all"
-    >
-      Complete
-    </button>
-  )}
-</div>
-*/}
-
-
+              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+                <div className="text-xs font-black text-slate-400">
+                  {index + 1}
                 </div>
-
-                {/* EXPANDED VIEW: DELEGATION */}
-                {isExpanded && (
-                  <div className="px-6 pb-4 pt-1 bg-slate-50 dark:bg-slate-900/40 animate-in slide-in-from-top-1 duration-200">
-                    <div className="bg-white dark:bg-card p-4 rounded-xl border border-border shadow-sm space-y-4">
-                      <h5 className="text-primary text-[8px] font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2 border-b border-border/50 pb-2"><Info size={10} /> Mission Intelligence</h5>
-
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Issued By (Assigner)</label>
-                          <p className="text-[9px] font-black text-primary uppercase">{task.assignerId?.name || "System"}</p>
-                        </div>
-                        {acceptedBy && (
-                          <div>
-                            <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Accepted By</label>
-                            <p className="text-[9px] font-black text-foreground uppercase">{acceptedBy}</p>
-                          </div>
-                        )}
-                        {completedBy && (
-                          <div>
-                            <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Completed By</label>
-                            <p className="text-[9px] font-black text-emerald-600 uppercase">{completedBy}</p>
-                          </div>
-                        )}
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Registry</label>
-                          <p className="text-[9px] font-bold text-foreground">#{task._id?.slice(-10).toUpperCase()}</p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Technical Scope</label>
-                        <p className="text-slate-500 text-[10px] font-bold leading-relaxed italic">"{task.description || "No supplemental directives."}"</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                    {task.title}
+                  </span>
+                </div>
+                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {task.assignerId?.name || 'Registry Admin'}
+                </div>
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
+                  {task.description || "No description provided."}
+                </div>
+                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                  <Calendar size={12} className="text-primary/30 shrink-0" />
+                  <p className={`uppercase tracking-tighter truncate ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
+                    {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                  <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDue ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>
+                    {task.priority || 'Standard'}
+                  </span>
+                  <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
+                </div>
+                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                  {task.status === "Pending" && (
+                    <>
+                      <button onClick={() => API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks)} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Accept</button>
+                      {task.isRevisionAllowed && (
+                        <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
+                      )}
+                    </>
+                  )}
+                  {task.status === "Accepted" && (
+                    <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                  )}
+                </div>
               </div>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Directives Synchronized</p></div>
           )
         ) : activeCategory === 'FMS' ? (
-          /* FMS MISSIONS */
-          filteredData.fms.length > 0 ? filteredData.fms.map((mission) => {
-            const isExpanded = expandedTaskId === mission.instanceId;
-            const isDelayed = mission.plannedDeadline && new Date() > new Date(mission.plannedDeadline);
-
+          filteredData.fms.length > 0 ? filteredData.fms.map((mission, index) => {
+            const deadline = mission.activeStep?.plannedDeadline || mission.completedAt || mission.plannedDeadline;
+            const isDelayed = deadline && mission.status === 'active' && new Date() > new Date(deadline);
             return (
-              <div key={mission.instanceId} className="flex flex-col border-b border-border last:border-0 group">
-                <div
-                  onClick={() => setExpandedTaskId(isExpanded ? null : mission.instanceId)}
-                  className={`flex flex-col lg:grid lg:grid-cols-[2.5fr_1fr_1fr_1fr] items-start lg:items-center px-4 py-2.5 lg:px-6 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-primary/5' : ''}`}
-                >
-                  <div className="flex items-center gap-3 w-full lg:w-auto mb-1 lg:mb-0 min-w-0">
-                    <div className="shrink-0">{isExpanded ? <ChevronUp size={14} className="text-primary" /> : <ChevronDown size={14} className="text-slate-400" />}</div>
-                    <div className="flex flex-col min-w-0">
-                      <span className={`font-black text-[10px] uppercase tracking-tight truncate leading-none ${isExpanded ? 'text-primary' : 'text-foreground'}`}>
-                        {mission.nodeName} <span className="text-slate-400 ml-2 font-bold opacity-60">#{mission.orderIdentifier}</span>
-                      </span>
-                      <span className="text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
-                        FMS Mission: Live Sequence Analysis
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
-                    <Clock size={12} className={isDelayed ? 'text-red-500' : 'text-primary/30'} />
-                    <p className={`uppercase tracking-tighter ${isDelayed ? 'text-red-500 font-black' : 'text-slate-500'}`}>
-                      {new Date(mission.plannedDeadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
-                    <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isDelayed ? 'text-red-600 border-red-200 bg-red-50' : 'text-emerald-600 border-emerald-200 bg-emerald-50'}`}>
-                      {isDelayed ? 'DELAYED' : 'ON TRACK'}
-                    </span>
-                  </div>
-                  <div className="flex justify-end gap-2 w-full lg:w-auto">
-                    <button onClick={(e) => { e.stopPropagation(); setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Done</button>
-                  </div>
-                  {mission.isPaused && (
-  <span className="text-red-500 font-bold text-xs ml-2">
-    ⏸ PAUSED
-  </span>
-)}
-
-
-
+              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+                <div className="text-xs font-black text-slate-400">
+                  {index + 1}
                 </div>
-
-                {isExpanded && (
-                  <div className="px-6 pb-4 pt-1 bg-slate-50 animate-in slide-in-from-top-1 duration-200">
-                    <div className="bg-white p-4 rounded-xl border border-border shadow-sm space-y-4">
-                      <h5 className="text-primary text-[8px] font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2 border-b border-border/50 pb-2"><Activity size={10} /> Sequence Personnel</h5>
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Target Personnel</label>
-                          <p className="text-[9px] font-black text-foreground uppercase">{savedUser.name}</p>
-                        </div>
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Phase</label>
-                          <p className="text-[9px] font-black text-primary uppercase">Node {mission.stepIndex + 1}</p>
-                        </div>
-
-                        {mission.previousRemarks && (
-  <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-    <p className="text-xs font-bold text-yellow-700">
-      Previous Step Note:
-    </p>
-    <p className="text-sm text-yellow-900">
-      {mission.previousRemarks}
-    </p>
-  </div>
-)}
-
-  <div className="bg-gray-50 p-3 rounded mt-2 text-xs">
-    <p><b>Customer:</b> {mission.sheetData?.["Customer Name"]}</p>
-    <p><b>Item:</b> {mission.sheetData?.["Item Name"]}</p>
-    <p><b>Qty:</b> {mission.sheetData?.["Entered Qty"]}</p>
-    <p><b>PO:</b> {mission.sheetData?.["PO Number"]}</p>
-  </div>
-
-
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Identity</label>
-                          <p className="text-[9px] font-bold text-foreground">SYNC-ACTIVE</p>
-                        </div>
-                      </div>
-                      <p className="text-slate-500 text-[10px] font-bold leading-relaxed italic">"Proceed with sequential node synchronization for mission identifier {mission.orderIdentifier}."</p>
-                    </div>
-                  </div>
-                )}
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                    {mission.activeStep?.nodeName || mission.templateName || mission.nodeName} <span className="text-slate-400 ml-2 font-bold opacity-60">#{mission.orderIdentifier}</span>
+                  </span>
+                </div>
+                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {mission.activeStep?.assignedToName || mission.assignerName || 'System'}
+                </div>
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
+                  {mission.rawSheetData?.["Item Name"] || mission.sheetData?.["Item Name"] ? `Item: ${mission.rawSheetData?.["Item Name"] || mission.sheetData?.["Item Name"]}` : 'FMS Mission Sequence'}
+                </div>
+                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                  <Clock size={12} className={isDelayed ? 'text-red-500' : 'text-primary/30 shrink-0'} />
+                  <p className={`uppercase tracking-tighter truncate ${isDelayed ? 'text-red-500 font-black' : 'text-slate-500'}`}>
+                    {deadline ? new Date(deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                  </p>
+                </div>
+                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                  <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${mission.status === 'completed' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : isDelayed ? 'text-red-600 border-red-200 bg-red-50' : 'text-sky-600 border-sky-200 bg-sky-50'}`}>
+                    {mission.status === 'completed' ? 'COMPLETED' : isDelayed ? 'DELAYED' : 'ON TRACK'}
+                  </span>
+                </div>
+                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                  <button onClick={() => { setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
+                </div>
               </div>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Sequential Registry Synchronized</p></div>
           )
         ) : (
-          /* CHECKLIST VIEW */
-          filteredData.routines.length > 0 ? filteredData.routines.map((item) => {
-            const isExpanded = expandedTaskId === `${item._id}-${item.instanceDate}`;
+          filteredData.routines.length > 0 ? filteredData.routines.map((item, index) => {
             const displayDate = new Date(item.instanceDate || item.nextDueDate);
             displayDate.setHours(0, 0, 0, 0);
             const isBacklog = item.isBacklog;
-
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const isFuture = displayDate.getTime() > today.getTime();
 
             return (
-              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col border-b border-border last:border-0 group">
-                <div
-                  onClick={() => setExpandedTaskId(isExpanded ? null : `${item._id}-${item.instanceDate}`)}
-                  className={`flex flex-col lg:grid lg:grid-cols-[2.5fr_1fr_1fr_1fr] items-start lg:items-center px-4 py-2.5 lg:px-6 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-emerald-50/20' : ''}`}
-                >
-                  <div className="flex items-center gap-3 w-full lg:w-auto mb-1 lg:mb-0 min-w-0">
-                    <div className="shrink-0">{isExpanded ? <ChevronUp size={14} className="text-emerald-600" /> : <ChevronDown size={14} className="text-slate-400" />}</div>
-                    <div className={`w-7 h-7 rounded-md border flex items-center justify-center shrink-0 ${isBacklog ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600'}`}>
-                      {isBacklog ? <History size={14} /> : <CheckCircle2 size={14} />}
-                    </div>
-                    {/* Aligned UI: Added subtitle to Checklist nodes */}
-                    <div className="flex flex-col min-w-0">
-                      <span className={`font-black text-[10px] uppercase tracking-tight truncate leading-none ${isExpanded ? 'text-emerald-600' : 'text-foreground'}`}>
-                        {item.taskName}
-                      </span>
-                      <span className="text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
-                        Registry Scope: {item.frequency || 'Daily'} Protocol
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[10px] font-black">
-                    <Calendar size={12} className="text-slate-400" />
-                    <p className={`uppercase tracking-tighter ${isBacklog ? 'text-amber-600' : 'text-slate-500'}`}>
-                      {`${displayDate.toLocaleString('default', { month: 'short' }).toUpperCase()} ${String(displayDate.getDate()).padStart(2, '0')}, ${displayDate.getFullYear()}`}
-                    </p>
-                  </div>
-                  <div className="flex justify-center w-full lg:w-auto mb-1 lg:mb-0">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{item.frequency || 'Daily'} CYCLE</span>
-                  </div>
-                  <div className="flex justify-end w-full lg:w-auto">
-                    {item.isDone ? (
-                      <span className="px-4 py-1.5 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 shadow-sm flex items-center gap-2">
-                        <CheckCircle size={10} className="text-emerald-500" /> Done
-                      </span>
-                    ) : (
-                      <button
-                        disabled={isFuture}
-                        onClick={(e) => { e.stopPropagation(); setActiveTask(item); setModalType("Checklist"); setShowModal(true); }}
-                        className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white transition-all ${isFuture ? 'bg-slate-300 cursor-not-allowed opacity-50' : 'active:scale-95 ' + (isBacklog ? 'bg-amber-600' : 'bg-emerald-600')}`}
-                      >
-                        Submit
-                      </button>
-                    )}
-                  </div>
+              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+                <div className="text-xs font-black text-slate-400">
+                  {index + 1}
                 </div>
-
-                {/* EXPANDED VIEW: CHECKLIST */}
-                {isExpanded && (
-                  <div className="px-6 pb-4 pt-1 bg-emerald-50/5 animate-in slide-in-from-top-1 duration-200">
-                    <div className="bg-white dark:bg-card p-4 rounded-xl border border-border shadow-sm">
-                      <h5 className="text-emerald-600 text-[8px] font-black uppercase tracking-[0.2em] mb-3 flex items-center gap-2 border-b border-border/30 pb-2"><FileSearch size={10} /> Protocol Blueprint</h5>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-[7px] text-slate-400 font-black uppercase block mb-1">Operational Guidelines</label>
-                          <p className="text-slate-500 text-[10px] font-bold leading-relaxed italic">"{item.description || "Daily maintenance protocol requires strictly verified execution."}"</p>
-                        </div>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-border/30">
-                          <div><p className="text-[7px] text-slate-400 font-black uppercase">Freq</p><p className="text-[9px] font-black text-emerald-600 uppercase">{item.frequency || 'Daily'}</p></div>
-                          <div><p className="text-[7px] text-slate-400 font-black uppercase">Expected</p><p className="text-[9px] font-bold">{item.nextDueDate ? new Date(item.nextDueDate).toLocaleDateString() : 'N/A'}</p></div>
-                          <div><p className="text-[7px] text-slate-400 font-black uppercase">Last Sync</p><p className="text-[9px] font-bold">{item.lastCompleted ? new Date(item.lastCompleted).toLocaleDateString() : 'INITIAL'}</p></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                    {item.taskName}
+                  </span>
+                  <span className="text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
+                    Registry Scope: {item.frequency || 'Daily'} Protocol
+                  </span>
+                </div>
+                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {item.assignerId?.name || 'System'}
+                </div>
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
+                  {item.description || "No description provided."}
+                </div>
+                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[10px] font-black">
+                  <Calendar size={12} className="text-slate-400 shrink-0" />
+                  <p className={`uppercase tracking-tighter truncate ${isBacklog ? 'text-amber-600' : 'text-slate-500'}`}>
+                    {`${displayDate.toLocaleString('default', { month: 'short' }).toUpperCase()} ${String(displayDate.getDate()).padStart(2, '0')}, ${displayDate.getFullYear()}`}
+                  </p>
+                </div>
+                <div className="flex justify-center w-full lg:w-auto mb-1 lg:mb-0">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{item.frequency || 'Daily'} CYCLE</span>
+                </div>
+                <div className="flex justify-end w-full lg:w-auto">
+                  {item.isDone ? (
+                    <span className="px-4 py-1.5 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 shadow-sm flex items-center gap-2">
+                      <CheckCircle size={10} className="text-emerald-500" /> Done
+                    </span>
+                  ) : (
+                    <button
+                      disabled={isFuture}
+                      onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }}
+                      className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white transition-all ${isFuture ? 'bg-slate-300 cursor-not-allowed opacity-50' : 'active:scale-95 ' + (isBacklog ? 'bg-amber-600' : 'bg-emerald-600')}`}
+                    >
+                      Submit
+                    </button>
+                  )}
+                </div>
               </div>
             );
           }) : (
@@ -682,7 +583,7 @@ const [employees, setEmployees] = useState([]);
                 <h3 className="text-foreground text-xl font-black uppercase tracking-tight">
                   {modalType === 'FMS' ? 'FMS Mission Sync' : activeTask?.isBacklog ? 'Backlog Sync' : 'Update Task'}
                 </h3>
-                <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest">
+                <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest px-4 whitespace-normal break-words">
                   {activeTask?.title || activeTask?.taskName || activeTask?.nodeName}
                 </p>
               </div>
@@ -692,123 +593,62 @@ const [employees, setEmployees] = useState([]);
                 <Upload size={20} className="mx-auto text-slate-400 mb-2" />
                 <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
               </div>
-              
-              
-              
-              
-              {/*<button disabled={uploading} className={`w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all ${modalType === 'FMS' ? 'bg-slate-900' : activeTask?.isBacklog ? 'bg-amber-600' : 'bg-primary'}`}>
-                {uploading ? <RefreshCcw className="animate-spin mr-2 inline" size={16} /> : <ShieldCheck size={16} className="mr-2 inline" />} Finalize Result
-              </button>*/}
-
-
-
-
-
 
               {modalType === "FMS" && isYesNo ? (
-
-  <div className="space-y-4">
-
-    {/* 🟢 YES BUTTON */}
-    {!isPaused && (
-    <>
-    {/*
-    <button
-       type="button"
-      onClick={async () => {
-
-         if (!remarks || !remarks.trim()) {
-          alert("Remarks are mandatory for this step");
-          return;
-        }
-
-        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-          stepIndex: activeTask.stepIndex,
-
-
-          decision: "Yes",
-          remarks
-        });
-        fetchAllTasks();
-        setShowModal(false);
-      }}
-      className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-    >
-      DONE
-    </button>*/}
-
-
-    <button
-       type="button"
-      onClick={handleFinalSubmit}
-      className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-    >
-      DONE
-    </button>
-
-    {/* 🔴 NO BUTTON */}
-    <button
-       type="button"
-          onClick={async () => {
-
-
-             if (!remarks || !remarks.trim()) {
-              alert("Remarks are mandatory for this step");
-              return;
-            }
-
-
-
-        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-          decision: "No",
-          remarks
-        });
-        fetchAllTasks();
-        setShowModal(false);
-      }}
-      className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-    >
-      ❌ NO – Pause Flow
-    </button>
-    </>
-    )}
-
-    {/* 🔵 CONTINUE BUTTON */}
-    {isPaused && (
-      <button
-       type="button"
-        onClick={async () => {
-          await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-            action: "continue"
-          });
-          fetchAllTasks();
-          setShowModal(false);
-        }}
-        className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-      >
-        🔄 CONTINUE – Resume Flow
-      </button>
-    )}
-
-  </div>
-
-) : (
-
-  /* DEFAULT BUTTON (existing) */
-  <button
-    disabled={uploading}
-    className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
-  >
-    Finalize Result
-  </button>
-
-)}
-
-
-
-
-
-
+                <div className="space-y-4">
+                  {!isPaused && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleFinalSubmit}
+                        className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+                      >
+                        DONE
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!remarks || !remarks.trim()) {
+                            alert("Remarks are mandatory for this step");
+                            return;
+                          }
+                          await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+                            decision: "No",
+                            remarks
+                          });
+                          fetchAllTasks();
+                          setShowModal(false);
+                        }}
+                        className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+                      >
+                        ❌ NO – Pause Flow
+                      </button>
+                    </>
+                  )}
+                  {isPaused && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
+                          action: "continue"
+                        });
+                        fetchAllTasks();
+                        setShowModal(false);
+                      }}
+                      className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
+                    >
+                      🔄 CONTINUE – Resume Flow
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  disabled={uploading}
+                  className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
+                >
+                  Finalize Result
+                </button>
+              )}
             </form>
           </div>
         </div>
@@ -827,32 +667,28 @@ const [employees, setEmployees] = useState([]);
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       `}</style>
 
-
-
       {showRevisionModal && selectedTask && (
-  <div className="fixed inset-0 z-[9999] bg-black/60 flex justify-center items-center p-6">
-    <div className="bg-card w-full max-w-2xl rounded-2xl p-6 relative">
-      
-      <button 
-        onClick={() => setShowRevisionModal(false)}
-        className="absolute top-4 right-4"
-      >
-        <X size={20} />
-      </button>
-
-      <RevisionPanel
-        task={selectedTask}
-        employees={employees}
-        assignerId={currentDoerId}
-        onSuccess={() => {
-          setShowRevisionModal(false);
-          fetchAllTasks();
-        }}
-        source="doer"
-      />
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex justify-center items-center p-6">
+          <div className="bg-card w-full max-w-2xl rounded-2xl p-6 relative">
+            <button
+              onClick={() => setShowRevisionModal(false)}
+              className="absolute top-4 right-4"
+            >
+              <X size={20} />
+            </button>
+            <RevisionPanel
+              task={selectedTask}
+              employees={employees}
+              assignerId={currentDoerId}
+              onSuccess={() => {
+                setShowRevisionModal(false);
+                fetchAllTasks();
+              }}
+              source="doer"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
