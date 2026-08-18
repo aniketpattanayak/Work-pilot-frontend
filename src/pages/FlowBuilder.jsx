@@ -852,6 +852,52 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
 
                 {(selNode.type === 'action' || selNode.type === 'input' || selNode.type === 'yesno') && (<>
 
+                  {/* VISIBLE COLUMNS — which sheet columns employee can see */}
+                  <Sec title="📊 Visible Order Data (columns employee can see)" />
+                  <div style={{ fontSize:11, color:'var(--color-muted-foreground)', marginBottom:8, lineHeight:1.5 }}>
+                    Select which columns from the Google Sheet are shown to the employee when they open this step. If none selected, first 6 columns are shown by default.
+                  </div>
+                  {sheetCols.length === 0 ? (
+                    <div style={{ fontSize:11, color:'var(--color-muted-foreground)', padding:'8px 10px', border:'1px dashed var(--color-border)', borderRadius:8, textAlign:'center' }}>
+                      No columns loaded — go to Sheet tab and click "Load sheet columns" first
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {sheetCols.map(col => {
+                        const isChecked = (selNode.sheetColumnsToShow || []).includes(col);
+                        return (
+                          <label key={col} style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:600,
+                            background: isChecked ? 'var(--color-primary)' : 'var(--color-muted)',
+                            color: isChecked ? 'white' : 'var(--color-muted-foreground)',
+                            border: '1px solid var(--color-border)', transition:'all .12s' }}>
+                            <input type="checkbox" style={{ display:'none' }} checked={isChecked}
+                              onChange={e => {
+                                const curr = selNode.sheetColumnsToShow || [];
+                                updateNode(selNode.id, {
+                                  sheetColumnsToShow: e.target.checked
+                                    ? [...curr, col]
+                                    : curr.filter(c => c !== col)
+                                });
+                              }} />
+                            {isChecked ? '✓ ' : ''}{col}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {(selNode.sheetColumnsToShow || []).length > 0 && (
+                    <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:4 }}>
+                      {(selNode.sheetColumnsToShow).length} column{(selNode.sheetColumnsToShow).length > 1 ? 's' : ''} selected — employee will see only these columns
+                    </div>
+                  )}
+                  <div style={{ marginTop:6 }}>
+                    <button onClick={() => updateNode(selNode.id, { sheetColumnsToShow: [] })}
+                      style={{ fontSize:10, color:'var(--color-muted-foreground)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                      Clear selection (show default)
+                    </button>
+                  </div>
+                  <div style={{ marginTop:16 }} />
+
                   {/* HOW — Instructions for the doer */}
                   <Sec title="How — Instructions for doer" />
                   <textarea
