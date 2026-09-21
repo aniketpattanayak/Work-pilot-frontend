@@ -80,7 +80,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
 
   const [meta, setMeta] = useState({
     name: '', googleSheetId: '', scriptUrl: '', tabName: 'Sheet1',
-    uniqueIdColumn: 'Order ID', deadlineColumn: '', assignColumn: '',
+    uniqueIdColumn: 'Order ID', deadlineColumn: '', assignColumn: '', allowedCoordinatorColumns: [],
     dataSource: 'sheet',
     workingHours: { open: 9, close: 18, workDays: [1,2,3,4,5] },
   });
@@ -138,6 +138,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
         tabName:         config?.tabName          || prev.tabName,
         uniqueIdColumn:  fieldMap?.uniqueIdColumn || config?.uniqueIdColumn || prev.uniqueIdColumn,
         deadlineColumn:  fieldMap?.deadlineColumn || '',
+        allowedCoordinatorColumns: wizardConfig?.config?.allowedCoordinatorColumns || [],
         assignColumn:    fieldMap?.assignColumn   || '',
         workingHours: {
           open:     fieldMap?.openHour  ?? 9,
@@ -687,6 +688,43 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
               style={{ width:'100%', padding:'6px 0', fontSize:10, fontWeight:600, border:'1px solid var(--color-border)', borderRadius:8, background:'transparent', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, opacity:loadingCols?0.5:1 }}>
               {loadingCols ? '⏳' : '→'} {sheetCols.length ? `${sheetCols.length} columns loaded` : 'Load sheet columns'}
             </button>
+
+            {/* ── COORDINATOR VISIBLE COLUMNS ── */}
+            {sheetCols.length > 0 && (
+              <div style={{ marginTop:12, padding:'10px 0 0', borderTop:'1px solid var(--color-border)' }}>
+                <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--color-muted-foreground)', marginBottom:6 }}>
+                  👁 Columns Coordinator Can See in Tracking
+                </div>
+                <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginBottom:8, lineHeight:1.5 }}>
+                  Select which sheet columns coordinators are allowed to add to their Tracking table. If none selected, coordinators cannot see any sheet data.
+                </div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:5 }}>
+                  {sheetCols.map(col => {
+                    const allowed = (meta.allowedCoordinatorColumns || []).includes(col);
+                    return (
+                      <label key={col} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:7, cursor:'pointer', fontSize:11, fontWeight:600,
+                        background: allowed ? '#1F3A5F' : 'var(--color-muted)',
+                        color: allowed ? 'white' : 'var(--color-muted-foreground)',
+                        border:'1px solid var(--color-border)', transition:'all .12s' }}>
+                        <input type="checkbox" style={{ display:'none' }} checked={allowed}
+                          onChange={e => setMeta(prev => ({
+                            ...prev,
+                            allowedCoordinatorColumns: e.target.checked
+                              ? [...(prev.allowedCoordinatorColumns || []), col]
+                              : (prev.allowedCoordinatorColumns || []).filter(c => c !== col)
+                          }))} />
+                        {allowed ? '✓ ' : ''}{col}
+                      </label>
+                    );
+                  })}
+                </div>
+                {(meta.allowedCoordinatorColumns || []).length > 0 && (
+                  <div style={{ fontSize:10, color:'var(--color-muted-foreground)', marginTop:5 }}>
+                    {meta.allowedCoordinatorColumns.length} column{meta.allowedCoordinatorColumns.length > 1 ? 's' : ''} allowed for coordinators
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ── FORM LINKING ── */}
             <div style={{ marginTop:10, padding:'10px 0 0', borderTop:'1px solid var(--color-border)' }}>

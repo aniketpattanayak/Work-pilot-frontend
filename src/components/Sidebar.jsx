@@ -55,6 +55,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const [tenantFeatures, setTenantFeatures] = useState({});
   const safeRoles = Array.isArray(roles) ? roles : [];
   const iconMap = { Star, Trophy, Medal, Zap, ShieldCheck: ShieldCheckIcon, Flame, Target, Rocket, Award };
 
@@ -69,6 +70,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     try {
       setLoadingLogo(true);
       const res = await API.get(`/tasks/settings/${currentTenantId}`);
+      const feats = res.data?.superAdmin?.features || {};
+      setTenantFeatures(feats);
       if (res.data) {
         setFactoryLogo(res.data.logo || '');
         setCompanyName(res.data.companyName || 'WORK PILOT');
@@ -107,8 +110,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Chat',              icon: <MessageSquare />, roles: ['Admin', 'Coordinator', 'Doer', 'Assigner', 'OrderEntry'] },
         { name: 'Order Forms',       icon: <FileText />,    roles: ['Admin'] },
         { name: 'New Order',          icon: <ShoppingCart />, roles: ['Admin', 'Assigner', 'Coordinator', 'OrderEntry'] },
-        { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'] },
-        { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'] },
+        { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'], featureKey: 'fms' },
+        { name: 'Review Meeting',    icon: <BarChart3 />,   roles: ['Admin', 'Coordinator'], featureKey: 'reviewMeeting' },
         { name: 'Reports Hub',       icon: <FileText />,    roles: ['Admin'] },
         { name: 'Rewards Log',       icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Settings',          icon: <Settings />,    roles: ['Admin'] },
@@ -242,7 +245,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 custom-scrollbar">
         {categories.map((cat, catIdx) => {
           const filteredItems = cat.items.filter(item =>
-            item.roles.some(r => safeRoles.includes(r))
+            item.roles.some(r => safeRoles.includes(r)) &&
+            (!item.featureKey || tenantFeatures[item.featureKey] !== false)
           );
           if (filteredItems.length === 0) return null;
 

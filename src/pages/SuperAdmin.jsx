@@ -197,6 +197,8 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const [newPwd, setNewPwd]       = useState('');
   const [showPwd, setShowPwd]     = useState(false);
   const [features, setFeatures]   = useState({});
+  const [customMongoUri, setCustomMongoUri]     = useState('');
+  const [customWhatsappKey, setCustomWhatsappKey] = useState('');
   const [pauseReason, setPauseReason] = useState('');
   const [pauseFrom,   setPauseFrom]     = useState('');
   const [pauseTo,     setPauseTo]       = useState('');
@@ -213,6 +215,8 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       setRenewal(sa.renewalDate ? sa.renewalDate.slice(0,10) : '');
       setNote(sa.internalNote || '');
       setFeatures(sa.features || {});
+      setCustomMongoUri(sa.customMongoUri || '');
+      setCustomWhatsappKey(sa.customWhatsappKey || '');
     }).catch(()=>{});
   }, [tenantId]);
 
@@ -605,6 +609,54 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 </button>
               </Section>
 
+              {/* Custom MongoDB URI */}
+              <Section icon={Settings} title="Custom Database (MongoDB)" color={C.blue} accent={C.blueL}>
+                <div style={{ fontSize:12, color:C.muted2, marginBottom:8 }}>
+                  Optional. If set, this tenant's data will be stored in their own MongoDB instead of the shared database.
+                </div>
+                <input
+                  type="text"
+                  placeholder="mongodb+srv://user:pass@cluster.mongodb.net/dbname"
+                  value={customMongoUri}
+                  onChange={e => setCustomMongoUri(e.target.value)}
+                  style={{ width:'100%', padding:'10px 12px', fontSize:12, border:`1px solid ${C.border}`, borderRadius:8, background:C.bg, color:C.text, outline:'none', boxSizing:'border-box', marginBottom:10, fontFamily:'monospace' }}
+                />
+                <button onClick={() => api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-db`, { customMongoUri }))}
+                  disabled={saving} style={primaryBtn}>
+                  <Save size={14}/>{saving ? 'Saving…' : 'Save Database URI'}
+                </button>
+                {customMongoUri && (
+                  <button onClick={() => { setCustomMongoUri(''); api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-db`, { customMongoUri: '' })); }}
+                    style={{ ...primaryBtn, background:'transparent', color:C.red, border:`1px solid ${C.red}`, marginLeft:8 }}>
+                    Remove Custom DB
+                  </button>
+                )}
+              </Section>
+
+              {/* Custom WhatsApp API Key */}
+              <Section icon={Settings} title="Custom WhatsApp API Key" color={C.green} accent={C.greenL}>
+                <div style={{ fontSize:12, color:C.muted2, marginBottom:8 }}>
+                  Optional. If set, this tenant's WhatsApp notifications will use their own DoubleTick API key instead of the shared key.
+                </div>
+                <input
+                  type="password"
+                  placeholder="key_xxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={customWhatsappKey}
+                  onChange={e => setCustomWhatsappKey(e.target.value)}
+                  style={{ width:'100%', padding:'10px 12px', fontSize:12, border:`1px solid ${C.border}`, borderRadius:8, background:C.bg, color:C.text, outline:'none', boxSizing:'border-box', marginBottom:10, fontFamily:'monospace' }}
+                />
+                <button onClick={() => api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-whatsapp`, { customWhatsappKey }))}
+                  disabled={saving} style={primaryBtn}>
+                  <Save size={14}/>{saving ? 'Saving…' : 'Save WhatsApp Key'}
+                </button>
+                {customWhatsappKey && (
+                  <button onClick={() => { setCustomWhatsappKey(''); api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-whatsapp`, { customWhatsappKey: '' })); }}
+                    style={{ ...primaryBtn, background:'transparent', color:C.red, border:`1px solid ${C.red}`, marginLeft:8 }}>
+                    Remove Custom Key
+                  </button>
+                )}
+              </Section>
+
               {/* Feature flags */}
               <Section icon={ToggleRight} title="Feature flags" color={C.purple} accent={C.purpleL}>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
@@ -618,7 +670,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <Icon size={15} color={on?C.blue:C.muted2}/>
                           <span style={{ fontSize:13, fontWeight:500, color:on?C.text:C.muted2 }}>
-                            {f==='orderForms'?'Order Forms':f.charAt(0).toUpperCase()+f.slice(1)}
+                            {({'tasks':'Manage Tasks','checklist':'Checklist','fms':'Flow Management','chat':'Chat','whatsapp':'WhatsApp','tracking':'Coordinator Tracking','reviewMeeting':'Review Meeting','employees':'Employees','mapping':'Mapping','orderForms':'Order Forms','newOrder':'New Order','reports':'Reports Hub','rewards':'Rewards Log','settings':'Settings'})[f] || f.charAt(0).toUpperCase()+f.slice(1)}
                           </span>
                         </div>
                         {on ? <ToggleRight size={20} color={C.blue}/> : <ToggleLeft size={20} color={C.muted2}/>}

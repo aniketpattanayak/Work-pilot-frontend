@@ -348,7 +348,14 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
             {instances.length === 0 ? (
               <div style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>No orders loaded yet — columns appear once orders exist</div>
             ) : (() => {
-              const allCols = [...new Set(instances.flatMap(i => Object.keys(i.rawSheetData || {})))];
+              const sheetCols = [...new Set(instances.flatMap(i => Object.keys(i.rawSheetData || {})))];
+              // Also get collected fields from templates — prefix with step name
+              const collectedCols = [...new Set(templates.flatMap(t =>
+                (t.nodes || []).filter(n => n.inputFields?.length > 0).flatMap(n =>
+                  (n.inputFields || []).map(f => `[${n.name}] ${f.label}`)
+                )
+              ))];
+              const allCols = [...sheetCols, ...collectedCols];
               if (allCols.length === 0) return <div style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>No sheet data columns found in current orders</div>;
               return (
                 <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
@@ -432,9 +439,26 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                           <span className="font-mono text-xs font-semibold bg-muted px-2 py-1 rounded-lg">{inst.orderIdentifier}</span>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{inst.templateName}</td>
-                        {extraCols.map(col => (
-                          <td key={col} className="px-4 py-3 text-xs text-foreground font-medium">{inst.rawSheetData?.[col] || '—'}</td>
-                        ))}
+                        {extraCols.map(col => {
+                          // Check if it's a collected field [StepName] FieldLabel
+                          const collectMatch = col.match(/^\[(.+?)\] (.+)$/);
+                          let cellValue = '—';
+                          if (collectMatch) {
+                            const [, stepName, fieldLabel] = collectMatch;
+                            // Find this value in nodeHistory inputs
+                            const histStep = (inst.nodeHistory || []).find(h => h.nodeName === stepName);
+                            if (histStep?.inputs) {
+                              // Find field by label from template
+                              const tmpl = templates.find(t => t.name === inst.templateName);
+                              const node = tmpl?.nodes?.find(n => n.name === stepName);
+                              const field = node?.inputFields?.find(f => f.label === fieldLabel);
+                              if (field) cellValue = histStep.inputs[field.id] || '—';
+                            }
+                          } else {
+                            cellValue = inst.rawSheetData?.[col] || '—';
+                          }
+                          return <td key={col} className="px-4 py-3 text-xs text-foreground font-medium">{String(cellValue)}</td>;
+                        })}
                         <td className="px-4 py-3 text-xs font-medium">{inst.activeStep?.nodeName || (inst.status === 'completed' ? 'Complete' : '—')}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{inst.activeStep?.assignedToName || '—'}</td>
                         <td className="px-4 py-3">

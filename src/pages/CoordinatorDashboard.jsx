@@ -27,6 +27,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [isSendingWA, setIsSendingWA] = useState(false);
+  const [coordExtraCols, setCoordExtraCols] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('coord_fms_cols') || '[]'); } catch { return []; }
+  });
+  const [showCoordColConfig, setShowCoordColConfig] = useState(false);
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
   const tenantId = localStorage.getItem('tenantId') || tenantId;
@@ -142,18 +146,20 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     if (!coordinatorId) { setLoading(false); return; }
     try {
       setLoading(true);
-      const [res, settingsRes, fmsRes, fmsCompletedRes, empRes] = await Promise.all([
+      const [res, settingsRes, fmsRes, fmsCompletedRes, empRes, tmplRes] = await Promise.all([
         API.get(`/tasks/coordinator/${coordinatorId}?force_sync=${Date.now()}`),
         API.get(`/tasks/settings/${tenantId}`).catch(() => ({ data: {} })),
         API.get(`/fms2/instances/${tenantId}`).catch(() => ({ data: { instances: [] } })),
         API.get(`/fms2/instances/${tenantId}?status=completed&limit=100`).catch(() => ({ data: { instances: [] } })),
         API.get(`/tasks/employees/${tenantId}`).catch(() => ({ data: [] })),
+        API.get(`/fms2/templates/${tenantId}`).catch(() => ({ data: [] })),
       ]);
       const allEmp = Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || []);
       const delegationAndChecklist = Array.isArray(res.data) ? res.data : (res.data?.tasks || res.data?.data || []);
       delegationAndChecklist.forEach(t => {
         if (!t.taskType) t.taskType = t.frequency ? 'Checklist' : 'Delegation';
       });
+      const allTemplates = Array.isArray(tmplRes.data) ? tmplRes.data : [];
       const adminEmp = allEmp.find(e => (e.roles || []).includes('Admin'));
       const fmsRawList = fmsRes.data?.instances || [];
       const fmsTasks = fmsRawList.map(inst => ({
@@ -174,8 +180,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         assignerName: adminEmp?.name || 'Admin',
         deadline: inst.activeStep?.plannedDeadline,
         flowName: inst.templateName,
-        stepName: inst.activeStep?.nodeName,
         orderIdentifier: inst.orderIdentifier,
+        rawSheetData: inst.rawSheetData || {},
+        nodeHistory: inst.nodeHistory || [],
       }));
       const fmsCompletedList = fmsCompletedRes.data?.instances || [];
       const fmsCompletedTasks = fmsCompletedList.map(inst => ({
@@ -484,6 +491,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       <div className="mb-8 relative group">
         <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none"><Search size={22} className="text-slate-400 group-focus-within:text-primary transition-colors" /></div>
         <input type="text" placeholder="Filter by Personnel, Dept, or Mission..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-card border border-border pl-14 pr-12 py-5 rounded-[1.5rem] text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
+        <button onClick={() => setShowCoordColConfig(c => !c)}
+          className="absolute inset-y-0 right-14 pr-2 flex items-center text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-wider gap-1">
+          ⚙️{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
+        </button>
         {searchTerm && <button onClick={() => setSearchTerm("")} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-red-500"><X size={20} /></button>}
       </div>
 
@@ -541,6 +552,54 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl overflow-hidden h-[600px] flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
           <div className="min-w-[700px] lg:min-w-full">
+            {/* Coordinator Sheet Column Config Panel */}
+            {showCoordColConfig && (() => {
+              const fmsTasks = tasks.filter(t => t.taskType === 'FMS');
+              const allowedCols = [...new Set(fmsTasks.flatMap(t => {
+                const tmpl = allTemplates?.find(tmpl => tmpl.name === t.flowName);
+                const sheetCols = tmpl?.allowedCoordinatorColumns || [];
+                // Also add collected fields from template nodes
+                const collectedCols = (tmpl?.nodes || []).filter(n => n.inputFields?.length > 0).flatMap(n =>
+                  (n.inputFields || []).map(f => `[${n.name}] ${f.label}`)
+                );
+                return [...sheetCols, ...collectedCols];
+              }))];
+              if (allowedCols.length === 0) return (
+                <div style={{ background:'var(--color-muted)', borderRadius:10, padding:'12px 16px', marginBottom:12, fontSize:12, color:'var(--color-muted-foreground)' }}>
+                  No columns configured by admin yet. Admin must set allowed coordinator columns in Flow Builder → Sheet tab.
+                </div>
+              );
+              return (
+                <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:10, padding:'14px 16px', marginBottom:12 }}>
+                  <div style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>👁 Sheet columns to show in tracking table</div>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                    {allowedCols.map(col => {
+                      const checked = coordExtraCols.includes(col);
+                      return (
+                        <label key={col} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:600,
+                          background: checked ? 'var(--color-primary)' : 'var(--color-muted)',
+                          color: checked ? 'white' : 'var(--color-muted-foreground)',
+                          border:'1px solid var(--color-border)', transition:'all .12s' }}>
+                          <input type="checkbox" style={{ display:'none' }} checked={checked}
+                            onChange={e => {
+                              const next = e.target.checked ? [...coordExtraCols, col] : coordExtraCols.filter(c => c !== col);
+                              setCoordExtraCols(next);
+                              localStorage.setItem('coord_fms_cols', JSON.stringify(next));
+                            }} />
+                          {checked ? '✓ ' : ''}{col}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {coordExtraCols.length > 0 && (
+                    <button onClick={() => { setCoordExtraCols([]); localStorage.removeItem('coord_fms_cols'); }}
+                      style={{ marginTop:8, fontSize:10, color:'var(--color-muted-foreground)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <table className="w-full table-fixed border-collapse text-left">
               <thead className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl">
                 <tr className="bg-background/50 border-b border-border">
@@ -549,6 +608,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                   <th className="w-[160px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned To</th>
                   <th className="w-[160px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned By</th>
                   <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
+                  {coordExtraCols.map(col => (
+                    <th key={col} className="px-4 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">{col}</th>
+                  ))}
                   <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
                   <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
                   <th className="w-[150px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
@@ -611,6 +673,25 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                             <Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}
                           </div>
                         </td>
+                        {coordExtraCols.map(col => {
+                          if (task.taskType !== 'FMS') return <td key={col} className="px-4 py-3 text-xs text-muted-foreground">—</td>;
+                          const collectMatch = col.match(/^\[(.+?)\] (.+)$/);
+                          let cellValue = '—';
+                          if (collectMatch) {
+                            const [, stepName, fieldLabel] = collectMatch;
+                            const tmpl = allTemplates?.find(t => t.name === task.flowName);
+                            const node = tmpl?.nodes?.find(n => n.name === stepName);
+                            const field = node?.inputFields?.find(f => f.label === fieldLabel);
+                            // Look in rawSheetData first, then nodeHistory
+                            if (field && task.rawSheetData) {
+                              const histStep = (task.nodeHistory || [])?.find(h => h.nodeName === stepName);
+                              cellValue = histStep?.inputs?.[field.id] || '—';
+                            }
+                          } else {
+                            cellValue = task.rawSheetData?.[col] || '—';
+                          }
+                          return <td key={col} className="px-4 py-3 text-xs">{String(cellValue)}</td>;
+                        })}
                         <td className="px-4 py-3 min-w-0 break-words">
                           <div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]">
                             <Clock size={14} className="text-primary/40" />
