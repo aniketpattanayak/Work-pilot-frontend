@@ -634,27 +634,79 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
               </Section>
 
               {/* Custom WhatsApp API Key */}
-              <Section icon={Settings} title="Custom WhatsApp API Key" color={C.green} accent={C.greenL}>
-                <div style={{ fontSize:12, color:C.muted2, marginBottom:8 }}>
-                  Optional. If set, this tenant's WhatsApp notifications will use their own DoubleTick API key instead of the shared key.
+              <Section icon={Settings} title="Custom WhatsApp Integration" color={C.green} accent={C.greenL}>
+                <div style={{ fontSize:12, color:C.muted2, marginBottom:12 }}>
+                  By default this tenant uses the shared DoubleTick account. Set a custom provider below to use their own WhatsApp account.
                 </div>
-                <input
-                  type="password"
-                  placeholder="key_xxxxxxxxxxxxxxxxxxxxxxxx"
-                  value={customWhatsappKey}
-                  onChange={e => setCustomWhatsappKey(e.target.value)}
-                  style={{ width:'100%', padding:'10px 12px', fontSize:12, border:`1px solid ${C.border}`, borderRadius:8, background:C.bg, color:C.text, outline:'none', boxSizing:'border-box', marginBottom:10, fontFamily:'monospace' }}
-                />
-                <button onClick={() => api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-whatsapp`, { customWhatsappKey }))}
-                  disabled={saving} style={primaryBtn}>
-                  <Save size={14}/>{saving ? 'Saving…' : 'Save WhatsApp Key'}
-                </button>
-                {customWhatsappKey && (
-                  <button onClick={() => { setCustomWhatsappKey(''); api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-whatsapp`, { customWhatsappKey: '' })); }}
-                    style={{ ...primaryBtn, background:'transparent', color:C.red, border:`1px solid ${C.red}`, marginLeft:8 }}>
-                    Remove Custom Key
-                  </button>
-                )}
+
+                {/* Provider Selector */}
+                {(() => {
+                  let parsed = {};
+                  try { parsed = customWhatsappKey ? JSON.parse(customWhatsappKey) : {}; } catch(e) {}
+                  const provider = parsed.provider || (customWhatsappKey && !customWhatsappKey.startsWith('{') ? 'doubletick' : 'none');
+
+                  const selectStyle = { width:'100%', padding:'10px 12px', fontSize:12, border:`1px solid ${C.border}`, borderRadius:8, background:C.bg, color:C.text, outline:'none', boxSizing:'border-box', marginBottom:10 };
+                  const inputStyle = { ...selectStyle, fontFamily:'monospace' };
+
+                  const saveConfig = (config) => {
+                    const val = config.provider === 'none' ? '' : JSON.stringify(config);
+                    setCustomWhatsappKey(val);
+                    api(() => SA.put(`/superadmin/tenants/${tenantId}/custom-whatsapp`, { customWhatsappKey: val }));
+                  };
+
+                  return (
+                    <div>
+                      <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>WhatsApp Provider</label>
+                      <select value={provider} onChange={e => {
+                        if (e.target.value === 'none') saveConfig({ provider:'none' });
+                        else if (e.target.value === 'doubletick') setCustomWhatsappKey(JSON.stringify({ provider:'doubletick', apiKey:'' }));
+                        else if (e.target.value === 'maytapi') setCustomWhatsappKey(JSON.stringify({ provider:'maytapi', productId:'', token:'', phoneId:'' }));
+                        else if (e.target.value === 'wati') setCustomWhatsappKey(JSON.stringify({ provider:'wati', apiEndpoint:'', apiKey:'' }));
+                      }} style={selectStyle}>
+                        <option value="none">Default (Shared DoubleTick)</option>
+                        <option value="doubletick">DoubleTick (Own Account)</option>
+                        <option value="maytapi">Maytapi</option>
+                        <option value="wati">WATI</option>
+                      </select>
+
+                      {provider === 'doubletick' && (
+                        <div>
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>DoubleTick API Key</label>
+                          <input type="password" placeholder="key_xxxxxxxx" value={parsed.apiKey||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'doubletick', apiKey:e.target.value }))} style={inputStyle} />
+                          <button onClick={() => saveConfig({ ...parsed, provider:'doubletick' })} disabled={saving} style={primaryBtn}><Save size={14}/>{saving?'Saving…':'Save'}</button>
+                        </div>
+                      )}
+
+                      {provider === 'maytapi' && (
+                        <div>
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>Product ID</label>
+                          <input placeholder="e7a019ae-..." value={parsed.productId||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'maytapi', productId:e.target.value }))} style={inputStyle} />
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>Token</label>
+                          <input type="password" placeholder="d9595198-..." value={parsed.token||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'maytapi', token:e.target.value }))} style={inputStyle} />
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>Phone ID</label>
+                          <input placeholder="100990" value={parsed.phoneId||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'maytapi', phoneId:e.target.value }))} style={inputStyle} />
+                          <button onClick={() => saveConfig({ ...parsed, provider:'maytapi' })} disabled={saving} style={primaryBtn}><Save size={14}/>{saving?'Saving…':'Save'}</button>
+                        </div>
+                      )}
+
+                      {provider === 'wati' && (
+                        <div>
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>API Endpoint</label>
+                          <input placeholder="https://live-server-XXXXX.wati.io" value={parsed.apiEndpoint||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'wati', apiEndpoint:e.target.value }))} style={inputStyle} />
+                          <label style={{ fontSize:12, color:C.muted2, display:'block', marginBottom:4 }}>API Key</label>
+                          <input type="password" placeholder="eyJhbGci..." value={parsed.apiKey||''} onChange={e => setCustomWhatsappKey(JSON.stringify({ ...parsed, provider:'wati', apiKey:e.target.value }))} style={inputStyle} />
+                          <button onClick={() => saveConfig({ ...parsed, provider:'wati' })} disabled={saving} style={primaryBtn}><Save size={14}/>{saving?'Saving…':'Save'}</button>
+                        </div>
+                      )}
+
+                      {(provider !== 'none' && customWhatsappKey) && (
+                        <button onClick={() => saveConfig({ provider:'none' })} style={{ ...primaryBtn, background:'transparent', color:C.red, border:`1px solid ${C.red}`, marginLeft:8, marginTop:4 }}>
+                          Reset to Default
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </Section>
 
               {/* Feature flags */}
