@@ -80,7 +80,7 @@ const DoerChecklist = ({ doerId }) => {
         API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => ({ data: [] }))
       ]);
 
-      const employeesRes = await API.get('/employees').catch(() => ({ data: [] }));
+      const employeesRes = await API.get('/tasks/employees').catch(() => ({ data: [] }));
       setEmployees(employeesRes.data || []);
 
       const safeChecklist = Array.isArray(checklistRes.data) ? checklistRes.data : (checklistRes.data?.data || []);
