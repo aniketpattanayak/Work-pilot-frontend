@@ -10,8 +10,12 @@ const TASK_HEADERS = ['Task Title', 'Description', 'Assigned To', 'Created By', 
 const TASK_SAMPLE = [['Review monthly report', 'Check and approve the monthly sales report', 'Aniket', 'Admin', '2026-07-10', 'high']];
 
 // Updated Checklist Headers to align more closely with recurring configurations
-const CHECKLIST_HEADERS = ['Checklist Title', 'Description', 'Assigned To', 'Frequency', 'Start Date'];
-const CHECKLIST_SAMPLE = [['Quality Check', 'Check product quality before dispatch', 'Aniket', 'Daily', '2026-07-15']];
+const CHECKLIST_HEADERS = ['Checklist Title', 'Description', 'Assigned To', 'Frequency', 'Start Date', 'Days of Week (if Weekly)', 'Days of Month (if Monthly)'];
+const CHECKLIST_SAMPLE = [
+  ['Quality Check', 'Check product quality before dispatch', 'Aniket', 'Daily', '2026-07-15', '', ''],
+  ['Weekly Review Meeting', 'Team sync on progress', 'Aniket', 'Weekly', '2026-07-15', 'Mon,Thu', ''],
+  ['Inventory Count', 'Count and reconcile stock', 'Aniket', 'Monthly', '2026-07-01', '', '1,15'],
+];
 
 function toCSV(headers, rows) {
   const lines = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))];
