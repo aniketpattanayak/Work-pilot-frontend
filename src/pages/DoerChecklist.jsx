@@ -405,10 +405,7 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
                 </div>
                 <div className="flex justify-end gap-2 w-full lg:w-auto">
-                  {item.dataType === 'Delegation' && item.status === "Pending" && (
-                    <button onClick={() => API.put(`/tasks/respond`, { taskId: item._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks)} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Accept</button>
-                  )}
-                  {item.dataType === 'Delegation' && item.status === "Accepted" && (
+                  {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && (
                     <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
                   )}
                   {item.dataType === 'Checklist' && !item.isDone && (
@@ -456,17 +453,14 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
                 </div>
                 <div className="flex justify-end gap-2 w-full lg:w-auto">
-                  {task.status === "Pending" && (
+                  {(task.status === "Pending" || task.status === "Accepted") && (
                     <>
-                      <button onClick={() => API.put(`/tasks/respond`, { taskId: task._id, status: 'Accepted', doerId: currentDoerId }).then(fetchAllTasks)} className="px-3 py-1 bg-primary text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Accept</button>
-                      {task.isRevisionAllowed && (
+                      {task.isRevisionAllowed && !isPastDue && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
+                      <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
                     </>
-                  )}
-                  {task.status === "Accepted" && (
-                    <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
-                  )}
+                                    )}
                 </div>
               </div>
             );
