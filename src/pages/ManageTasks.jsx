@@ -60,6 +60,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const user = JSON.parse(localStorage.getItem('user'));
   const currentAssignerId = assignerId || user?._id || user?.id;
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const myRoles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
+  const idOf = (v) => String((v && v._id) || v || '');
+  // Someone who only passed the task on (not the original assigner, not an Admin) can follow
+  // and verify it, but only the original assigner or an Admin may edit or delete it.
+  const passedOnOnly = (t) =>
+    !myRoles.includes('Admin') &&
+    idOf(t.assignerId) !== String(currentAssignerId) &&
+    (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId));
+  const chainText = (t) =>
+    [t.assignerId?.name, ...(t.forwardChain || []).map(c => c.employeeId?.name), t.doerId?.name].filter(Boolean).join(' → ');
 
   // ── Apply time filter, status filter AND name filter ─────────────────────
   const applyFilters = useCallback((range, status, name, allTasks = tasks) => {
@@ -328,6 +338,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                       </div>
                       <div className="text-xs font-bold min-w-0 pr-2">
                         <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
+                        {(task.forwardChain || []).length > 0 && (
+  <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
+)}
                       </div>
                       <div className="min-w-0 pr-2">
                         <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">
@@ -341,7 +354,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>
                       </div>
                       <div className="flex gap-1.5 justify-end items-center min-w-0">
-                        {!isViewer && (
+                        {!isViewer && !passedOnOnly(task) && (
 <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
                           className="p-2 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90" title="Edit Task">
                           <Edit3 size={14} />
@@ -377,7 +390,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                           💬
                         </button>
 )}
-                        {!isViewer && (
+                        {!isViewer && !passedOnOnly(task) && (
 <button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id); }}
                           className="p-2 bg-background border border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all active:scale-90" title="Delete Task">
                           <Trash2 size={14} />
