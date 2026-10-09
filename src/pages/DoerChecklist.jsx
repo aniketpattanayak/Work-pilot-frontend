@@ -74,6 +74,10 @@ const DoerChecklist = ({ doerId }) => {
   const [onwardErr, setOnwardErr] = useState('');
   const myRoles = Array.isArray(savedUser.roles) ? savedUser.roles : (savedUser.role ? [savedUser.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
+  // A task I handed to someone else: I can follow it here but not work on it
+  const isPassedOn = (t) =>
+    idOf(t.doerId) !== String(currentDoerId) &&
+    (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentDoerId));
   const canForward = (t) =>
     myRoles.includes('Assigner') &&
     (t.status === 'Pending' || t.status === 'Accepted') &&
@@ -113,7 +117,7 @@ const DoerChecklist = ({ doerId }) => {
       const userEmail = savedUser.email;
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
         API.get(`/tasks/checklist/${currentDoerId}`).catch(() => ({ data: [] })),
-        API.get(`/tasks/doer/${currentDoerId}`).catch(() => ({ data: [] })),
+        API.get(`/tasks/doer/${currentDoerId}?includePassedOn=1`).catch(() => ({ data: [] })),
         API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => ({ data: [] }))
       ]);
 
@@ -225,7 +229,7 @@ const DoerChecklist = ({ doerId }) => {
     return target.getTime() <= now.getTime();
   }).length;
 
-  const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified').length;
+  const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t)).length;
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
@@ -442,10 +446,11 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
+                  {item.dataType === 'Delegation' && isPassedOn(item) && (<span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {item.doerId?.name || 'someone'}</span>)}
                   {canForward(item) && (
                     <button onClick={() => openOnward(item)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
-                  {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && (
+                  {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && !isPassedOn(item) && (
                     <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
                   )}
                   {item.dataType === 'Checklist' && !item.isDone && (
@@ -493,10 +498,11 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
+                  {isPassedOn(task) && (<span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {task.doerId?.name || 'someone'}</span>)}
                   {canForward(task) && (
                     <button onClick={() => openOnward(task)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
-                  {(task.status === "Pending" || task.status === "Accepted") && (
+                  {(task.status === "Pending" || task.status === "Accepted") && !isPassedOn(task) && (
                     <>
                       {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved') && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
