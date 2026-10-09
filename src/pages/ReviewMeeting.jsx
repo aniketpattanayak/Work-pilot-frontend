@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
+import { isViewerOnly } from '../utils/viewerMode';
 import {
   BarChart3,
   RefreshCcw,
@@ -61,7 +62,9 @@ const ReviewMeeting = ({ tenantId }) => {
 
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
-  const isAdmin = user.roles?.includes('Admin') || user.role === 'Admin';
+  const isViewer = isViewerOnly();
+  // A read-only Viewer sees the same analytics as an Admin, but cannot change anything.
+  const isAdmin = user.roles?.includes('Admin') || user.role === 'Admin' || isViewer;
 
   const fetchAnalytics = useCallback(async () => {
     if (!isAdmin) return;
@@ -341,6 +344,7 @@ const ReviewMeeting = ({ tenantId }) => {
                         type="number"
                         defaultValue={row.lateTarget}
                         onBlur={(e) => saveTarget(row.employeeId, e.target.value)}
+                        disabled={isViewer}
                         className="w-16 bg-background border-2 border-border rounded-lg text-center font-black text-xs py-1 focus:border-primary outline-none"
                       />
                     </td>
@@ -485,9 +489,11 @@ const ReviewMeeting = ({ tenantId }) => {
                                     <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${statusClass(status)}`}>{status}</span>
                                   </td>
                                   <td className="text-center">
-                                    <button onClick={() => deleteTaskRecord(task.id, 'Delegation')} className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition">
+                                    {!isViewer && (
+<button onClick={() => deleteTaskRecord(task.id, 'Delegation')} className="p-2 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition">
                                       <Trash2 size={14} />
                                     </button>
+)}
                                   </td>
                                 </tr>
                               );
@@ -518,9 +524,11 @@ const ReviewMeeting = ({ tenantId }) => {
                                 <button onClick={() => toggleChecklist(taskId)} className="p-3 bg-background hover:bg-slate-200 rounded-xl transition flex items-center justify-center">
                                   {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                 </button>
-                                <button onClick={() => deleteTaskRecord(taskId, 'Checklist')} className="p-3 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition flex items-center justify-center">
+                                {!isViewer && (
+<button onClick={() => deleteTaskRecord(taskId, 'Checklist')} className="p-3 hover:bg-red-50 text-red-400 hover:text-red-600 rounded-xl transition flex items-center justify-center">
                                   <Trash2 size={18} />
                                 </button>
+)}
                               </div>
                             </div>
                             {isOpen && (

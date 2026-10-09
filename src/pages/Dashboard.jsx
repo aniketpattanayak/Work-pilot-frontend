@@ -15,7 +15,8 @@ import ThemeToggle from "../components/ThemeToggle"; // Theme Engine
 import FmsDashboard from './FmsDashboard';
 import FlowManagement  from './FlowManagement';
 import ChatPage        from './ChatPage';
-import FloatingChat    from '../components/FloatingChat';
+import FloatingChat from '../components/FloatingChat';
+import { isViewerOnly } from '../utils/viewerMode';
 import OrderFormsPage  from './OrderFormsPage';
 import NewOrderPage    from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
@@ -615,7 +616,7 @@ useEffect(() => {
         }
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
-      <FloatingChat currentUser={user} />
+      {!isViewerOnly() && <FloatingChat currentUser={user} />}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
+import { isViewerOnly } from '../utils/viewerMode';
 import {
   Trash2,
   Edit3,
@@ -31,6 +32,7 @@ import BulkUpload from '../components/BulkUpload';
  * Updated: Modal stays open on success so user can see upload results.
  */
 const ManageChecklist = ({ tenantId, assignerId }) => {
+  const isViewer = isViewerOnly();
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [tenantSettings, setTenantSettings] = useState(null);
@@ -259,21 +261,25 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
             Refresh
           </button>
 
-          <button
+          {!isViewer && (
+<button
             onClick={() => setShowBulk(true)}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition"
           >
             <Upload size={14} />
             Bulk Upload
           </button>
+)}
 
-          <button
+          {!isViewer && (
+<button
             onClick={() => setIsCreateOpen(true)}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
           >
             <Plus size={14} />
             New Task
           </button>
+)}
         </div>
       </div>
 
@@ -456,12 +462,16 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                       </>
                     ) : (
                       <>
-                        <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist">
+                        {!isViewer && (
+<button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist">
                           <Edit3 size={14} />
                         </button>
-                        <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist">
+)}
+                        {!isViewer && (
+<button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist">
                           <Trash2 size={14} />
                         </button>
+)}
                       </>
                     )}
                   </div>

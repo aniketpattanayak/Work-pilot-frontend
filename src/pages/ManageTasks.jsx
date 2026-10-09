@@ -30,9 +30,11 @@ import {
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
 import { useChat } from '../components/useChat';
+import { isViewerOnly } from '../utils/viewerMode';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
+  const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
@@ -220,9 +222,11 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-6 py-3 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
             <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
-          <button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
+          {!isViewer && (
+<button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
             <Plus size={16} /> New Task
           </button>
+)}
         </div>
       </div>
 
@@ -336,17 +340,19 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>
                       </div>
                       <div className="flex gap-1.5 justify-end items-center min-w-0">
-                        <button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
+                        {!isViewer && (
+<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
                           className="p-2 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90" title="Edit Task">
                           <Edit3 size={14} />
                         </button>
-                        {task.status === 'Revision Requested' && (
+)}
+                        {!isViewer && task.status === 'Revision Requested' && (
                           <button onClick={(e) => { e.stopPropagation(); setRevisionModalTask(task); }}
                             className="p-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all active:scale-90" title="Revision Control">
                             <AlertTriangle size={14} />
                           </button>
                         )}
-                        {task.status === 'Completed' && (<>
+                        {!isViewer && task.status === 'Completed' && (<>
                           <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, true); }}
                             className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
                             <CheckCircle size={14} />
@@ -356,7 +362,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             <XCircle size={14} />
                           </button>
                         </>)}
-                        <button onClick={(e) => {
+                        {!isViewer && (
+<button onClick={(e) => {
                           e.stopPropagation();
                           openTaskThread({
                             taskId: task._id,
@@ -368,10 +375,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                           className="flex items-center gap-1 text-[11px] px-2 py-2 rounded-xl border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all font-bold" title="Comments">
                           💬
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id); }}
+)}
+                        {!isViewer && (
+<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id); }}
                           className="p-2 bg-background border border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all active:scale-90" title="Delete Task">
                           <Trash2 size={14} />
                         </button>
+)}
                       </div>
                     </div>
                   </div>

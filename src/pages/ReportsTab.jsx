@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/axiosConfig';
+import { isViewerOnly } from '../utils/viewerMode';
 import { Mail, Calendar, Download, Save, Clock, FileText, Send } from 'lucide-react';
 
 const ReportsTab = ({ tenantId }) => {
+  const isViewer = isViewerOnly();
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [settings, setSettings] = useState({
@@ -87,7 +89,8 @@ const ReportsTab = ({ tenantId }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* AUTOMATION SETTINGS CARD */}
-        <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl space-y-8">
+        {!isViewer && (
+<div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl space-y-8">
           <div className="flex justify-between items-center">
             <h3 className="font-black uppercase text-sm text-slate-900 flex items-center gap-2">
                 <Mail size={18} className="text-primary"/> Delivery Preferences
@@ -144,6 +147,7 @@ const ReportsTab = ({ tenantId }) => {
             {loading ? 'Saving Settings...' : 'Update Preferences'}
           </button>
         </div>
+)}
 
         {/* QUICK DOWNLOAD & AUDIT CARD */}
         <div className="bg-slate-50 p-8 rounded-[3rem] border-2 border-dashed border-slate-200 space-y-8">

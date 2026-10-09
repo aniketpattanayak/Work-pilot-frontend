@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import API from '../api/axiosConfig';
+import { isViewerOnly } from '../utils/viewerMode';
 import {
   ShieldCheck, Send, CheckCircle2, Clock, User, UserCheck, AlertCircle,
   RefreshCcw, MessageCircle, Zap, X, Phone, MessageSquare, Layers,
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
+  const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedTaskId, setExpandedTaskId] = useState(null);
@@ -720,14 +722,14 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                 {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {instances.length} {activeTab === 'Upcoming' ? 'Upcoming' : 'Backlogs'}
                               </button>
                             )}
-                            {activeTab !== 'Completed' && (
-                              <button onClick={() => openReminderModal(task)}
+                            {!isViewer && activeTab !== 'Completed' && (
+<button onClick={() => openReminderModal(task)}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90">
                                 <MessageCircle size={16} /> Remind
                               </button>
                             )}
-                            {activeTab !== 'Completed' && (
-                              <button onClick={() => handleMarkDone(task)}
+                            {!isViewer && activeTab !== 'Completed' && (
+<button onClick={() => handleMarkDone(task)}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-90">
                                 <Zap size={16} /> Force Done
                               </button>
@@ -757,7 +759,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                 <div className="grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border bg-muted/30">
                                   <input type="checkbox" className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
                                     checked={instances.length > 0 && instances.every(i => (bulkSelected[task._id] || new Set()).has(toLockPattern(i.date)))}
-                                    onChange={() => toggleSelectAll(task, instances)} title="Select all" />
+                                    onChange={() => toggleSelectAll(task, instances)} title="Select all" disabled={isViewer} />
                                   <span>Date</span>
                                   <span>Status</span>
                                   <span className="text-right">Action</span>
@@ -765,7 +767,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                 {instances.map((instance, idx) => {
                                   const dateStr = toLockPattern(instance.date);
                                   const isChecked = (bulkSelected[task._id] || new Set()).has(dateStr);
-                                  const isActionable = instance.status !== 'Completed';
+                                  const isActionable = instance.status !== 'Completed' && !isViewer;
                                   const rowColor = instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-500' : 'text-primary';
 
                                   return (
@@ -787,7 +789,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                             DONE
                                           </button>
                                         ) : (
-                                          <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">✓ Done</span>
+                                          instance.status === 'Completed'
+                                          ? <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">✓ Done</span>
+                                          : <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pending</span>
                                         )}
                                       </div>
                                     </div>
