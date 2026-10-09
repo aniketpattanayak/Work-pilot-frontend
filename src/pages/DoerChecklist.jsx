@@ -395,7 +395,7 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* EXCEL GRID HEADER WITH RESPONSIVE FLUID TRACKS */}
-      <div className="hidden lg:grid grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
+      <div className="hidden lg:grid grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
         <div>#</div>
         <div>Mission Identifier</div>
         <div className="text-center">Assigned By</div>
@@ -411,7 +411,7 @@ const DoerChecklist = ({ doerId }) => {
           filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
             const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
             return (
-              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
+              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -441,7 +441,7 @@ const DoerChecklist = ({ doerId }) => {
                   </span>
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
                 </div>
-                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
                   {canForward(item) && (
                     <button onClick={() => openOnward(item)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
@@ -465,7 +465,7 @@ const DoerChecklist = ({ doerId }) => {
             const isPastDue = new Date(task.deadline) < new Date();
 
             return (
-              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -492,7 +492,7 @@ const DoerChecklist = ({ doerId }) => {
                   </span>
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
                 </div>
-                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
                   {canForward(task) && (
                     <button onClick={() => openOnward(task)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
@@ -515,7 +515,7 @@ const DoerChecklist = ({ doerId }) => {
             const deadline = mission.activeStep?.plannedDeadline || mission.completedAt || mission.plannedDeadline;
             const isDelayed = deadline && mission.status === 'active' && new Date() > new Date(deadline);
             return (
-              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -541,7 +541,7 @@ const DoerChecklist = ({ doerId }) => {
                     {mission.status === 'completed' ? 'COMPLETED' : isDelayed ? 'DELAYED' : 'ON TRACK'}
                   </span>
                 </div>
-                <div className="flex justify-end gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
                   <button onClick={() => { setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
                 </div>
               </div>
@@ -559,7 +559,7 @@ const DoerChecklist = ({ doerId }) => {
             const isFuture = displayDate.getTime() > today.getTime();
 
             return (
-              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
