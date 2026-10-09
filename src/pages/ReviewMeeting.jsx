@@ -107,7 +107,7 @@ const ReviewMeeting = ({ tenantId }) => {
   const deleteTaskRecord = async (taskId, type) => {
     if (!window.confirm('CRITICAL: Purge this record?')) return;
     try {
-      const endpoint = type === 'Checklist' ? `/tasks/checklist/${taskId}` : `/tasks/task/${taskId}`;
+      const endpoint = type === 'Checklist' ? `/tasks/checklist/${taskId}` : `/tasks/${taskId}`;
       await API.delete(endpoint);
       fetchTaskDetails(activePerson.employeeId, modalStartDate, modalEndDate, activeWeekIndex);
       fetchAnalytics();

@@ -45,7 +45,7 @@ const RewardsLog = ({ userId, tenantId }) => {
       // Fetch both tasks and global analytics in parallel
       const [tasksRes, analyticsRes] = await Promise.all([
         API.get(`/tasks/doer/${currentUserId}`),
-        isAdmin ? API.get(`/tasks/overview/${currentTenantId}`) : Promise.resolve({ data: null })
+        Promise.resolve({ data: null })
       ]);
       
       const rawTasks = Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data?.tasks || []);

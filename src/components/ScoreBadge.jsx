@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import API from '../api/axiosConfig';
 import { 
   Target, 
   Zap, 
@@ -34,7 +34,7 @@ const ScoreBadge = ({ employeeId, minimalist = false }) => {
       if (!employeeId) return; 
       try {
         setLoading(true);
-        const res = await axios.get(`/tasks/score/${employeeId}`);
+        const res = await API.get(`/tasks/employee-score/${employeeId}`);
         setStats(res.data);
       } catch (err) {
         console.error("Score fetch failed:", err);
