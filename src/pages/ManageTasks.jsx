@@ -259,6 +259,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             <option value="Pending">Pending</option>
             <option value="Completed">Completed</option>
             <option value="Verified">Verified</option>
+            <option value="Revision Requested">Revision Requested</option>
           </select>
         </div>
 
