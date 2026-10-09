@@ -57,6 +57,13 @@ const Settings = ({ tenantId }) => {
 
   const [badgeLibrary, setBadgeLibrary] = useState([]);
 
+  // Company masters (dropdown lists for Add Employee)
+  const [sectorList, setSectorList] = useState([]);
+  const [locationList, setLocationList] = useState([]);
+  const [newSector, setNewSector] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [mastersLoaded, setMastersLoaded] = useState(false); // only save the lists once they were read
+
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
   const availableIcons = [
@@ -107,6 +114,9 @@ const Settings = ({ tenantId }) => {
           });
         }
         setBadgeLibrary(Array.isArray(data.badgeLibrary) ? data.badgeLibrary : []);
+        setSectorList(Array.isArray(data.sectors) ? data.sectors : []);
+        setLocationList(Array.isArray(data.locations) ? data.locations : []);
+        setMastersLoaded(true);
       }
     } catch (err) {
       console.error("Fetch failure:", err);
@@ -227,6 +237,22 @@ const Settings = ({ tenantId }) => {
   /**
    * 3. PERSISTENCE LOGIC
    */
+  const addMaster = (kind) => {
+    const isSector = kind === 'sector';
+    const raw = (isSector ? newSector : newLocation).replace(/\s+/g, ' ').trim();
+    const clear = () => (isSector ? setNewSector('') : setNewLocation(''));
+    if (!raw) return;
+    if (raw.length > 60) { alert('Please keep the name under 60 characters.'); return; }
+    const list = isSector ? sectorList : locationList;
+    if (!list.some((x) => x.toLowerCase() === raw.toLowerCase())) {
+      (isSector ? setSectorList : setLocationList)([...list, raw]);
+    }
+    clear();
+  };
+  const removeMaster = (kind, name) => {
+    (kind === 'sector' ? setSectorList : setLocationList)((prev) => prev.filter((x) => x !== name));
+  };
+
   const saveSettings = async () => {
     if (saving) return;
     try {
@@ -238,7 +264,8 @@ const Settings = ({ tenantId }) => {
         weekends: weekends, 
         holidays: holidayList,
         pointSettings: pointSettings,
-        badgeLibrary: badgeLibrary 
+        badgeLibrary: badgeLibrary,
+        ...(mastersLoaded ? { sectors: sectorList, locations: locationList } : {})
       });
   
       if (response.status === 200) {
@@ -332,6 +359,46 @@ const Settings = ({ tenantId }) => {
               </button>
             ))}
           </div>
+        </section>
+
+        {/* SECTION: SECTORS / DEPARTMENTS & LOCATIONS (masters used by Add Employee) */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+            <Building2 size={22} className="text-primary" /> Sectors / Departments &amp; Locations
+          </h3>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-10 ml-1">These lists become the dropdowns in Add Employee and the filters when mapping people. Click "Commit Global Updates" below to save.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {[
+              { kind: 'sector', title: 'Sector / Department', list: sectorList, value: newSector, setValue: setNewSector, ph: 'e.g. Operations' },
+              { kind: 'location', title: 'Location', list: locationList, value: newLocation, setValue: setNewLocation, ph: 'e.g. Pune Plant' },
+            ].map((m) => (
+              <div key={m.kind} className="space-y-4">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">{m.title}</label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={m.value}
+                    placeholder={m.ph}
+                    maxLength={60}
+                    onChange={(e) => m.setValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addMaster(m.kind); } }}
+                    className="flex-1 min-w-0 bg-background border border-border text-foreground px-5 py-3 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-bold text-sm shadow-inner"
+                  />
+                  <button type="button" onClick={() => addMaster(m.kind)} className="px-5 py-3 rounded-2xl bg-primary text-white font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 flex items-center gap-2"><FiPlus size={14} /> Add</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {m.list.length === 0 && <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">None added yet</span>}
+                  {m.list.map((name) => (
+                    <span key={name} className="inline-flex items-center gap-2 pl-4 pr-2 py-2 rounded-full bg-background border border-border text-xs font-black text-foreground">
+                      {name}
+                      <button type="button" onClick={() => removeMaster(m.kind, name)} className="p-1 rounded-full text-red-500 hover:bg-red-500/10" title={`Remove ${name}`}><FiX size={12} /></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-8 ml-1">Removing a name here does not change employees who already have it.</p>
         </section>
 
         {/* SECTION 1: WORKING HOURS */}

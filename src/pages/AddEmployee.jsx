@@ -16,8 +16,61 @@ import {
   Layers,
   CalendarDays,
   ChevronRight,
-  Upload
+  Upload,
+  MapPin,
+  Search
 } from "lucide-react";
+
+/**
+ * Filter helpers for the mapping lists (name search + location + sector / department).
+ */
+const matchesScope = (e, f) => {
+  const q = (f.q || '').trim().toLowerCase();
+  if (q && !String(e.name || '').toLowerCase().includes(q)) return false;
+  if (f.loc && (e.location || '') !== f.loc) return false;
+  if (f.sec && (e.department || '') !== f.sec) return false;
+  return true;
+};
+const uniqNames = (arr) => [...new Set(arr.filter(Boolean))];
+
+const ScopeFilter = ({ filter, onChange, pool, sectors, locations, shown }) => {
+  const locOpts = uniqNames([...locations, ...pool.map((e) => e.location)]);
+  const secOpts = uniqNames([...sectors, ...pool.map((e) => e.department)]);
+  const active = !!(filter.q || filter.loc || filter.sec);
+  const selectCls = "px-3 py-2.5 bg-background border border-border text-foreground rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 shadow-inner min-w-0";
+  return (
+    <div className="mb-4 flex flex-col gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={filter.q}
+            placeholder="Search by name…"
+            onChange={(e) => onChange({ ...filter, q: e.target.value })}
+            className="w-full pl-9 pr-3 py-2.5 bg-background border border-border text-foreground rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 shadow-inner"
+          />
+        </div>
+        {locOpts.length > 0 && (
+          <select value={filter.loc} onChange={(e) => onChange({ ...filter, loc: e.target.value })} className={selectCls} aria-label="Filter by location">
+            <option value="">All locations</option>
+            {locOpts.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        )}
+        {secOpts.length > 0 && (
+          <select value={filter.sec} onChange={(e) => onChange({ ...filter, sec: e.target.value })} className={selectCls} aria-label="Filter by sector or department">
+            <option value="">All sectors / departments</option>
+            {secOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
+      </div>
+      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+        <span>{shown === 0 ? 'No matching people' : `Showing ${shown} of ${pool.length}`}</span>
+        {active && <button type="button" onClick={() => onChange({ q: '', loc: '', sec: '' })} className="text-primary hover:underline">Clear filters</button>}
+      </div>
+    </div>
+  );
+};
 
 /**
  * ADD EMPLOYEE: PERSONNEL PROVISIONING MODULE v1.7
@@ -35,6 +88,7 @@ const AddEmployee = ({
   const [formData, setFormData] = useState({
     name: "",
     department: "",
+        location: "",
     whatsappNumber: "",
     email: "",
     roles: ["Doer"],
@@ -48,6 +102,29 @@ const AddEmployee = ({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+
+  // Company masters (managed in Settings) + filters for the two mapping lists
+  const [masters, setMasters] = useState({ sectors: [], locations: [] });
+  const [doerFilter, setDoerFilter] = useState({ q: "", loc: "", sec: "" });
+  const [scopeFilter, setScopeFilter] = useState({ q: "", loc: "", sec: "" });
+
+  useEffect(() => {
+    if (!tenantId) return;
+    let off = false;
+    (async () => {
+      try {
+        const r = await API.get(`/tasks/settings/${tenantId}`);
+        const d = r.data?.settings || r.data || {};
+        if (!off) setMasters({
+          sectors: Array.isArray(d.sectors) ? d.sectors : [],
+          locations: Array.isArray(d.locations) ? d.locations : [],
+        });
+      } catch (err) {
+        console.error("Could not load sectors/locations:", err);
+      }
+    })();
+    return () => { off = true; };
+  }, [tenantId]);
 
   /**
    * 1. FETCH STAFF
@@ -80,6 +157,7 @@ const AddEmployee = ({
         ...selectedEmployee,
         name: selectedEmployee.name || "",
         department: selectedEmployee.department || "",
+        location: selectedEmployee.location || "",
         email: selectedEmployee.email || "",
         whatsappNumber: selectedEmployee.whatsappNumber || "",
         roles: Array.isArray(selectedEmployee.roles)
@@ -108,6 +186,7 @@ const AddEmployee = ({
       setFormData({
         name: "",
         department: "",
+        location: "",
         whatsappNumber: "",
         email: "",
         roles: ["Doer"],
@@ -177,6 +256,7 @@ const AddEmployee = ({
       setFormData({
         name: "",
         department: "",
+        location: "",
         whatsappNumber: "",
         email: "",
         roles: ["Doer"],
@@ -193,6 +273,14 @@ const AddEmployee = ({
       setLoading(false);
     }
   };
+
+  const staffList = Array.isArray(allEmployees) ? allEmployees : [];
+  const hasRole = (e, r) => (Array.isArray(e.roles) ? e.roles : [e.role]).includes(r);
+  const isSelf = (e) => e._id === (selectedEmployee?._id || formData._id);
+  const doerPool = staffList.filter((e) => hasRole(e, "Doer") && !isSelf(e));
+  const assignerPool = staffList.filter((e) => hasRole(e, "Assigner") && !isSelf(e));
+  const doerShown = doerPool.filter((e) => matchesScope(e, doerFilter)).length;
+  const assignerShown = assignerPool.filter((e) => matchesScope(e, scopeFilter)).length;
 
   const InputLabel = ({ icon: Icon, label }) => (
     <label className="flex items-center gap-2 text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">
@@ -247,16 +335,50 @@ const AddEmployee = ({
           </div>
           <div className="flex flex-col">
             <InputLabel icon={Briefcase} label="Sector / Department" />
-            <input
-              type="text"
-              placeholder="e.g. Operations Control"
-              value={formData.department || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            {masters.sectors.length > 0 ? (
+              <select
+                value={formData.department || ""}
+                required
+                className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              >
+                <option value="">Select sector / department</option>
+                {formData.department && !masters.sectors.includes(formData.department) && (
+                  <option value={formData.department}>{formData.department} (current, not in list)</option>
+                )}
+                {masters.sectors.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            ) : (
+              <input
+              type="text"
+              placeholder="e.g. Operations Control"
+              value={formData.department || ""} // Safe Fallback
+              required
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
+            )}
           </div>
         </div>
+
+        {(masters.locations.length > 0 || formData.location) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+            <div className="flex flex-col">
+              <InputLabel icon={MapPin} label="Location" />
+              <select
+                value={formData.location || ""}
+                className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+              >
+                <option value="">Not assigned</option>
+                {formData.location && !masters.locations.includes(formData.location) && (
+                  <option value={formData.location}>{formData.location} (current, not in list)</option>
+                )}
+                {masters.locations.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 ">
@@ -379,6 +501,7 @@ const AddEmployee = ({
             <h4 className="text-emerald-600 dark:text-emerald-400 m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
               <LinkIcon size={16} /> Directive Control (Doer Mapping)
             </h4>
+            <ScopeFilter filter={doerFilter} onChange={setDoerFilter} pool={doerPool} sectors={masters.sectors} locations={masters.locations} shown={doerShown} />
             <div className="max-h-[220px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
               {Array.isArray(allEmployees) &&
                 allEmployees
@@ -389,6 +512,7 @@ const AddEmployee = ({
                       e._id !== (selectedEmployee?._id || formData._id)
                     );
                   })
+                  .filter((e) => matchesScope(e, doerFilter))
                   .map((doer) => (
                     <label
                       key={doer._id}
@@ -402,7 +526,7 @@ const AddEmployee = ({
                           {doer.name}
                         </span>
                         <span className="text-[9px] opacity-60 uppercase font-bold tracking-tighter mt-1">
-                          Sector: {doer.department || 'N/A'}
+                          Sector: {doer.department || 'N/A'}{doer.location ? ` · ${doer.location}` : ''}
                         </span>
                       </div>
                       <input
@@ -422,6 +546,7 @@ const AddEmployee = ({
             <h4 className="text-primary m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
               <ShieldCheck size={16} /> Oversight Tracking Scope
             </h4>
+            <ScopeFilter filter={scopeFilter} onChange={setScopeFilter} pool={assignerPool} sectors={masters.sectors} locations={masters.locations} shown={assignerShown} />
             <div className="max-h-[220px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
               {Array.isArray(allEmployees) &&
                 allEmployees
@@ -432,6 +557,7 @@ const AddEmployee = ({
                       e._id !== (selectedEmployee?._id || formData._id)
                     );
                   })
+                  .filter((e) => matchesScope(e, scopeFilter))
                   .map((assigner) => (
                     <label
                       key={assigner._id}
@@ -445,7 +571,7 @@ const AddEmployee = ({
                           {assigner.name}
                         </span>
                         <span className="text-[9px] opacity-60 uppercase font-bold tracking-tighter mt-1">
-                          Sector: {assigner.department || 'N/A'}
+                          Sector: {assigner.department || 'N/A'}{assigner.location ? ` · ${assigner.location}` : ''}
                         </span>
                       </div>
                       <input
