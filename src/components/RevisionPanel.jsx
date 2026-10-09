@@ -40,6 +40,15 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const isDoer = source === "doer";
   const isAssigner = source === "manage";
 
+  // Date the assigner will authorize. Starts as the doer's proposed date; the assigner can change it.
+  const toYmd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const doerProposedYmd = (() => {
+    if (task?.proposedDeadline) return new Date(task.proposedDeadline).toISOString().slice(0, 10);
+    const mt = /Proposed Deadline:\s*(\d{4}-\d{2}-\d{2})/.exec(reason);
+    return mt ? mt[1] : '';
+  })();
+  const [approveDate, setApproveDate] = useState(doerProposedYmd);
+
 
   const [doerRemarks, setDoerRemarks] = useState('');
   const [proposedDeadline, setProposedDeadline] = useState(() => {
@@ -96,12 +105,16 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
       // Safety Guard: Extract the date from the remarks string
       //let proposedDate = task.deadline; 
-      let proposedDate = reason.includes("Proposed Deadline:") ? reason.split("Proposed Deadline: ")[1] : task?.proposedDeadline;
+      if (!approveDate) { alert("Please choose the new deadline date."); return; }
+      // keep the task's original time of day, so choosing a date does not move the deadline to early morning
+      const baseTime = task?.deadline ? new Date(task.deadline) : new Date();
+      const [yy, mm, dd] = approveDate.split('-').map(Number);
+      const finalDeadline = new Date(yy, mm - 1, dd, baseTime.getHours(), baseTime.getMinutes(), 0, 0);
 
       await API.post(`/tasks/handle-revision`, {
         taskId: task._id,
         action: 'Approve',
-        newDeadline: new Date(proposedDate),
+        newDeadline: finalDeadline,
         assignerId: assignerId
       });
 
@@ -198,13 +211,25 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
           {/* Action Choice 1: Approve Proposal */}
           <div className="space-y-4">
             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">Option A: Accept Proposal</label>
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-500 ml-2">
+                Doer proposed: {doerProposedYmd || 'not specified'} — you can change the date before authorizing.
+              </p>
+              <input
+                type="date"
+                value={approveDate}
+                min={toYmd(new Date())}
+                onChange={(e) => setApproveDate(e.target.value)}
+                className="w-full p-4 border border-border rounded-xl bg-background text-foreground text-sm font-bold"
+              />
+            </div>
             <button
               disabled={isProcessing}
               onClick={handleApprove}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 py-5 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.3em] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-2xl shadow-emerald-500/20"
             >
               {isProcessing ? <RefreshCcw size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-              Authorize Proposed Deadline
+              Authorize This Deadline
             </button>
           </div>
 

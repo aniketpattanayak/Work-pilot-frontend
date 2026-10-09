@@ -41,6 +41,56 @@ const statusClass = (status) =>
     ? 'bg-slate-200 text-slate-700'
     : 'bg-green-500 text-white';
 
+// Late Target box: type a value from 0 to 100, then press Save (or Enter). Nothing is saved until Save is pressed.
+const LateTargetInput = ({ value, disabled, onSave }) => {
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const [base, setBase] = useState(value);          // the value currently stored
+  const [state, setState] = useState('idle');       // idle | saving | saved
+  useEffect(() => { setDraft(String(value ?? '')); setBase(value); }, [value]);
+
+  const clamp = (raw) => {
+    if (raw === '') return '';
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return String(base ?? '');
+    return String(Math.min(100, Math.max(0, n)));
+  };
+  const dirty = draft !== '' && Number(draft) !== Number(base);
+
+  const commit = async () => {
+    if (!dirty || state === 'saving') return;
+    setState('saving');
+    const ok = await onSave(Number(draft));
+    if (ok) { setBase(Number(draft)); setState('saved'); setTimeout(() => setState('idle'), 2000); }
+    else { setState('idle'); setDraft(String(base ?? '')); }
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <input
+        type="number"
+        min={0}
+        max={100}
+        step={1}
+        value={draft}
+        onChange={(e) => setDraft(clamp(e.target.value))}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+        disabled={disabled}
+        className="w-16 bg-background border-2 border-border rounded-lg text-center font-black text-xs py-1 focus:border-primary outline-none"
+      />
+      {!disabled && dirty && (
+        <button
+          onClick={commit}
+          disabled={state === 'saving'}
+          className="px-2 py-1 rounded-lg bg-primary text-white text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50"
+        >
+          {state === 'saving' ? 'Saving…' : 'Save'}
+        </button>
+      )}
+      {state === 'saved' && <span className="text-[9px] font-black uppercase text-emerald-600">Saved ✓</span>}
+    </div>
+  );
+};
+
 const ReviewMeeting = ({ tenantId }) => {
   const [viewType] = useState('All');
   const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -120,8 +170,10 @@ const ReviewMeeting = ({ tenantId }) => {
     try {
       await API.put('/tasks/update-weekly-target', { employeeId, target: targetVal });
       fetchAnalytics();
+      return true;
     } catch (err) {
-      console.error('Sync Failed');
+      alert(err.response?.data?.message || 'Could not save the late target. Please try again.');
+      return false;
     }
   };
 
@@ -340,12 +392,10 @@ const ReviewMeeting = ({ tenantId }) => {
                       {row.dept}
                     </td>
                     <td className="px-6 py-5 border-r border-border text-center">
-                      <input
-                        type="number"
-                        defaultValue={row.lateTarget}
-                        onBlur={(e) => saveTarget(row.employeeId, e.target.value)}
+                      <LateTargetInput
+                        value={row.lateTarget}
                         disabled={isViewer}
-                        className="w-16 bg-background border-2 border-border rounded-lg text-center font-black text-xs py-1 focus:border-primary outline-none"
+                        onSave={(v) => saveTarget(row.employeeId, v)}
                       />
                     </td>
                     {countCell(row, row.delegation, 'text-purple-700')}

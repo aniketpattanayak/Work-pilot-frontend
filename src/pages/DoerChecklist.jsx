@@ -455,7 +455,7 @@ const DoerChecklist = ({ doerId }) => {
                 <div className="flex justify-end gap-2 w-full lg:w-auto">
                   {(task.status === "Pending" || task.status === "Accepted") && (
                     <>
-                      {task.isRevisionAllowed && !isPastDue && (
+                      {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved') && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
                       <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
