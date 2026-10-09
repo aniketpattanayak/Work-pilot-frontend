@@ -13,6 +13,15 @@ import {
  * UI: Responds correctly to Light/Dark modes using semantic classes.
  * Logic: Smart look-ahead for Week/Month; Milestone-anchor for Q/H/Y.
  */
+// Calendar-date helpers (local time). The old code used the UTC date, which is "yesterday" early in the morning in India.
+const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayYmd = () => ymd(new Date());
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const parseYmd = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date();
+};
+
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative group cursor-pointer" onClick={onClick} ref={ref}>
     <input
@@ -40,7 +49,7 @@ const CreateChecklist = ({ tenantId, onSuccess }) => {
     description: '',
     doerId: '',
     frequency: 'Daily',
-    startDate: new Date().toISOString().split('T')[0],
+    startDate: todayYmd(),
     frequencyConfig: {
       daysOfWeek: [], 
       daysOfMonth: [],
@@ -169,7 +178,7 @@ const isDisabledDate = (date) =>
       alert("Success: Master Directive synchronized.");
       setFormData({ 
         taskName: '', description: '', doerId: '', frequency: 'Daily',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: todayYmd(),
         frequencyConfig: { daysOfWeek: [], daysOfMonth: [], month: 0 }
       });
       setSearchTerm('');
@@ -305,7 +314,8 @@ const isDisabledDate = (date) =>
             Start Date:  <t></t>
           </label>
           <DatePicker
-  selected={new Date(formData.startDate)}
+  selected={parseYmd(formData.startDate)}
+  minDate={startOfToday()}
   onChange={(date) => {
     if (!date) return;
     const pad = (n) => String(n).padStart(2, '0');
@@ -445,7 +455,7 @@ const isDisabledDate = (date) =>
           <div className="bg-background p-4 rounded-xl border border-border text-xs font-bold text-slate-500">
             Start Date {" "}
             <span className="text-foreground">
-              {new Date(formData.startDate).toLocaleDateString()}
+              {parseYmd(formData.startDate).toLocaleDateString()}
             </span>
           </div>
         )}

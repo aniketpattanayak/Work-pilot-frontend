@@ -26,6 +26,9 @@ import {
 import CreateChecklist from './CreateChecklist';
 import BulkUpload from '../components/BulkUpload';
 
+const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayYmd = () => ymd(new Date());
+
 /**
  * MANAGE CHECKLIST v5.6
  * Purpose: Professional Ledger with Configuration Popup.
@@ -205,18 +208,27 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       description: item.description || '',
       frequency: item.frequency,
       frequencyConfig: item.frequencyConfig || { daysOfWeek: [], daysOfMonth: [] },
-      createdAt: item.createdAt
+      createdAt: item.createdAt,
+      // shown in Frequency Tuning; only sent to the server if the admin changes it
+      startDate: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
+      startDateChanged: false
     });
   };
 
   const handleUpdate = async (id, e) => {
     e.stopPropagation();
     try {
-      await API.put(`/tasks/checklist/${id}`, editData);
+      const { startDate, startDateChanged, ...rest } = editData;
+      if (startDateChanged && startDate && startDate < todayYmd()) {
+        alert("Start date cannot be in the past.");
+        return;
+      }
+      const payload = startDateChanged ? { ...rest, startDate } : rest;
+      await API.put(`/tasks/checklist/${id}`, payload);
       alert("Success: Registry updated.");
       setEditingId(null);
       fetchData();
-    } catch (err) { alert("Update failed."); }
+    } catch (err) { alert(err.response?.data?.message || "Update failed."); }
   };
 
   const handleDelete = async (id, taskName, e) => {
@@ -419,14 +431,15 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingId(item._id);
-                          setEditData({
+                          setEditData((prev) => ({
                             ...item,
-                            frequency: item.frequency,
-                            frequencyConfig: item.frequencyConfig || {
+                            ...prev,
+                            frequency: prev.frequency || item.frequency,
+                            frequencyConfig: prev.frequencyConfig || item.frequencyConfig || {
                               daysOfWeek: [],
                               daysOfMonth: []
                             }
-                          });
+                          }));
                           setIsConfigModalOpen(true);
                         }}
                         className="text-[9px] px-3 py-1 bg-primary/10 border rounded-lg"
@@ -511,6 +524,27 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
 
             {/* BODY */}
             <div className="p-6 md:p-8 space-y-8">
+              {/* START DATE */}
+              <div className="space-y-3">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={editData.startDate || ''}
+                  min={todayYmd()}
+                  onChange={(e) => {
+                    let v = e.target.value;
+                    if (v && v < todayYmd()) v = todayYmd();
+                    setEditData({ ...editData, startDate: v, startDateChanged: true });
+                  }}
+                  className="w-full p-4 border border-border rounded-xl bg-background text-foreground text-sm font-bold"
+                />
+                <p className="text-[9px] text-slate-500 font-bold">
+                  Entered the wrong start date? Change it here — the next due date is recalculated from it. Past dates are not allowed.
+                </p>
+              </div>
+
               {/* FREQUENCY SELECT */}
               <div className="space-y-3">
                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
