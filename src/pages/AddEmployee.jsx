@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Upload,
   MapPin,
-  Search
+  Search,
+  ChevronDown
 } from "lucide-react";
 
 /**
@@ -32,6 +33,64 @@ const matchesScope = (e, f) => {
   return true;
 };
 const uniqNames = (arr) => [...new Set(arr.filter(Boolean))];
+
+/**
+ * Type-to-search dropdown: click, type a few letters, the list narrows, click a name to choose.
+ * Only names from the given options can be chosen.
+ */
+const SearchableSelect = ({ value, onChange, options, placeholder, clearLabel, ariaLabel, wrapperClass = "", inputClass = "" }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [hi, setHi] = useState(0);
+  const selected = options.find((o) => o.value === value);
+  const q = query.trim().toLowerCase();
+  const shownOpts = options.filter((o) => !q || o.label.toLowerCase().includes(q));
+  const items = [...(clearLabel ? [{ value: "", label: clearLabel }] : []), ...shownOpts];
+  const pick = (v) => { onChange(v); setOpen(false); setQuery(""); };
+  const onKeyDown = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setHi((h) => Math.min(h + 1, items.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { if (open) { e.preventDefault(); if (items[hi]) pick(items[hi].value); } }
+    else if (e.key === "Escape") { setOpen(false); setQuery(""); }
+  };
+  return (
+    <div className={`relative min-w-0 ${wrapperClass}`}>
+      <input
+        type="text"
+        role="combobox"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        autoComplete="off"
+        value={open ? query : (selected ? selected.label : "")}
+        placeholder={open ? (selected ? selected.label : "Type to search…") : (clearLabel && !value ? clearLabel : placeholder)}
+        onFocus={() => { setOpen(true); setQuery(""); setHi(0); }}
+        onClick={() => setOpen(true)}
+        onBlur={() => { setOpen(false); setQuery(""); }}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); setHi(0); }}
+        onKeyDown={onKeyDown}
+        className={`${inputClass} pr-8`}
+      />
+      <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      {open && (
+        <ul role="listbox" className="absolute z-50 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl py-1">
+          {items.length === 0 && <li className="px-3 py-2 text-xs text-slate-400 font-bold">No matches</li>}
+          {items.map((o, i) => (
+            <li
+              key={o.value || "__clear"}
+              role="option"
+              aria-selected={o.value === value}
+              onMouseDown={(e) => { e.preventDefault(); pick(o.value); }}
+              onMouseEnter={() => setHi(i)}
+              className={`px-3 py-2 text-xs font-bold cursor-pointer ${i === hi ? "bg-primary/10 text-primary" : "text-foreground"} ${o.value === value ? "underline" : ""}`}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
 
 const ScopeFilter = ({ filter, onChange, pool, sectors, locations, shown }) => {
   const locOpts = uniqNames([...locations, ...pool.map((e) => e.location)]);
@@ -52,16 +111,28 @@ const ScopeFilter = ({ filter, onChange, pool, sectors, locations, shown }) => {
           />
         </div>
         {locOpts.length > 0 && (
-          <select value={filter.loc} onChange={(e) => onChange({ ...filter, loc: e.target.value })} className={selectCls} aria-label="Filter by location">
-            <option value="">All locations</option>
-            {locOpts.map((l) => <option key={l} value={l}>{l}</option>)}
-          </select>
+          <SearchableSelect
+            value={filter.loc}
+            onChange={(v) => onChange({ ...filter, loc: v })}
+            options={locOpts.map((l) => ({ value: l, label: l }))}
+            clearLabel="All locations"
+            placeholder="All locations"
+            ariaLabel="Filter by location"
+            wrapperClass="sm:w-56 shrink-0"
+            inputClass={selectCls}
+          />
         )}
         {secOpts.length > 0 && (
-          <select value={filter.sec} onChange={(e) => onChange({ ...filter, sec: e.target.value })} className={selectCls} aria-label="Filter by sector or department">
-            <option value="">All sectors / departments</option>
-            {secOpts.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <SearchableSelect
+            value={filter.sec}
+            onChange={(v) => onChange({ ...filter, sec: v })}
+            options={secOpts.map((x) => ({ value: x, label: x }))}
+            clearLabel="All sectors / departments"
+            placeholder="All sectors / departments"
+            ariaLabel="Filter by sector or department"
+            wrapperClass="sm:w-64 shrink-0"
+            inputClass={selectCls}
+          />
         )}
       </div>
       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
@@ -233,6 +304,10 @@ const AddEmployee = ({
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (masters.sectors.length > 0 && !formData.department) {
+      alert("Please select a Sector / Department.");
+      return;
+    }
     setLoading(true);
     try {
       const finalRoles = formData.roles.length > 0 ? formData.roles : ["Doer"];
@@ -336,18 +411,17 @@ const AddEmployee = ({
           <div className="flex flex-col">
             <InputLabel icon={Briefcase} label="Sector / Department" />
             {masters.sectors.length > 0 ? (
-              <select
+              <SearchableSelect
                 value={formData.department || ""}
-                required
-                className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              >
-                <option value="">Select sector / department</option>
-                {formData.department && !masters.sectors.includes(formData.department) && (
-                  <option value={formData.department}>{formData.department} (current, not in list)</option>
-                )}
-                {masters.sectors.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+                onChange={(v) => setFormData({ ...formData, department: v })}
+                options={[
+                  ...(formData.department && !masters.sectors.includes(formData.department) ? [formData.department] : []),
+                  ...masters.sectors,
+                ].map((x) => ({ value: x, label: masters.sectors.includes(x) ? x : `${x} (current, not in list)` }))}
+                placeholder="Select sector / department"
+                ariaLabel="Sector / Department"
+                inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+              />
             ) : (
               <input
               type="text"
@@ -365,17 +439,18 @@ const AddEmployee = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
             <div className="flex flex-col">
               <InputLabel icon={MapPin} label="Location" />
-              <select
+              <SearchableSelect
                 value={formData.location || ""}
-                className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              >
-                <option value="">Not assigned</option>
-                {formData.location && !masters.locations.includes(formData.location) && (
-                  <option value={formData.location}>{formData.location} (current, not in list)</option>
-                )}
-                {masters.locations.map((l) => <option key={l} value={l}>{l}</option>)}
-              </select>
+                onChange={(v) => setFormData({ ...formData, location: v })}
+                options={[
+                  ...(formData.location && !masters.locations.includes(formData.location) ? [formData.location] : []),
+                  ...masters.locations,
+                ].map((x) => ({ value: x, label: masters.locations.includes(x) ? x : `${x} (current, not in list)` }))}
+                clearLabel="Not assigned"
+                placeholder="Not assigned"
+                ariaLabel="Location"
+                inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+              />
             </div>
           </div>
         )}
