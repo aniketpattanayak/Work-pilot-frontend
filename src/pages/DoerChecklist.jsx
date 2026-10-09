@@ -460,7 +460,7 @@ const DoerChecklist = ({ doerId }) => {
                       )}
                       <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
                     </>
-                                    )}
+                  )}
                 </div>
               </div>
             );

@@ -101,7 +101,7 @@ const isHoliday = (date) =>
 
 const isDisabledDate = (date) =>
   isHoliday(date) ||
-  (selectedEmployee && !selectedEmployee.workOnSunday && isSunday(date));
+  (selectedEmployee && !selectedEmployee.workOnSunday && date.getDay() === 0);
 
 
 
@@ -306,10 +306,11 @@ const isDisabledDate = (date) =>
           </label>
           <DatePicker
   selected={new Date(formData.startDate)}
-  onChange={(date) =>
-    setFormData({ ...formData, startDate: date.toISOString().split('T')[0] })
-  }
-  minDate={new Date()}
+  onChange={(date) => {
+    if (!date) return;
+    const pad = (n) => String(n).padStart(2, '0');
+    setFormData({ ...formData, startDate: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` });
+  }}
   dateFormat="dd MMM yyyy"
   showYearDropdown
   showMonthDropdown

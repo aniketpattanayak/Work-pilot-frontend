@@ -31,6 +31,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     try { return JSON.parse(localStorage.getItem('coord_fms_cols') || '[]'); } catch { return []; }
   });
   const [showCoordColConfig, setShowCoordColConfig] = useState(false);
+  const [allTemplates, setAllTemplates] = useState([]);
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
   const tenantId = localStorage.getItem('tenantId') || tenantId;
@@ -159,7 +160,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       delegationAndChecklist.forEach(t => {
         if (!t.taskType) t.taskType = t.frequency ? 'Checklist' : 'Delegation';
       });
-      const allTemplates = Array.isArray(tmplRes.data) ? tmplRes.data : [];
+      const fetchedTemplates = Array.isArray(tmplRes.data) ? tmplRes.data : [];
+      setAllTemplates(fetchedTemplates);
       const adminEmp = allEmp.find(e => (e.roles || []).includes('Admin'));
       const fmsRawList = fmsRes.data?.instances || [];
       const fmsTasks = fmsRawList.map(inst => ({

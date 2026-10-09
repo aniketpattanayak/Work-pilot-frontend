@@ -49,11 +49,23 @@ const ReportsTab = ({ tenantId }) => {
     
     
     
-    const baseUrl = 'http://localhost:5000/api'
     
     
     // This opens the direct download link we created in the backend
-    window.open(`${baseUrl}/reports/download/${tenantId}?range=${range}`, '_blank');
+    try {
+      const res = await API.get(`/reports/download/${tenantId}`, { params: { range }, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `WorkPilot_Report_${range}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Report download failed:', err);
+      alert('Failed to download the report. Please try again.');
+    }
   };
 
   return (

@@ -52,7 +52,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     description: '',
     doerId: '',
     deadline: '',
-    priority: 'medium'
+    priority: 'Medium'
   });
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -169,7 +169,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       description: task.description || '',
       doerId: task.doerId?._id || task.doerId || '',
       deadline: task.deadline ? task.deadline.split('T')[0] : '',
-      priority: task.priority || 'medium'
+      priority: task.priority || 'Medium'
     });
     setIsEditOpen(true);
   };
@@ -471,10 +471,10 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   onChange={e => setEditFormData({ ...editFormData, priority: e.target.value })}
                   className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Urgent">Urgent</option>
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-4 border-t border-border">

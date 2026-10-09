@@ -1,5 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import API from '../api/axiosConfig';
+
+// On leave only while today is inside the saved date range (same rule as the server).
+const isOnLeaveNow = (ls) => {
+  if (!ls || !ls.onLeave) return false;
+  if (ls.startDate && ls.endDate) {
+    const s = new Date(ls.startDate); s.setHours(0, 0, 0, 0);
+    const e = new Date(ls.endDate); e.setHours(23, 59, 59, 999);
+    const now = new Date();
+    return now >= s && now <= e;
+  }
+  return true;
+};
 import {
   Trash2,
   Pencil,
@@ -223,7 +235,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         {/* ── EMPLOYEE ROWS ───────────────────────────────────────── */}
         <div className="space-y-2">
           {filteredEmployees.map((emp) => {
-            const isOnLeave = emp.leaveStatus?.onLeave;
+            const isOnLeave = isOnLeaveNow(emp.leaveStatus);
             const roles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
             const avatarColor = getAvatarColor(emp.name);
             const buddyName = safeEmployees.find(e => e._id === emp.leaveStatus?.buddyId)?.name;
