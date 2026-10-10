@@ -349,6 +349,11 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                       </div>
                       <div className="text-xs font-bold min-w-0">
                         {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'AWAITING'}
+                        {task.originalDeadline && (
+                          <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The doer revised the deadline within the allowed days">
+                            Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString()} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
+                          </span>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>

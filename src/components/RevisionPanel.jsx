@@ -61,7 +61,35 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
 
 
+  // Assigner set a day limit: the doer can only pick one of the days right after the deadline.
+  const maxExt = Number(task?.maxExtensionDays) || 0;
+  const limited = maxExt > 0 && !!task?.deadline;
+  const [extDays, setExtDays] = useState('');
+  const fmtDay = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  const extOptions = limited ? Array.from({ length: maxExt }, (_, i) => ({ k: i + 1, date: new Date(new Date(task.deadline).getTime() + (i + 1) * 86400000) })) : [];
+
+  const handleLimitedRevision = async () => {
+    if (!doerRemarks.trim() || !extDays) return alert("Please write the reason and choose the new date.");
+    try {
+      setIsProcessing(true);
+      const picked = extOptions.find((o) => String(o.k) === String(extDays));
+      await API.post('/tasks/handle-revision', {
+        taskId: task._id,
+        action: 'Request',
+        remarks: doerRemarks.trim(),
+        proposedDeadline: picked.date.toISOString()
+      });
+      alert("Done. The deadline is now " + fmtDay(picked.date) + ". Your assigner has been informed.");
+      onSuccess();
+    } catch (err) {
+      alert(err.response?.data?.message || "Could not change the deadline. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleRequestRevision = async () => {
+    if (limited) return handleLimitedRevision();
     if (!doerRemarks || !proposedDeadline) {
       return alert("Fill all fields");
     }
@@ -165,20 +193,38 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
             className="w-full p-4 border rounded-xl"
           />
 
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">Proposed Deadline</label>
-          <input
-            type="date"
-            value={proposedDeadline}
-            placeholder="Proposed deadline"
-            onChange={(e) => setProposedDeadline(e.target.value)}
-            className="w-full p-4 border rounded-xl"
-          />
+          {limited ? (
+            <>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">New deadline (up to {maxExt} day{maxExt > 1 ? 's' : ''} after {fmtDay(task.deadline)})</label>
+              <select
+                value={extDays}
+                onChange={(e) => setExtDays(e.target.value)}
+                className="w-full p-4 border rounded-xl bg-background text-foreground"
+              >
+                <option value="">Choose the new date…</option>
+                {extOptions.map((o) => (<option key={o.k} value={o.k}>{fmtDay(o.date)} (+{o.k} day{o.k > 1 ? 's' : ''})</option>))}
+              </select>
+              <p className="text-[10px] font-bold text-slate-500 ml-2">The new date is applied at once, no approval needed. A deadline can be changed only once.</p>
+            </>
+          ) : (
+            <>
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">Proposed Deadline</label>
+              <input
+                type="date"
+                value={proposedDeadline}
+                placeholder="Proposed deadline"
+                onChange={(e) => setProposedDeadline(e.target.value)}
+                className="w-full p-4 border rounded-xl"
+              />
+            </>
+          )}
 
           <button
             onClick={handleRequestRevision}
-            className="w-full bg-yellow-500 text-white py-3 rounded-xl"
+            disabled={isProcessing}
+            className="w-full bg-yellow-500 text-white py-3 rounded-xl disabled:opacity-60"
           >
-            Submit Revision Request
+            {limited ? 'Change Deadline' : 'Submit Revision Request'}
           </button>
 
         </div>

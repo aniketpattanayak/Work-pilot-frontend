@@ -124,7 +124,7 @@ const DoerChecklist = ({ doerId }) => {
       setLoading(true);
       const userEmail = savedUser.email;
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
-        API.get(`/tasks/checklist/${currentDoerId}`).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist/${currentDoerId}?includeDone=1`).catch(() => ({ data: [] })),
         API.get(`/tasks/doer/${currentDoerId}?includePassedOn=1`).catch(() => ({ data: [] })),
         API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => ({ data: [] }))
       ]);
@@ -493,6 +493,11 @@ const DoerChecklist = ({ doerId }) => {
                   <p className={`uppercase tracking-tighter truncate ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
                     {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
+                  {task.originalDeadline && (
+                    <span className="text-[8px] font-black uppercase text-amber-600 whitespace-nowrap" title="The deadline was revised">
+                      Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
+                    </span>
+                  )}
                 </div>
                 <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
                   <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDue ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>
@@ -507,7 +512,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {(task.status === "Pending" || task.status === "Accepted") && !isPassedOn(task) && (
                     <>
-                      {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved') && (
+                      {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
                       <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>

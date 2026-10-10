@@ -42,6 +42,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     priority: "Medium",
     deadline: null, 
     isRevisionAllowed: true,
+    maxExtensionDays: "3",
     coworkers: [],
   });
 
@@ -184,6 +185,10 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     e.preventDefault();
     if (!task.doerId) return dialog.alert("Please search and select who the task is assigned to.", { tone: 'error' });
     if (!task.deadline) return dialog.alert("Please select a completion deadline.", { tone: 'error' });
+    const extDays = Number(task.maxExtensionDays);
+    if (task.isRevisionAllowed && (!Number.isInteger(extDays) || extDays < 1 || extDays > 90)) {
+      return dialog.alert("Deadline change is allowed, so please enter how many days the doer may extend (1 to 90).", { tone: 'error', title: 'Extension days' });
+    }
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -195,6 +200,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     formData.append("priority", task.priority);
     formData.append("deadline", task.deadline.toISOString()); 
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
+    formData.append("maxExtensionDays", task.isRevisionAllowed ? String(Number(task.maxExtensionDays)) : "0");
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
     if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
     selectedFiles.forEach((file) => formData.append("taskFiles", file));
@@ -204,7 +210,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
         headers: { "Content-Type": "multipart/form-data" },
       });
       dialog.alert("The task was assigned.", { tone: 'success' });
-      setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, coworkers: [] });
+      setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, maxExtensionDays: "3", coworkers: [] });
       setSelectedFiles([]);
       setSelectedHelpers([]);
       setDoerSearch('');
@@ -425,6 +431,18 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                 />
                 Allow deadline change
               </label>
+              {task.isRevisionAllowed && (
+                <label className="flex items-center gap-2 text-sm text-slate-600" title="After the deadline you chose, the doer can move it by up to this many days">
+                  Extend up to
+                  <input
+                    type="number" min="1" max="90" step="1"
+                    value={task.maxExtensionDays}
+                    onChange={(e) => setTask({ ...task, maxExtensionDays: e.target.value })}
+                    className="w-16 bg-background border border-border rounded-lg px-2 py-1 text-center font-bold text-foreground"
+                  />
+                  day(s)
+                </label>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting}
