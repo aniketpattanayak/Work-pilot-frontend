@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import API from '../api/axiosConfig';
 import { isViewerOnly } from '../utils/viewerMode';
+import { dialog } from '../components/Dialog';
 import {
   ShieldCheck, Send, CheckCircle2, Clock, User, UserCheck, AlertCircle,
   RefreshCcw, MessageCircle, Zap, X, Phone, MessageSquare, Layers,
@@ -36,7 +37,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const [allTemplates, setAllTemplates] = useState([]);
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
-  const tenantId = localStorage.getItem('tenantId') || tenantId;
+  const tenantId = localStorage.getItem('tenantId') || savedUser?.tenantId;
   const coordinatorId = propCoordId || savedUser?._id || savedUser?.id;
 
   const toLockPattern = (input) => {
@@ -331,13 +332,13 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
   const handleMarkDone = async (task, instanceDate = null) => {
     if (task.taskType === 'FMS') {
-      if (!window.confirm(`Mark FMS step "${task.title}" as done?`)) return;
+      if (!(await dialog.confirm(`Mark FMS step "${task.title}" as done?`, { title: 'Mark as done', confirmText: 'Mark done' }))) return;
       try {
         await API.post(`/fms2/complete-step/${task._id}`, { decision: 'done', inputs: {} });
         fetchTasks();
-        alert("FMS step marked as done.");
+        await dialog.alert("The FMS step was marked as done.", { tone: 'success', title: 'Done' });
       } catch (err) {
-        alert("Failed: " + (err.response?.data?.message || err.message));
+        await dialog.alert(err.response?.data?.message || err.message || 'Could not complete this step.', { tone: 'error', title: 'Not completed' });
       }
       return;
     }
@@ -356,14 +357,14 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         setRemarks(""); setSelectedFile(null);
         setTimeout(() => fetchTasks(), 1500);
         scrollToTask(task._id);
-        alert("Success! Registry Synchronized.");
+        await dialog.alert("The checklist item was marked as done.", { tone: 'success', title: 'Done' });
       } catch (err) {
-        alert("Error: Synchronization failed.");
+        await dialog.alert(err.response?.data?.message || "Could not mark this item as done.", { tone: 'error', title: 'Not completed' });
       } finally {
         setIsSubmitting(false);
       }
     } else {
-      if (window.confirm("Verify this task as Done?")) {
+      if (await dialog.confirm("Mark this task as done?", { title: 'Force done', confirmText: 'Mark done' })) {
         try {
           await API.post("/tasks/coordinator-force-done", {
             taskId: task._id, coordinatorId: coordinatorId,
@@ -371,9 +372,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           });
           setRemarks("");
           fetchTasks();
-          alert("Success: Task completed.");
+          await dialog.alert("The task was marked as done.", { tone: 'success', title: 'Done' });
         } catch (err) {
-          alert("Action failed: " + (err.response?.data?.message || err.message));
+          await dialog.alert(err.response?.data?.message || err.message || 'Could not complete this task.', { tone: 'error', title: 'Not completed' });
         }
       }
     }
@@ -382,7 +383,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const handleBulkDone = async (task) => {
     const selected = bulkSelected[task._id];
     if (!selected || selected.size === 0) return;
-    if (!window.confirm(`Mark ${selected.size} backlog item${selected.size > 1 ? 's' : ''} as done?`)) return;
+    if (!(await dialog.confirm(`Mark ${selected.size} backlog item${selected.size > 1 ? 's' : ''} as done?`, { title: 'Mark as done', confirmText: 'Mark done' }))) return;
     setBulkSubmitting(prev => ({ ...prev, [task._id]: true }));
     let successCount = 0;
     for (const dateStr of selected) {
@@ -402,7 +403,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     setBulkSubmitting(prev => ({ ...prev, [task._id]: false }));
     setTimeout(() => fetchTasks(), 1000);
     scrollToTask(task._id);
-    alert(`${successCount} of ${selected.size} items marked as done.`);
+    await dialog.alert(`${successCount} of ${selected.size} items were marked as done.`, { tone: successCount === selected.size ? 'success' : 'error', title: 'Bulk update' });
   };
 
   const toggleBulkSelect = (taskId, dateStr) => {
@@ -426,9 +427,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     }));
   };
 
-  const openReminderModal = (task) => {
+  const openReminderModal = async (task) => {
     if (!task.doerId?.whatsappNumber) {
-      alert("Mobile number not found for this staff member.");
+      await dialog.alert("No mobile number was found for this staff member.", { tone: 'error', title: 'No number' });
       return;
     }
     setSelectedTask(task);
@@ -456,12 +457,12 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           loginLink,
         ],
       });
-      alert('✅ WhatsApp reminder sent to ' + (selectedTask.doerId?.name || 'team member') + '!');
       setIsModalOpen(false);
       setCustomMessage('');
+      await dialog.alert('WhatsApp reminder sent to ' + (selectedTask.doerId?.name || 'the team member') + '.', { tone: 'success', title: 'Sent' });
     } catch (err) {
       console.error('WhatsApp send error:', err);
-      alert('❌ Failed to send: ' + (err.response?.data?.message || err.message));
+      await dialog.alert(err.response?.data?.message || err.message || 'Could not send the reminder.', { tone: 'error', title: 'Not sent' });
     } finally {
       setIsSendingWA(false);
     }
@@ -478,82 +479,80 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-4">
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 shadow-inner"><ShieldCheck size={28} className="text-primary" /></div>
-          <div>
-            <h2 className="text-foreground text-xl md:text-3xl font-black tracking-tighter uppercase leading-none truncate">Coordinator Dashboard</h2>
-            <p className="text-slate-500 text-[10px] md:text-sm font-bold uppercase tracking-wide mt-2 opacity-80 italic">Precision Industrial Performance Registry</p>
+      <div className="flex flex-row justify-between items-center mb-3 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0"><ShieldCheck size={20} className="text-primary" /></div>
+          <div className="min-w-0">
+            <h2 className="text-foreground text-xl font-black tracking-tighter uppercase leading-none truncate">Coordinator Dashboard</h2>
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80 italic truncate">Precision Industrial Performance Registry</p>
           </div>
         </div>
-        <button onClick={fetchTasks} className="group w-full md:w-auto bg-card hover:bg-background border border-border px-10 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
-          <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        <button onClick={fetchTasks} className="group shrink-0 bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
-      {/* SEARCH */}
-      <div className="mb-8 relative group">
-        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none"><Search size={22} className="text-slate-400 group-focus-within:text-primary transition-colors" /></div>
-        <input type="text" placeholder="Filter by Personnel, Dept, or Mission..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-card border border-border pl-14 pr-12 py-5 rounded-[1.5rem] text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner" />
-        <button onClick={() => setShowCoordColConfig(c => !c)}
-          className="absolute inset-y-0 right-14 pr-2 flex items-center text-slate-400 hover:text-primary text-[10px] font-black uppercase tracking-wider gap-1">
-          ⚙️{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
+      {/* SEARCH + CATEGORY (one row) */}
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input type="text" placeholder="Search person, dept or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-card border border-border pl-9 pr-9 py-2 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+          {searchTerm && (
+            <button type="button" aria-label="Clear search" onClick={() => setSearchTerm("")} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center text-slate-400 hover:text-red-500"><X size={14} /></button>
+          )}
+        </div>
+        {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
+          <button key={cat} onClick={() => setCategoryFilter(cat)}
+            className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
+                ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
+                  : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
+                    : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
+                      : 'bg-primary text-white border-primary'
+                : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
+              }`}>
+            {cat}
+          </button>
+        ))}
+        <button type="button" onClick={() => setShowCoordColConfig(c => !c)} title="Choose extra columns for FMS rows"
+          className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${showCoordColConfig ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'}`}>
+          Columns{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
         </button>
-        {searchTerm && <button onClick={() => setSearchTerm("")} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-400 hover:text-red-500"><X size={20} /></button>}
       </div>
 
-      {/* FILTERS */}
-      <div className="flex flex-col gap-3 mb-8">
-        {/* Row 1: Category filter + Date range */}
-        <div className="flex flex-wrap items-center gap-2">
-          {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
-            <button key={cat} onClick={() => setCategoryFilter(cat)}
-              className={`px-4 py-1.5 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
-                  ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
-                    : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
-                      : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
-                        : 'bg-primary text-white border-primary'
-                  : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
-                }`}>
-              {cat === 'All' ? '🔍 All' : cat === 'Delegation' ? '📋 Delegation' : cat === 'Checklist' ? '✅ Checklist' : '🔀 FMS'}
-            </button>
-          ))}
-          <div className="flex items-center gap-2 ml-2">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-            {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="text-[9px] font-black text-red-400 hover:text-red-600 px-2 py-1.5 rounded-xl border border-red-200 hover:border-red-400 transition-all">
-                ✕ Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2: Tab buttons */}
-        <div className="flex gap-2 bg-card/50 p-2.5 rounded-[2rem] border border-border w-fit">
+      {/* TABS + DATE RANGE */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit">
           {['Pending', 'Upcoming', 'Completed'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-10 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all ${activeTab === tab ? 'bg-primary text-white shadow-lg scale-105' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
+              className={`px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
               {tab}
             </button>
           ))}
         </div>
-
-        {/* Upcoming hint */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">From</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+            className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+            className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-[9px] font-black text-red-400 hover:text-red-600 px-2 py-1.5 rounded-xl border border-red-200 hover:border-red-400 transition-all">
+              ✕ Clear
+            </button>
+          )}
+        </div>
         {activeTab === 'Upcoming' && (
           <div className="text-[10px] text-slate-500 font-medium italic">
-            📅 Showing checklist instances from {dateFrom || 'today'} to {dateTo || 'next 5 days'} — holidays and weekends excluded
+            Checklist instances from {dateFrom || 'today'} to {dateTo || 'next 5 days'} (holidays and weekends excluded)
           </div>
         )}
       </div>
 
       {/* TASK TABLE */}
-      <div className="bg-card rounded-[2.5rem] border border-border shadow-2xl overflow-hidden h-[600px] flex flex-col">
+      <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden h-[calc(100vh-16rem)] min-h-[320px] flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
           <div className="min-w-[700px] lg:min-w-full">
             {/* Coordinator Sheet Column Config Panel */}
@@ -605,24 +604,24 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
               );
             })()}
             <table className="w-full table-fixed border-collapse text-left">
-              <thead className="sticky top-0 z-20 bg-background/90 backdrop-blur-xl">
-                <tr className="bg-background/50 border-b border-border">
-                  <th className="w-[60px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
-                  <th className="w-[180px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
-                  <th className="w-[160px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned To</th>
-                  <th className="w-[160px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned By</th>
-                  <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
+              <thead className="sticky top-0 z-20 bg-background">
+                <tr className="bg-background border-b border-border">
+                  <th className="w-[100px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
+                  <th className="w-[180px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
+                  <th className="w-[160px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned To</th>
+                  <th className="w-[160px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned By</th>
+                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
                   {coordExtraCols.map(col => (
-                    <th key={col} className="px-4 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">{col}</th>
+                    <th key={col} className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">{col}</th>
                   ))}
-                  <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
-                  <th className="w-[140px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
-                  <th className="w-[150px] px-8 py-6 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
+                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
+                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
+                  <th className="w-[150px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredTasks.length === 0 ? (
-                  <tr><td colSpan="8" className="px-8 py-16 text-center text-slate-400 font-bold text-sm">No tasks found for this view.</td></tr>
+                  <tr><td colSpan={8 + coordExtraCols.length} className="px-8 py-16 text-center text-slate-400 font-bold text-sm">No tasks found for this view.</td></tr>
                 ) : filteredTasks.map((task) => {
                   const isChecklist = task.taskType === 'Checklist';
                   const instances = isChecklist
@@ -639,10 +638,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                     <React.Fragment key={task._id}>
                       <tr className="hover:bg-primary/[0.02] transition-all group">
                         <td className="px-4 py-3 min-w-0 break-words">
-                          <div className={`p-2 rounded-xl w-fit text-[10px] font-black ${task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
+                          <div className={`px-2 py-1 rounded-lg w-fit text-[9px] font-black uppercase tracking-wider ${task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
                               task.taskType === 'FMS' ? 'bg-purple-500/10 text-purple-600' :
                                 'bg-sky-500/10 text-sky-600'}`}>
-                            {task.taskType === 'Checklist' ? 'CHK' : task.taskType === 'FMS' ? 'FMS' : 'DLG'}
+                            {task.taskType === 'Checklist' ? 'Checklist' : task.taskType === 'FMS' ? 'FMS' : 'Delegation'}
                           </div>
                         </td>
                         <td className="px-4 py-3">
@@ -740,7 +739,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
                       {isExpanded && instances.length > 0 && (
                         <tr>
-                          <td colSpan="8" className="px-4 py-3 bg-background/50 border-y border-border/10">
+                          <td colSpan={8 + coordExtraCols.length} className="px-4 py-3 bg-background/50 border-y border-border/10">
                             <div className="space-y-3">
                               <div ref={el => backlogRefs.current[task._id] = el} className="flex items-center justify-between">
                                 <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
