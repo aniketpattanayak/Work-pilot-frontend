@@ -36,6 +36,7 @@ import {
   Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  CalendarDays,
 } from 'lucide-react';
 
 /**
@@ -62,6 +63,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const [tenantFeatures, setTenantFeatures] = useState({});
+  const [hrModules, setHrModules] = useState({});
   const safeRoles = Array.isArray(roles) ? roles : [];
   // A Viewer-only account sees one tab only: Global View.
   const viewerOnly = safeRoles.length > 0 && safeRoles.every((r) => String(r).toLowerCase() === 'viewer');
@@ -80,6 +82,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       const res = await API.get(`/tasks/settings/${currentTenantId}`);
       const feats = res.data?.superAdmin?.features || {};
       setTenantFeatures(feats);
+      setHrModules(res.data?.hrModules || {});
       if (res.data) {
         setFactoryLogo(res.data.logo || '');
         setCompanyName(res.data.companyName || 'WORK PILOT');
@@ -107,6 +110,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Manage Checklist', icon: <LayoutList />, roles: ['Admin'] },
         { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Leave',            icon: <CalendarDays />,    roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
         { name: 'My Checklist',     icon: <ListTodo />,        roles: [] },
       ],
     },
@@ -255,7 +259,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         {categories.map((cat, catIdx) => {
           const filteredItems = cat.items.filter(item =>
             (viewerOnly ? item.name === 'Global View' : item.roles.some(r => safeRoles.includes(r))) &&
-            (!item.featureKey || tenantFeatures[item.featureKey] !== false)
+            (!item.featureKey || tenantFeatures[item.featureKey] !== false) &&
+            (!item.hrKey || hrModules[item.hrKey] === true)
           );
           if (filteredItems.length === 0) return null;
 
