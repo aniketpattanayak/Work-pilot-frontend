@@ -343,8 +343,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
             <table className="w-full border-collapse text-[11px] min-w-[1250px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-black uppercase tracking-wider">
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 w-10">S.no</th>
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[150px]">Employee</th>
+                  <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
+                  <th rowSpan={2} className="sticky left-10 z-40 border-b border-border bg-background px-2 py-1 text-left min-w-[150px]">Employee</th>
                   <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[90px]">Location</th>
                   <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[110px]">Dept</th>
                   {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[110px]">Late Target (%)</th>}
@@ -364,8 +364,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
               <tbody>
                 {people.map((p, i) => (
                   <tr key={String(p.employeeId)} onClick={() => openAudit(p)} className="cursor-pointer hover:bg-primary/10 odd:bg-background/40">
-                    <td className={`${cellBase} text-slate-400`}>{i + 1}</td>
-                    <td className="border border-border px-2 py-1 font-black uppercase text-foreground whitespace-nowrap">{p.employeeName}</td>
+                    <td className={`${cellBase} sticky left-0 z-10 bg-card text-slate-400 min-w-[40px] max-w-[40px]`}>{i + 1}</td>
+                    <td className="sticky left-10 z-10 bg-card border border-border px-2 py-1 font-black uppercase text-foreground whitespace-nowrap">{p.employeeName}</td>
                     <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.location || '—'}</td>
                     <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.department || '—'}</td>
                     {canEdit && (

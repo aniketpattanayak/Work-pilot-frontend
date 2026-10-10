@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* The app switches theme with a .dark class on <html>; make every dark: style follow that switch
+   (without this they follow the computer's own dark mode and the text can turn pale on pale). */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-background: hsl(var(--background));
