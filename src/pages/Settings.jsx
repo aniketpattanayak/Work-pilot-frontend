@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
+import AccessRolesPanel from '../components/AccessRolesPanel';
 import { dialog } from '../components/Dialog';
 import { 
   FiUser, FiShield, FiPlus, FiX, FiSave, FiTrash2, FiSettings, FiCheckCircle, FiRefreshCw 
@@ -737,6 +738,8 @@ const Settings = ({ tenantId }) => {
           </div>
         </section>
       </div>
+
+      <AccessRolesPanel />
 
       {/* STICKY EXECUTION FOOTER */}
       <div className="mt-6 sticky bottom-4 z-[100] px-2">
