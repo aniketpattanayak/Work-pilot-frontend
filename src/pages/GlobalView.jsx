@@ -97,6 +97,9 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [config, setConfig] = useState(null);
   const [periodInfo, setPeriodInfo] = useState(null);
   const [refDate, setRefDate] = useState(new Date().toISOString().split('T')[0]);
+  const [range, setRange] = useState(null);       // { from, to } custom dates, or null = the company's review period
+  const [fromDraft, setFromDraft] = useState('');
+  const [toDraft, setToDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -118,7 +121,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     try {
       setLoading(true);
       setError('');
-      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: { date: refDate } });
+      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: range ? { from: range.from, to: range.to } : { date: refDate } });
       setReport(Array.isArray(res.data?.report) ? res.data.report : []);
       setConfig(res.data?.config || null);
       setPeriodInfo({ view: res.data?.view, startDate: res.data?.startDate, endDate: res.data?.endDate });
@@ -128,7 +131,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentTenantId, refDate]);
+  }, [currentTenantId, refDate, range]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -174,14 +177,15 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     setActive(p);
     setTypeFilter('All');
     setOpenFms([]);
-    const from = (s || p.periodStart || '').split('T')[0];
-    const to = (e || p.periodEnd || '').split('T')[0];
+    const istDay = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
+    const from = s || istDay(p.periodStart);
+    const to = e || istDay(p.periodEnd);
     setStart(from); setEnd(to);
     if (!from || !to) { setRows([]); return; }
     try {
       setRowsLoading(true);
       const res = await API.get(`/tasks/employee-deep-dive/${p.employeeId}`, {
-        params: { startDate: `${from}T00:00:00.000`, endDate: `${to}T23:59:59.999` }
+        params: { startDate: `${from}T00:00:00.000+05:30`, endDate: `${to}T23:59:59.999+05:30` }
       });
       setRows(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -231,13 +235,28 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
         </div>
         {periodInfo?.startDate && (
           <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>
+            {!range && <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>}
             <div className="text-xs font-black uppercase tracking-widest text-foreground px-2">
               {PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
             </div>
-            <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>
-            <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>
+            {!range && <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>}
+            {!range && <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>}
             <button onClick={load} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
+            <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</span>
+              <input type="date" value={fromDraft} onChange={(e) => setFromDraft(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</span>
+              <input type="date" value={toDraft} min={fromDraft || undefined} onChange={(e) => setToDraft(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
+              <button
+                onClick={() => setRange({ from: fromDraft, to: toDraft })}
+                disabled={!fromDraft || !toDraft || toDraft < fromDraft}
+                title={!fromDraft || !toDraft ? 'Pick both dates' : (toDraft < fromDraft ? 'The "to" date cannot be before the "from" date' : 'Show this date range')}
+                className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+              >Apply</button>
+              {range && (
+                <button onClick={() => { setRange(null); setFromDraft(''); setToDraft(''); }} className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted">Clear</button>
+              )}
+            </div>
           </div>
         )}
       </div>
