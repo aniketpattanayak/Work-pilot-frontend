@@ -3,6 +3,7 @@ import FlowBuilder      from './FlowBuilder';
 import FlowMonitor      from './FlowMonitor';
 import DataSourceWizard from './DataSourceWizard';
 import { ArrowLeft }    from 'lucide-react';
+import { dialog }       from '../components/Dialog';
 
 export default function FlowManagement({ tenantId, user }) {
   // views: 'monitor' | 'wizard' | 'builder'
@@ -176,8 +177,8 @@ export default function FlowManagement({ tenantId, user }) {
               style={{ padding:'7px 16px', fontSize:12, fontWeight:700, background:'#854F0B', color:'white', border:'none', borderRadius:8, cursor:'pointer' }}>
               Resume draft →
             </button>
-            <button onClick={() => {
-              if (window.confirm('Discard this draft?')) {
+            <button onClick={async () => {
+              if (await dialog.confirm('Discard this unsaved flow draft?', { title: 'Discard draft', danger: true, confirmText: 'Discard' })) {
                 try { localStorage.removeItem(FLOW_DRAFT_KEY); } catch {}
                 setWizardResult(null); setHasDraft(false);
               }

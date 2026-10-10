@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import {
   Activity, RefreshCcw, Search, ChevronRight, X,
   CheckCircle2, AlertCircle, Clock, Circle, Zap,
@@ -167,12 +168,14 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [gAssign, setGAssign]           = useState('');    // assigned to filter
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
 
+  const serverStatus = (statusFilter === 'ontime' || statusFilter === 'delayed') ? 'active' : statusFilter;
+
   const fetchAll = useCallback(async () => {
     if (!tenantId) return;
     setLoading(true);
     try {
       const [instRes, statsRes, tmplRes, allInstRes] = await Promise.all([
-        API.get(`/fms2/instances/${tenantId}`, { params: { status: statusFilter, templateId: templateFilter || undefined } }),
+        API.get(`/fms2/instances/${tenantId}`, { params: { status: serverStatus, templateId: templateFilter || undefined } }),
         API.get(`/fms2/monitor-stats/${tenantId}`),
         API.get(`/fms2/templates/${tenantId}`),
         API.get(`/fms2/instances/${tenantId}`, { params: { status: 'all', limit: 200 } }),
@@ -203,6 +206,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   };
 
   const filtered = instances.filter(inst => {
+    if (statusFilter === 'ontime' && inst.isOverdue) return false;
+    if (statusFilter === 'delayed' && !inst.isOverdue) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return inst.orderIdentifier?.toLowerCase().includes(q) ||
@@ -213,19 +218,17 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   return (
     <div className="w-full min-h-screen bg-background">
 
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-card/80 backdrop-blur-xl border-b border-border px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center">
-              <Activity size={18} className="text-primary" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold leading-none">Flow Monitor</h1>
-              <p className="text-[11px] text-muted-foreground mt-0.5 uppercase tracking-wider">Live order tracking</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pt-3 pb-6 space-y-3">
+
+        {/* ── TABS ── */}
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          {[['monitor','📊 Live Orders'], ['flows','🔀 Manage Flows'], ['global','🌐 Global View']].map(([id, label]) => (
+            <button key={id} onClick={() => setActiveTab(id)}
+              style={{ padding:'7px 18px', fontSize:12, fontWeight:600, borderRadius:8, border:'1px solid var(--color-border)', cursor:'pointer', background: activeTab===id ? 'var(--color-primary)' : 'var(--color-card)', color: activeTab===id ? 'white' : 'var(--color-muted-foreground)', transition:'all .15s' }}>
+              {label}
+            </button>
+          ))}
+          <div className="ml-auto flex items-center gap-2">
             {loading && <RefreshCcw size={14} className="text-muted-foreground animate-spin" />}
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-[11px] font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -240,19 +243,6 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
             </button>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-
-        {/* ── TABS ── */}
-        <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-          {[['monitor','📊 Live Orders'], ['flows','🔀 Manage Flows'], ['global','🌐 Global View']].map(([id, label]) => (
-            <button key={id} onClick={() => setActiveTab(id)}
-              style={{ padding:'7px 18px', fontSize:12, fontWeight:600, borderRadius:8, border:'1px solid var(--color-border)', cursor:'pointer', background: activeTab===id ? 'var(--color-primary)' : 'var(--color-card)', color: activeTab===id ? 'white' : 'var(--color-muted-foreground)', transition:'all .15s' }}>
-              {label}
-            </button>
-          ))}
-        </div>
 
         {/* ── MANAGE FLOWS TAB ── */}
         {activeTab === 'flows' && (
@@ -262,14 +252,14 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                 No flows yet. Click "+ New flow" to create one.
               </div>
             ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {templates.map(t => {
                   const nodeCount = (t.nodes || []).filter(n => n.type !== 'start' && n.type !== 'end').length;
                   const srcIcon = t.dataSource === 'form' ? '📋' : t.dataSource === 'webhook' ? '🔗' : '📊';
                   const srcLabel = t.dataSource === 'form' ? 'WorkPilot Form' : t.dataSource === 'webhook' ? 'Webhook' : 'Google Sheet';
                   return (
-                    <div key={t._id} style={{ border:'1px solid var(--color-border)', borderRadius:14, padding:'16px 20px', background:'var(--color-card)', display:'flex', alignItems:'center', gap:16 }}>
-                      <div style={{ width:44, height:44, borderRadius:12, background:'var(--color-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>{srcIcon}</div>
+                    <div key={t._id} style={{ border:'1px solid var(--color-border)', borderRadius:12, padding:'8px 14px', background:'var(--color-card)', display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ width:36, height:36, borderRadius:10, background:'var(--color-muted)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{srcIcon}</div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontWeight:700, fontSize:14, marginBottom:3 }}>{t.name}</div>
                         <div style={{ fontSize:12, color:'var(--color-muted-foreground)' }}>
@@ -297,14 +287,16 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                           style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', fontSize:12, fontWeight:600, border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)', cursor:'pointer', color:'var(--color-foreground)' }}>
                           ✏️ Edit
                         </button>
-                        <button onClick={() => {
-                          if (window.confirm(`Delete "${t.name}"? Active orders will continue but no new ones can start.`)) {
-                            setDeletingId(t._id);
-                            API.delete(`/fms2/templates/${t._id}`)
-                              .then(() => setTemplates(p => p.filter(x => x._id !== t._id)))
-                              .catch(e => alert(e.response?.data?.message || 'Delete failed'))
-                              .finally(() => setDeletingId(null));
-                          }
+                        <button onClick={async () => {
+                          const yes = await dialog.confirm('Delete "' + t.name + '"? Active orders will continue but no new ones can start.', { title: 'Delete flow', danger: true, confirmText: 'Delete' });
+                          if (!yes) return;
+                          setDeletingId(t._id);
+                          try {
+                            await API.delete('/fms2/templates/' + t._id);
+                            setTemplates(p => p.filter(x => x._id !== t._id));
+                          } catch (e) {
+                            await dialog.alert(e.response?.data?.message || 'Could not delete this flow. Please try again.', { tone: 'error', title: 'Not deleted' });
+                          } finally { setDeletingId(null); }
                         }} disabled={deletingId === t._id}
                           style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', fontSize:12, fontWeight:600, border:'1px solid #F09595', borderRadius:8, background:'transparent', cursor:'pointer', color:'#A32D2D', opacity: deletingId===t._id ? 0.5 : 1 }}>
                           {deletingId === t._id ? '⏳' : '🗑 Delete'}
@@ -322,20 +314,20 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
         {activeTab === 'monitor' && <>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Active orders',  val: stats.active,    icon: <Activity size={16} />,       cls: 'text-primary', bg: 'bg-primary/10' },
             { label: 'On track',       val: stats.onTrack,   icon: <CheckCircle2 size={16} />,   cls: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
             { label: 'Delayed',        val: stats.overdue,   icon: <AlertCircle size={16} />,    cls: 'text-red-500', bg: 'bg-red-50 dark:bg-red-900/20' },
             { label: 'Completed',      val: stats.completed, icon: <CheckCircle2 size={16} />,   cls: 'text-slate-500', bg: 'bg-slate-100 dark:bg-slate-800' },
           ].map(s => (
-            <div key={s.label} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
+            <div key={s.label} className="bg-card border border-border rounded-xl px-4 py-2 flex items-center gap-3">
               <div className={`p-2 rounded-xl ${s.bg}`}>
                 <span className={s.cls}>{s.icon}</span>
               </div>
               <div>
-                <p className="text-2xl font-black leading-none">{s.val ?? 0}</p>
-                <p className="text-[11px] text-muted-foreground mt-1 font-medium">{s.label}</p>
+                <p className="text-xl font-black leading-none">{s.val ?? 0}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{s.label}</p>
               </div>
             </div>
           ))}
@@ -393,12 +385,17 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
               onChange={e => setSearch(e.target.value)}
               className="pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 w-56" />
           </div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-            <option value="active">Active</option>
-            <option value="completed">Completed</option>
-            <option value="all">All</option>
-          </select>
+          <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+            Status
+            <select aria-label="Status filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground font-normal focus:outline-none focus:ring-2 focus:ring-primary/40">
+              <option value="active">Active</option>
+              <option value="ontime">On time</option>
+              <option value="delayed">Delayed</option>
+              <option value="completed">Completed</option>
+              <option value="all">All</option>
+            </select>
+          </label>
           <select value={templateFilter} onChange={e => setTemplateFilter(e.target.value)}
             className="px-3 py-1.5 text-xs bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option value="">All flows</option>
@@ -421,20 +418,21 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
           </div>
         ) : (
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-17rem)] min-h-[260px]">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    {['Order', 'Flow', ...extraCols, 'Current step', 'Assigned to', 'Deadline', 'Delay', 'Status', ''].map(h => (
-                      <th key={h} className="text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-4 py-3 whitespace-nowrap">{h}</th>
+                  <tr>
+                    {['S. no.', 'Order', 'Flow', ...extraCols, 'Current step', 'Assigned to', 'Deadline', 'Delay', 'Status', 'Action'].map((h, hi) => (
+                      <th key={hi} style={{ boxShadow: 'inset 0 -1px 0 var(--color-border)' }} className="sticky top-0 z-10 bg-muted text-left text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2.5 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map(inst => {
+                  {filtered.map((inst, rowIdx) => {
                     const delay = delayLabel(inst.delayMinutes);
                     return (
                       <tr key={inst._id} className="hover:bg-muted/30 transition-colors group">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{rowIdx + 1}</td>
                         <td className="px-4 py-3">
                           <span className="font-mono text-xs font-semibold bg-muted px-2 py-1 rounded-lg">{inst.orderIdentifier}</span>
                         </td>
@@ -478,7 +476,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                         </td>
                         <td className="px-4 py-3">
                           <button onClick={() => openHistory(inst)}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity whitespace-nowrap">
                             <Eye size={12} /> View
                           </button>
                         </td>
@@ -497,7 +495,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
       {activeTab === 'global' && (
         <div style={{ padding: '0 0 32px' }}>
           {/* Summary cards */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:24 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10, marginBottom:12 }}>
             {[
               { label:'Total Orders', value: allInstances.length, color:'#185FA5' },
               { label:'Active', value: allInstances.filter(i=>i.status==='active').length, color:'#0369A1' },
@@ -505,15 +503,15 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
               { label:'On Time', value: allInstances.filter(i=>i.status==='active'&&!i.isOverdue).length, color:'#059669' },
               { label:'Completed', value: allInstances.filter(i=>i.status==='completed').length, color:'#7C3AED' },
             ].map(card => (
-              <div key={card.label} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'16px 20px' }}>
-                <div style={{ fontSize:11, color:'var(--color-muted-foreground)', fontWeight:600, marginBottom:6 }}>{card.label}</div>
-                <div style={{ fontSize:28, fontWeight:800, color:card.color }}>{card.value}</div>
+              <div key={card.label} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'8px 16px' }}>
+                <div style={{ fontSize:11, color:'var(--color-muted-foreground)', fontWeight:600, marginBottom:2 }}>{card.label}</div>
+                <div style={{ fontSize:22, fontWeight:800, lineHeight:1.2, color:card.color }}>{card.value}</div>
               </div>
             ))}
           </div>
 
           {/* Filter bar */}
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:20, alignItems:'center', background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'12px 16px' }}>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:12, alignItems:'center', background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'12px 16px' }}>
             {/* Search */}
             <input placeholder="🔍 Search order, customer, assignee..." value={gSearch} onChange={e=>setGSearch(e.target.value)}
               style={{ flex:2, minWidth:200, padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, outline:'none' }} />
@@ -555,8 +553,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                 const delayed = flowInsts.filter(i=>i.status==='active'&&i.isOverdue).length;
                 const completed = flowInsts.filter(i=>i.status==='completed').length;
                 return (
-                  <div key={t._id} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:16 }}>
-                    <div style={{ fontWeight:700, fontSize:14, marginBottom:8 }}>{t.name}</div>
+                  <div key={t._id} style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, padding:'10px 14px' }}>
+                    <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>{t.name}</div>
                     <div style={{ display:'flex', gap:16, fontSize:12 }}>
                       <span style={{ color:'#0369A1' }}>Active: <b>{active}</b></span>
                       <span style={{ color:'#B91C1C' }}>Delayed: <b>{delayed}</b></span>
@@ -571,11 +569,12 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
           {/* All instances table */}
           <div style={{ fontSize:13, fontWeight:700, color:'var(--color-foreground)', marginBottom:12 }}>📦 All Orders — Full History</div>
           <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, overflow:'hidden' }}>
+            <div style={{ maxHeight:'70vh', overflow:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
               <thead>
-                <tr style={{ background:'var(--color-muted)' }}>
-                  {['Order ID','Flow','Current Step','Assigned To','Steps Done','Status','Deadline','Actions'].map(h => (
-                    <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontWeight:700, fontSize:10, color:'var(--color-muted-foreground)', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid var(--color-border)' }}>{h}</th>
+                <tr>
+                  {['S. no.','Order ID','Flow','Current Step','Assigned To','Steps Done','Status','Deadline','Action'].map(h => (
+                    <th key={h} style={{ position:'sticky', top:0, zIndex:1, background:'var(--color-muted)', boxShadow:'inset 0 -1px 0 var(--color-border)', padding:'10px 14px', textAlign:'left', fontWeight:700, fontSize:10, color:'var(--color-muted-foreground)', textTransform:'uppercase', letterSpacing:'0.05em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -597,6 +596,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                   const isDelayed = inst.status === 'active' && inst.isOverdue;
                   return (
                     <tr key={inst._id} style={{ borderBottom:'1px solid var(--color-border)', background: idx%2===0?'var(--color-card)':'var(--color-muted)' }}>
+                      <td style={{ padding:'10px 14px', color:'var(--color-muted-foreground)' }}>{idx + 1}</td>
                       <td style={{ padding:'10px 14px', fontWeight:700 }}>{inst.orderIdentifier}</td>
                       <td style={{ padding:'10px 14px', color:'var(--color-muted-foreground)' }}>{inst.templateName}</td>
                       <td style={{ padding:'10px 14px' }}>{isDone ? '✅ Completed' : (inst.activeStep?.nodeName || '—')}</td>
@@ -630,6 +630,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

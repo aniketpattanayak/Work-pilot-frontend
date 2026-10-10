@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import {
   Plus, Trash2, Save, X, Settings, Zap,
   GitBranch, Link2, RefreshCcw, AlertCircle, MousePointer2,
@@ -387,14 +388,15 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
       // some of them were sitting on a step this edit just removed.
       const orphaned = res.data?.orphanedInstances || [];
       if (orphaned.length > 0) {
-        alert(
+        await dialog.alert(
           `Flow updated and is now live for ${res.data.activeInstanceCount} active order(s).\n\n` +
           `Heads up: ${orphaned.length} order(s) were on a step that no longer exists in the new flow ` +
           `and need manual attention:\n` +
-          orphaned.map(o => `• ${o.orderIdentifier} (was on "${o.currentStep}")`).join('\n')
+          orphaned.map(o => `• ${o.orderIdentifier} (was on "${o.currentStep}")`).join('\n'),
+          { title: 'Flow updated' }
         );
       } else if (res.data?.activeInstanceCount > 0) {
-        alert(`Flow updated — now live for ${res.data.activeInstanceCount} active order(s).`);
+        await dialog.alert(`Flow updated — now live for ${res.data.activeInstanceCount} active order(s).`, { title: 'Flow updated', tone: 'success' });
       }
 
       // If a form was linked, update the form's templateId — don't block deploy if this fails
@@ -483,14 +485,12 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
             ))}
           </div>
 
-          {/* How to connect */}
+          {/* How to connect — a Help button; the instructions open in a popup */}
           {!connecting && (
-            <div style={{ margin:8, padding:10, background:'var(--color-muted)', borderRadius:10, border:'1px solid var(--color-border)', fontSize:10, color:'var(--color-muted-foreground)', lineHeight:1.6 }}>
-              <div style={{ fontWeight:700, color:'var(--color-foreground)', marginBottom:4 }}>🖱 How to connect</div>
-              1. Click the ● dot at the bottom of a node<br/>
-              2. Click the ● dot at the top of the target node<br/>
-              3. Click a connection label to delete it
-            </div>
+            <button onClick={() => dialog.alert('1. Click the ● dot at the bottom of a node\n2. Click the ● dot at the top of the target node\n3. Click a connection label to delete it', { title: 'How to connect nodes', confirmText: 'Got it' })}
+              style={{ margin:8, padding:'7px 10px', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--color-foreground)', background:'var(--color-muted)', border:'1px solid var(--color-border)', borderRadius:10, cursor:'pointer' }}>
+              ❓ Help
+            </button>
           )}
           {connecting && (
             <div style={{ margin:8, padding:10, background:'#dbeafe', borderRadius:10, border:'1px solid #93c5fd', fontSize:10, color:'#1d4ed8', textAlign:'center' }}>
@@ -513,8 +513,8 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
               style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'8px 12px', background:'var(--color-primary)', color:'white', borderRadius:10, border:'none', fontSize:12, fontWeight:700, cursor:saving?'not-allowed':'pointer', opacity:saving?0.6:1 }}>
               {saving ? '⏳ Saving…' : wizardConfig?.existingTemplateId ? '💾 Save changes' : '🚀 Deploy flow'}
             </button>
-            <button onClick={() => {
-              if (window.confirm('Clear draft and start fresh?')) {
+            <button onClick={async () => {
+              if (await dialog.confirm('Clear the canvas and start fresh? Unsaved nodes and settings will be removed.', { title: 'Clear draft', danger: true, confirmText: 'Clear' })) {
                 try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
                 setMeta({ name:'', googleSheetId:'', scriptUrl:'', tabName:'Sheet1', uniqueIdColumn:'Order ID', workingHours:{ open:9, close:18, workDays:[1,2,3,4,5] } });
                 setNodes([]);
@@ -653,7 +653,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
         <div style={{ width:256, flexShrink:0, borderLeft:'1px solid var(--color-border)', background:'var(--color-card)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
           {/* Flow settings — scrollable top section */}
-          <div style={{ padding:12, borderBottom:'1px solid var(--color-border)', overflowY:'auto', maxHeight:'38%', flexShrink:0 }}>
+          <div style={selNode ? { padding:12, borderBottom:'1px solid var(--color-border)', overflowY:'auto', maxHeight:'38%', flexShrink:0 } : { padding:12, borderBottom:'1px solid var(--color-border)', overflowY:'auto', flex:'1 1 0', minHeight:0 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--color-muted-foreground)' }}>Flow settings</div>
               {meta.dataSource && (
@@ -754,11 +754,11 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
           </div>
 
           {/* Node config — THIS SCROLLS */}
-          <div style={{ flex:'1 1 0', minHeight:0, overflowY:'auto', padding:12 }}>
+          <div style={selNode ? { flex:'1 1 0', minHeight:0, overflowY:'auto', padding:12 } : { flexShrink:0, padding:'8px 12px' }}>
             {!selNode ? (
-              <div style={{ textAlign:'center', paddingTop:40 }}>
-                <div style={{ fontSize:20, opacity:0.2, marginBottom:8 }}>⚙️</div>
-                <p style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>Click a node to configure it</p>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                <span style={{ fontSize:14, opacity:0.4 }}>⚙️</span>
+                <p style={{ fontSize:11, margin:0, color:'var(--color-muted-foreground)' }}>Click a node to configure it</p>
               </div>
             ) : (
               <div>
