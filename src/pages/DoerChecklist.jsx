@@ -418,7 +418,7 @@ const DoerChecklist = ({ doerId }) => {
           filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
             const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
             return (
-              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
+              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40 dark:hover:bg-primary/[0.02]">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -473,7 +473,7 @@ const DoerChecklist = ({ doerId }) => {
             const isPastDue = new Date(task.deadline) < new Date();
 
             return (
-              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -488,13 +488,13 @@ const DoerChecklist = ({ doerId }) => {
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
                   {task.description || "No description provided."}
                 </div>
-                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
                   <p className={`uppercase tracking-tighter truncate ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
                     {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
                   </p>
                   {task.originalDeadline && (
-                    <span className="text-[8px] font-black uppercase text-amber-600 whitespace-nowrap" title="The deadline was revised">
+                    <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was revised">
                       Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
                     </span>
                   )}
@@ -529,7 +529,7 @@ const DoerChecklist = ({ doerId }) => {
             const deadline = mission.activeStep?.plannedDeadline || mission.completedAt || mission.plannedDeadline;
             const isDelayed = !!mission.isOverdue || (!!deadline && mission.status !== 'completed' && new Date() > new Date(deadline));
             return (
-              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -573,7 +573,7 @@ const DoerChecklist = ({ doerId }) => {
             const isFuture = displayDate.getTime() > today.getTime();
 
             return (
-              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
