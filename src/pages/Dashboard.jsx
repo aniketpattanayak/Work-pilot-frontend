@@ -23,6 +23,7 @@ import OrderFormsPage  from './OrderFormsPage';
 import NewOrderPage    from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
 import LeavePage from './LeavePage';
+import AttendancePage from './AttendancePage';
 import ReportsTab from './ReportsTab';
 // Task components
 import CreateTask from "./CreateTask";
@@ -546,6 +547,7 @@ useEffect(() => {
             <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
             <Route path="flow-tasks" element={<FlowMyTasks employeeId={userId} />} />
             <Route path="leave" element={<LeavePage tenantId={currentTenantId} />} />
+            <Route path="attendance" element={<AttendancePage />} />
           </Routes>
           )}
           </ErrorBoundary>
