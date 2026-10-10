@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig'; 
 import { 
   Trophy, 
@@ -18,222 +18,203 @@ import {
 } from 'lucide-react';
 
 /**
- * REWARDS LOG: PERFORMANCE ANALYTICS & AUDIT LEDGER v2.0
- * Purpose: Unified oversight for Admin global analytics and User point tracking.
- * Feature: Dynamic Daily/Weekly/Monthly work completion percentages.
+ * REWARDS LOG
+ * Everyone: the points history of the tasks they worked on.
+ * Admin: the same, plus company-wide done-on-time / late / not-done percentages (Daily / Weekly / Monthly).
  */
+const parseHistoryPoints = (text) => {
+  const m = String(text || '').match(/([+-]?\d+)\s*$/);
+  const n = m ? parseInt(m[1], 10) : 0;
+  const lead = String(text || '').match(/\(([^)]+)\)/);
+  return { n, lead: lead ? lead[1] : '' };
+};
+
 const RewardsLog = ({ userId, tenantId }) => {
   const [logs, setLogs] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
+  const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [activeRange, setActiveRange] = useState('Daily'); // Daily, Weekly, Monthly
 
-  const sessionUser = JSON.parse(localStorage.getItem('user'));
+  let sessionUser = null;
+  try { sessionUser = JSON.parse(localStorage.getItem('user')); } catch (e) { sessionUser = null; }
   const userRoles = Array.isArray(sessionUser?.roles) ? sessionUser.roles : [sessionUser?.role];
   const isAdmin = userRoles.includes('Admin');
   const currentUserId = userId || sessionUser?._id || sessionUser?.id;
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
-  /**
-   * DATA ACQUISITION: Unified Performance Engine
-   */
   const fetchData = useCallback(async () => {
-    if (!currentUserId || !currentTenantId) return;
+    if (!currentUserId) { setLoading(false); return; }
     try {
       setLoading(true);
-      
-      // Fetch both tasks and global analytics in parallel
-      const [tasksRes, analyticsRes] = await Promise.all([
+      setLoadError('');
+      const [tasksRes, allRes] = await Promise.all([
         API.get(`/tasks/doer/${currentUserId}`),
-        Promise.resolve({ data: null })
+        // The company-wide figures need every task in the company; the assigner list returns that for an Admin.
+        isAdmin ? API.get(`/tasks/assigner/${currentUserId}`).catch(() => ({ data: null })) : Promise.resolve({ data: null }),
       ]);
-      
+
       const rawTasks = Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data?.tasks || []);
       const pointsHistory = [];
-      
-      // Parse Personal Reward Ledger
       rawTasks.forEach(task => {
-        if (task?.history) {
-          task.history.forEach(entry => {
-            if (entry.action === 'Points Calculated' || entry.action === 'Points Awarded') {
-              pointsHistory.push({
-                taskTitle: task.title || "Routine Assignment",
-                points: entry.remarks || "0 points",
-                date: entry.timestamp,
-                id: task._id
-              });
-            }
-          });
-        }
+        (task?.history || []).forEach(entry => {
+          if (entry.action === 'Points Calculated' || entry.action === 'Points Awarded') {
+            const { n, lead } = parseHistoryPoints(entry.remarks);
+            pointsHistory.push({ taskTitle: task.title || 'Routine Assignment', pts: n, lead, date: entry.timestamp, id: `${task._id}-${entry._id || entry.timestamp}` });
+          }
+        });
       });
-
       setLogs(pointsHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
-      
-      // Calculate Frontend Performance Percentages
-      if (isAdmin) {
-          // Note: In a production environment, this math should move to the Backend Controller
-          const now = new Date();
-          const filterByRange = (date) => {
-              const d = new Date(date);
-              if (activeRange === 'Daily') return d.toDateString() === now.toDateString();
-              if (activeRange === 'Weekly') {
-                  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                  return d >= weekAgo;
-              }
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          };
 
-          const stats = {
-              doneOnTime: 0,
-              doneLate: 0,
-              missed: 0,
-              total: rawTasks.length
-          };
-
-          rawTasks.filter(t => filterByRange(t.createdAt)).forEach(t => {
-              if (t.status === 'Verified' || t.status === 'Completed') {
-                  const completion = t.history.find(h => h.action === 'Completed')?.timestamp;
-                  if (new Date(completion) <= new Date(t.deadline)) stats.doneOnTime++;
-                  else stats.doneLate++;
-              } else if (new Date(t.deadline) < now) {
-                  stats.missed++;
-              }
-          });
-
-          setAnalytics(stats);
-      }
+      const everyone = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.tasks || null);
+      setAllTasks(everyone || rawTasks);
     } catch (err) {
-      console.error("Ledger Sync Error:", err);
+      console.error('Ledger Sync Error:', err);
+      setLoadError(err?.response?.data?.message || 'Could not load your points. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, currentTenantId, isAdmin, activeRange]);
+  }, [currentUserId, isAdmin]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData, currentTenantId]);
+
+  const analytics = useMemo(() => {
+    if (!isAdmin) return null;
+    const now = new Date();
+    const inRange = (date) => {
+      const d = new Date(date);
+      if (activeRange === 'Daily') return d.toDateString() === now.toDateString();
+      if (activeRange === 'Weekly') return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    };
+    const stats = { doneOnTime: 0, doneLate: 0, missed: 0, total: 0 };
+    allTasks.filter((t) => inRange(t.createdAt)).forEach((t) => {
+      stats.total++;
+      if (t.status === 'Verified' || t.status === 'Completed') {
+        const completion = (t.history || []).find((h) => h.action === 'Completed')?.timestamp;
+        if (completion && new Date(completion) > new Date(t.deadline)) stats.doneLate++;
+        else stats.doneOnTime++;
+      } else if (new Date(t.deadline) < now) {
+        stats.missed++;
+      }
+    });
+    return stats;
+  }, [allTasks, activeRange, isAdmin]);
+
+  const netPoints = logs.reduce((sum, l) => sum + l.pts, 0);
+  const pct = (n) => (analytics && analytics.total > 0 ? Math.round((n / analytics.total) * 100) : 0);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-[400px] gap-6">
-      <div className="relative">
-        <RefreshCcw className="animate-spin text-amber-500" size={48} />
-        <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse" />
-      </div>
-      <span className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.4em] uppercase">Decrypting Performance Ledger...</span>
+    <div className="flex flex-col items-center justify-center h-[300px] gap-4">
+      <RefreshCcw className="animate-spin text-amber-500" size={36} />
+      <span className="text-slate-500 dark:text-slate-400 font-black text-[10px] tracking-[0.3em] uppercase">Loading points…</span>
     </div>
   );
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-amber-500/30">
-      
-      {/* HEADER SECTION */}
-      <div className="mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
-        <div className="flex items-center gap-6">
-            <div className="bg-amber-500/10 p-4 rounded-2xl border border-amber-500/20 shadow-xl shrink-0">
-              <Trophy className="text-amber-600 dark:text-amber-400" size={36} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none">
-                {isAdmin ? 'Factory Audit Intelligence' : 'Rewards Log'}
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">
-                {isAdmin ? 'Monitoring global work-completion percentages' : 'Your personal point accrual ledger'}
-              </p>
-            </div>
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-500 pb-16 selection:bg-amber-500/30">
+
+      {/* HEADER: icon and title are the same height */}
+      <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="flex items-center gap-3">
+          <div className="bg-amber-500/10 w-10 h-10 flex items-center justify-center rounded-xl border border-amber-500/20 shrink-0">
+            <Trophy className="text-amber-600 dark:text-amber-400" size={22} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none">
+              {isAdmin ? 'Factory Audit Intelligence' : 'Rewards Log'}
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wide mt-1.5 opacity-80">
+              {isAdmin ? 'Monitoring global work-completion percentages' : 'Your personal point accrual ledger'}
+            </p>
+          </div>
         </div>
 
         {isAdmin && (
-            <div className="flex bg-card p-1.5 rounded-2xl border border-border shadow-inner">
-                {['Daily', 'Weekly', 'Monthly'].map(range => (
-                    <button 
-                        key={range}
-                        onClick={() => setActiveRange(range)}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeRange === range ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-foreground'}`}
-                    >
-                        {range}
-                    </button>
-                ))}
-            </div>
+          <div className="flex bg-card p-1 rounded-xl border border-border">
+            {['Daily', 'Weekly', 'Monthly'].map(range => (
+              <button
+                key={range}
+                onClick={() => setActiveRange(range)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeRange === range ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground'}`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {/* ADMIN PERFORMANCE SCOREBOARD */}
-      {isAdmin && analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-2xl group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 text-emerald-500 group-hover:scale-110 transition-transform"><CheckCircle2 size={60} /></div>
-                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Done On Time</span>
-                <div className="text-4xl font-black text-emerald-600 dark:text-emerald-400 mt-2 tracking-tighter">
-                    {analytics.total > 0 ? Math.round((analytics.doneOnTime / analytics.total) * 100) : 0}%
-                </div>
-            </div>
-            <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-2xl group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 text-amber-500 group-hover:scale-110 transition-transform"><Clock size={60} /></div>
-                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Done Late</span>
-                <div className="text-4xl font-black text-amber-600 dark:text-amber-400 mt-2 tracking-tighter">
-                    {analytics.total > 0 ? Math.round((analytics.doneLate / analytics.total) * 100) : 0}%
-                </div>
-            </div>
-            <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-2xl group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 text-red-500 group-hover:scale-110 transition-transform"><AlertCircle size={60} /></div>
-                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Work Not Done</span>
-                <div className="text-4xl font-black text-red-600 dark:text-red-500 mt-2 tracking-tighter">
-                    {analytics.total > 0 ? Math.round((analytics.missed / analytics.total) * 100) : 0}%
-                </div>
-            </div>
-            <div className="bg-card p-8 rounded-[2.5rem] border border-border shadow-2xl group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5 text-primary group-hover:scale-110 transition-transform"><TrendingUp size={60} /></div>
-                <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em]">Total Integrity</span>
-                <div className="text-4xl font-black text-foreground mt-2 tracking-tighter">
-                    {analytics.total > 0 ? Math.round(((analytics.doneOnTime + analytics.doneLate) / analytics.total) * 100) : 0}%
-                </div>
-            </div>
+      {loadError && (
+        <div className="mb-4 flex items-center justify-between gap-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-xs font-bold">
+          <span className="flex items-center gap-2"><AlertCircle size={16} /> {loadError}</span>
+          <button onClick={fetchData} className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase tracking-widest">Try again</button>
         </div>
       )}
 
-      {/* LEDGER LIST */}
-      <h3 className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-8 ml-2">
-        <HistoryIcon size={16} /> Audit Trail & Accrual History
-      </h3>
+      {/* ADMIN PERFORMANCE SCOREBOARD */}
+      {isAdmin && analytics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Done On Time', v: pct(analytics.doneOnTime), cls: 'text-emerald-600 dark:text-emerald-400', Icon: CheckCircle2 },
+            { label: 'Done Late', v: pct(analytics.doneLate), cls: 'text-amber-600 dark:text-amber-400', Icon: Clock },
+            { label: 'Work Not Done', v: pct(analytics.missed), cls: 'text-red-600 dark:text-red-500', Icon: AlertCircle },
+            { label: 'Total Integrity', v: pct(analytics.doneOnTime + analytics.doneLate), cls: 'text-foreground', Icon: TrendingUp },
+          ].map(({ label, v, cls, Icon }) => (
+            <div key={label} className="bg-card px-4 py-3 rounded-2xl border border-border relative overflow-hidden">
+              <div className={`absolute top-2 right-3 opacity-10 ${cls}`}><Icon size={32} /></div>
+              <span className="text-slate-500 text-[9px] font-black uppercase tracking-[0.25em]">{label}</span>
+              <div className={`text-2xl font-black mt-1 tracking-tighter ${cls}`}>{v}%</div>
+            </div>
+          ))}
+          <p className="col-span-2 md:col-span-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest -mt-1 ml-1">Based on {analytics.total} task{analytics.total === 1 ? '' : 's'} created in this period.</p>
+        </div>
+      )}
 
-      <div className="space-y-4">
-        {logs.length > 0 ? logs.map((log, i) => {
-          const pointStr = log.points || "";
-          const isPositive = pointStr.includes('+');
-          
+      {/* LEDGER */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 ml-1">
+        <h3 className="flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-[0.3em]">
+          <HistoryIcon size={14} /> Points history
+        </h3>
+        {logs.length > 0 && (
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            {logs.length} entr{logs.length === 1 ? 'y' : 'ies'} · Net <span className={netPoints >= 0 ? 'text-emerald-600' : 'text-red-600'}>{netPoints > 0 ? '+' : ''}{netPoints} pts</span>
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {logs.length > 0 ? logs.map((log) => {
+          const positive = log.pts > 0;
+          const negative = log.pts < 0;
           return (
-            <div key={i} className="bg-card backdrop-blur-xl p-6 md:p-8 rounded-[2rem] border border-border flex flex-col sm:flex-row items-start sm:items-center justify-between group hover:border-amber-500/30 transition-all duration-500 shadow-xl gap-6">
-              <div className="flex items-center gap-6 w-full sm:w-auto">
-                <div className={`p-4 rounded-2xl border shrink-0 transition-all duration-500 ${isPositive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
-                  {isPositive ? <ArrowUpCircle size={24} /> : <ArrowDownCircle size={24} />}
+            <div key={log.id} className="bg-card px-4 py-3 rounded-2xl border border-border flex items-center justify-between gap-4 hover:border-amber-500/30 transition-all">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`p-2.5 rounded-xl border shrink-0 ${positive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : negative ? 'bg-red-500/10 text-red-600 border-red-500/20' : 'bg-slate-500/10 text-slate-500 border-border'}`}>
+                  {negative ? <ArrowDownCircle size={20} /> : <ArrowUpCircle size={20} />}
                 </div>
-
                 <div className="min-w-0">
-                  <h4 className="text-foreground font-black text-base md:text-lg uppercase tracking-tight truncate group-hover:text-primary transition-colors">{log.taskTitle}</h4>
-                  <div className="flex flex-wrap items-center gap-3 mt-2">
-                    <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-lg border border-border text-[10px] text-slate-500 font-black uppercase tracking-widest shadow-inner">
-                      <Calendar size={12} className="text-primary/50" /> {new Date(log.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                    <div className="flex items-center gap-2 bg-background px-3 py-1 rounded-lg border border-border text-[10px] text-slate-500 font-black uppercase tracking-widest shadow-inner">
-                      <Clock size={12} className="text-primary/50" /> {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
+                  <h4 className="text-foreground font-black text-sm uppercase tracking-tight truncate">{log.taskTitle}</h4>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                    <span className="flex items-center gap-1"><Calendar size={11} className="text-primary/50" /> {new Date(log.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    <span className="flex items-center gap-1"><Clock size={11} className="text-primary/50" /> {new Date(log.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {log.lead && <span>Lead: {log.lead}</span>}
                   </div>
                 </div>
               </div>
-              
-              <div className="text-left sm:text-right border-t sm:border-t-0 border-border/50 pt-4 sm:pt-0 w-full sm:w-auto flex flex-row sm:flex-col justify-between items-center sm:items-end">
-                <div className={`text-2xl md:text-3xl font-black tracking-tighter ${isPositive ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'}`}>
-                  {pointStr.split('points')[0].trim()} <span className="text-[10px] md:text-xs font-black uppercase tracking-widest ml-1">pts</span>
-                </div>
-                <div className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] sm:mt-1.5">Operational Event</div>
+              <div className={`text-xl font-black tracking-tighter shrink-0 ${positive ? 'text-emerald-600 dark:text-emerald-500' : negative ? 'text-red-600 dark:text-red-500' : 'text-slate-500'}`}>
+                {positive ? '+' : ''}{log.pts} <span className="text-[10px] font-black uppercase tracking-widest">pts</span>
               </div>
             </div>
           );
         }) : (
-          <div className="py-24 text-center border-2 border-dashed border-border rounded-[3rem] group bg-background/50">
-              <HistoryIcon size={64} className="text-slate-300 dark:text-slate-800 mx-auto mb-6" />
-              <p className="text-slate-400 font-black uppercase tracking-[0.5em] text-[10px]">No Recorded Transactions Detected</p>
-          </div>
+          !loadError && (
+            <div className="py-12 text-center border-2 border-dashed border-border rounded-2xl bg-background/50 px-4">
+              <HistoryIcon size={40} className="text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+              <p className="text-slate-500 font-black uppercase tracking-widest text-[11px]">No points recorded yet</p>
+              <p className="text-slate-400 font-bold text-xs mt-2 max-w-md mx-auto">Points are added to the lead doer when a delegation task is completed. If nothing ever appears here, ask your Admin to switch the Performance Engine on in Settings.</p>
+            </div>
+          )
         )}
       </div>
     </div>

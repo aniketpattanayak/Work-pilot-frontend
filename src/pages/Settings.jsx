@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
+import { dialog } from '../components/Dialog';
 import { 
   FiUser, FiShield, FiPlus, FiX, FiSave, FiTrash2, FiSettings, FiCheckCircle, FiRefreshCw 
 } from "react-icons/fi";
@@ -232,10 +233,11 @@ const Settings = ({ tenantId }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      alert("Success: Factory Identity updated."); setTimeout(() => window.location.reload(), 500);
       fetchSettings();
+      await dialog.alert('Company name and logo updated.', { tone: 'success' });
+      window.location.reload();
     } catch (err) {
-      alert("Error: " + (err.response?.data?.message || err.message));
+      await dialog.alert(err.response?.data?.message || err.message, { tone: 'error', title: 'Could not update' });
     } finally {
       setUpdatingBranding(false);
     }
@@ -243,16 +245,16 @@ const Settings = ({ tenantId }) => {
 
   const addHolidayToList = (e) => {
     if (e) e.preventDefault(); 
-    if (newHoliday.name && newHoliday.date) {
-      setHolidayList((prevList) => {
-        if (prevList.some(h => h.date === newHoliday.date)) {
-          alert("Conflict: Holiday already scheduled on this date.");
-          return prevList;
-        }
-        return [...prevList, { ...newHoliday }];
-      });
-      setNewHoliday({ name: '', date: '' });
+    if (!newHoliday.name || !newHoliday.date) {
+      dialog.alert('Please enter the holiday name and pick its date.', { tone: 'error' });
+      return;
     }
+    if (holidayList.some(h => h.date === newHoliday.date)) {
+      dialog.alert('A holiday is already scheduled on this date.', { tone: 'error' });
+      return;
+    }
+    setHolidayList((prevList) => [...prevList, { ...newHoliday }]);
+    setNewHoliday({ name: '', date: '' });
   };
 
   const removeHoliday = (index) => {
@@ -267,7 +269,7 @@ const Settings = ({ tenantId }) => {
     const raw = (isSector ? newSector : newLocation).replace(/\s+/g, ' ').trim();
     const clear = () => (isSector ? setNewSector('') : setNewLocation(''));
     if (!raw) return;
-    if (raw.length > 60) { alert('Please keep the name under 60 characters.'); return; }
+    if (raw.length > 60) { dialog.alert('Please keep the name under 60 characters.', { tone: 'error' }); return; }
     const list = isSector ? sectorList : locationList;
     if (!list.some((x) => x.toLowerCase() === raw.toLowerCase())) {
       (isSector ? setSectorList : setLocationList)([...list, raw]);
@@ -285,9 +287,9 @@ const Settings = ({ tenantId }) => {
   const updateRule = (i, key, val) => setReviewCfg((p) => ({ ...p, overrides: p.overrides.map((o, idx) => (idx === i ? { ...o, [key]: val } : o)) }));
   const removeRule = (i) => setReviewCfg((p) => ({ ...p, overrides: p.overrides.filter((_, idx) => idx !== i) }));
   const addRule = () => {
-    if (!newRule.location && !newRule.department) { alert('Pick a location, a department, or both for the rule.'); return; }
+    if (!newRule.location && !newRule.department) { dialog.alert('Pick a location, a department, or both for the rule.', { tone: 'error' }); return; }
     const same = reviewCfg.overrides.some((o) => o.location.toLowerCase() === newRule.location.toLowerCase() && o.department.toLowerCase() === newRule.department.toLowerCase());
-    if (same) { alert('There is already a rule for this location and department.'); return; }
+    if (same) { dialog.alert('There is already a rule for this location and department.', { tone: 'error' }); return; }
     setReviewCfg((p) => ({ ...p, overrides: [...p.overrides, { ...newRule }] }));
     setNewRule({ location: '', department: '', delegation: '1', checklist: '1', fms: '1' });
   };
@@ -319,7 +321,7 @@ const Settings = ({ tenantId }) => {
     let reviewPayload = null;
     if (reviewLoaded) {
       const rv = buildReviewPayload();
-      if (rv.error) { alert(rv.error); return; }
+      if (rv.error) { await dialog.alert(rv.error, { tone: 'error' }); return; }
       reviewPayload = rv.payload;
     }
     try {
@@ -337,11 +339,11 @@ const Settings = ({ tenantId }) => {
       });
   
       if (response.status === 200) {
-        alert("Success: Global parameters synchronized.");
         await fetchSettings();
+        await dialog.alert('Settings saved.', { tone: 'success' });
       }
     } catch (err) {
-      alert("Error: " + (err.response?.data?.message || err.message));
+      await dialog.alert(err.response?.data?.message || err.message, { tone: 'error', title: 'Could not save' });
     } finally {
       setSaving(false);
     }
@@ -361,28 +363,28 @@ const Settings = ({ tenantId }) => {
     <div className="w-full max-w-5xl mx-auto animate-in fade-in duration-700 pb-20 selection:bg-primary/30 transition-colors duration-500">
       
       {/* HEADER SECTION */}
-      <div className="mb-12 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-        <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
-          <LucideSettings className="text-primary" size={36} />
+      <div className="mb-4 flex items-center gap-3">
+        <div className="bg-primary/10 w-10 h-10 flex items-center justify-center rounded-xl border border-primary/20 shrink-0">
+          <LucideSettings className="text-primary" size={22} />
         </div>
         <div className="min-w-0">
-          <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none">Organisation Setup</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-wide mt-3 opacity-80 italic">Configure global task management parameters & company branding. </p>
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none">Organisation Setup</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wide mt-1.5 opacity-80">Configure global task management parameters &amp; company branding.</p>
         </div>
       </div>
 
-      <div className="space-y-8 md:space-y-12">
+      <div className="space-y-4">
         
         {/* SECTION 0: FACTORY IDENTITY */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative overflow-hidden group">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group">
            <Building2 size={160} className="absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
-           <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 relative z-10 uppercase tracking-tight">
+           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 relative z-10 uppercase tracking-tight">
              <ImageIcon size={22} className="text-primary" /> Update company name & logo
            </h3>
            <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr_auto] gap-8 items-end relative z-10">
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Company Name</label>
-                <input type="text" value={branding.companyName} onChange={(e) => setBranding({...branding, companyName: e.target.value})} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm uppercase shadow-inner" />
+                <input type="text" value={branding.companyName} onChange={(e) => setBranding({...branding, companyName: e.target.value})} className="w-full bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 transition-all font-black text-sm uppercase shadow-inner" />
               </div>
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Logo</label>
@@ -397,18 +399,18 @@ const Settings = ({ tenantId }) => {
                   )}
                 </div>
               </div>
-              <button onClick={saveBranding} disabled={updatingBranding} className="w-full lg:w-auto bg-primary hover:opacity-90 text-white dark:text-slate-950 px-10 py-4 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 h-[56px] flex items-center justify-center gap-3">
+              <button onClick={saveBranding} disabled={updatingBranding} className="w-full lg:w-auto bg-primary hover:opacity-90 text-white dark:text-slate-950 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] shadow-md shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 h-[44px] flex items-center justify-center gap-3">
                 {updatingBranding ? <RefreshCcw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}  Apply
               </button>
            </div>
         </section>
 
         {/* --- SECTION: WEEKEND CONFIGURATION --- */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Coffee size={22} className="text-primary" /> Weekend Configuration
           </h3>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-10 ml-1">Assign recurring non-working days. Systems will skip these when generating work directives.</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-4 ml-1">Assign recurring non-working days. Systems will skip these when generating work directives.</p>
           
           <div className="flex flex-wrap gap-4">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
@@ -416,9 +418,9 @@ const Settings = ({ tenantId }) => {
                 key={day}
                 type="button"
                 onClick={() => toggleWeekend(i)}
-                className={`w-20 h-20 rounded-2xl font-black text-xs uppercase transition-all flex flex-col items-center justify-center border-2 gap-2 ${
+                className={`w-16 h-16 rounded-xl font-black text-xs uppercase transition-all flex flex-col items-center justify-center border-2 gap-1.5 ${
                   weekends.includes(i)
-                    ? 'bg-red-500 border-red-500 text-white shadow-xl scale-110'
+                    ? 'bg-red-500 border-red-500 text-white shadow-md'
                     : 'bg-background border-border text-slate-400 hover:border-red-500/50'
                 }`}
               >
@@ -430,11 +432,11 @@ const Settings = ({ tenantId }) => {
         </section>
 
         {/* SECTION: SECTORS / DEPARTMENTS & LOCATIONS (masters used by Add Employee) */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Building2 size={22} className="text-primary" /> Sectors / Departments &amp; Locations
           </h3>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-10 ml-1">These lists become the dropdowns in Add Employee and the filters when mapping people. Click "Commit Global Updates" below to save.</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-4 ml-1">These lists become the dropdowns in Add Employee and the filters when mapping people. Click "Commit Global Updates" below to save.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             {[
               { kind: 'sector', title: 'Sector / Department', list: sectorList, value: newSector, setValue: setNewSector, ph: 'e.g. Operations' },
@@ -470,11 +472,11 @@ const Settings = ({ tenantId }) => {
         </section>
 
         {/* SECTION: REVIEW MEETING (period, weightage, colour limits) */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Target size={22} className="text-primary" /> Review Meeting
           </h3>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-8 ml-1">All of this is optional. If you change nothing: monthly review, all task types count equally, red from 20% and orange from 10%. Click "Commit Global Updates" below to save.</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-4 ml-1">All of this is optional. If you change nothing: monthly review, all task types count equally, red from 20% and orange from 10%. Click "Commit Global Updates" below to save.</p>
 
           <div className="space-y-8">
             <div className="space-y-3">
@@ -564,35 +566,35 @@ const Settings = ({ tenantId }) => {
         </section>
 
         {/* SECTION 1: WORKING HOURS */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Clock size={22} className="text-primary" /> Operational Hours
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3">
               <label className="text-[10px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-[0.3em] ml-2">Opening</label>
-              <input type="time" value={hours.opening} onChange={(e) => setHours(prev => ({...prev, opening: e.target.value}))} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
+              <input type="time" value={hours.opening} onChange={(e) => setHours(prev => ({...prev, opening: e.target.value}))} className="w-full bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
             </div>
             <div className="space-y-3">
               <label className="text-[10px] font-black text-red-600 dark:text-red-500 uppercase tracking-[0.3em] ml-2">Closing</label>
-              <input type="time" value={hours.closing} onChange={(e) => setHours(prev => ({...prev, closing: e.target.value}))} className="w-full bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
+              <input type="time" value={hours.closing} onChange={(e) => setHours(prev => ({...prev, closing: e.target.value}))} className="w-full bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
             </div>
           </div>
         </section>
 
         {/* SECTION 4: HOLIDAY CALENDAR */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Calendar size={22} className="text-primary" /> Holiday
           </h3>
-          <div className="flex flex-col md:flex-row gap-4 mb-10">
-            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm uppercase shadow-inner" />
-            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-background border border-border text-foreground px-6 py-4 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
-            <button onClick={addHolidayToList} className="bg-primary hover:opacity-90 text-white dark:text-slate-950 px-8 py-4 md:py-0 rounded-2xl transition-all shadow-xl shadow-primary/20 flex items-center justify-center active:scale-95"><PlusCircle size={24} /></button>
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm uppercase shadow-inner" />
+            <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
+            <button onClick={addHolidayToList} className="bg-primary hover:opacity-90 text-white dark:text-slate-950 px-6 py-2.5 md:py-0 rounded-xl transition-all shadow-md shadow-primary/20 flex items-center justify-center active:scale-95"><PlusCircle size={24} /></button>
           </div>
           <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             {Array.isArray(holidayList) && holidayList.map((h, index) => (
-              <div key={index} className="flex justify-between items-center px-6 py-4 bg-background border border-border rounded-2xl group hover:border-primary/30 transition-all shadow-sm">
+              <div key={index} className="flex justify-between items-center px-4 py-2.5 bg-background border border-border rounded-xl group hover:border-primary/30 transition-all shadow-sm">
                 <div className="flex items-center gap-5">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(56,189,248,0.5)]" />
                   <div>
@@ -607,18 +609,18 @@ const Settings = ({ tenantId }) => {
         </section>
 
         {/* SECTION 2: PERFORMANCE ENGINE */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative group/points">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative group/points">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 uppercase tracking-tight">
-              <Trophy size={22} className="text-amber-500" /> performance Engine 
+              <Trophy size={22} className="text-amber-500" /> Performance Engine
             </h3>
             <button onClick={() => setPointSettings(prev => ({ ...prev, isActive: !prev.isActive }))} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-sm ${pointSettings.isActive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/30' : 'bg-background text-slate-500 border border-border'}`}>
             Engine {pointSettings.isActive ? 'Online' : 'Offline'}
             </button>
           </div>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {Array.isArray(pointSettings.brackets) && pointSettings.brackets.map((bracket, index) => (
-              <div key={index} className="bg-background border border-border rounded-3xl p-6 md:p-8 relative group/bracket animate-in slide-in-from-top-4 shadow-inner">
+              <div key={index} className="bg-background border border-border rounded-2xl p-4 md:p-5 relative group/bracket animate-in slide-in-from-top-4 shadow-inner">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1.2fr_1fr_1fr] gap-6 items-end">
                   <div className="space-y-3">
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Bracket Identity</label>
@@ -650,20 +652,20 @@ const Settings = ({ tenantId }) => {
                 <button onClick={() => removeBracket(index)} className="absolute -top-3 -right-3 bg-card text-red-500 p-2.5 rounded-full border border-border shadow-xl hover:bg-red-500 hover:text-white transition-all active:scale-90"><Trash2 size={16} /></button>
               </div>
             ))}
-            <button onClick={addBracket} className="w-full py-5 border-2 border-dashed border-border rounded-3xl text-slate-400 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.3em] active:scale-[0.99]"><Plus size={18} /> Append Point Bracket</button>
+            <button onClick={addBracket} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-slate-400 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.3em] active:scale-[0.99]"><Plus size={18} /> Append Point Bracket</button>
           </div>
         </section>
 
         {/* --- SECTION 3: BADGE WORKSHOP --- */}
-        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl relative overflow-hidden group/badges">
+        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group/badges">
           <Award size={160} className="absolute -right-16 -top-16 text-amber-500 opacity-[0.03] group-hover/badges:scale-110 transition-transform duration-1000 pointer-events-none" />
-          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-10 uppercase tracking-tight relative z-10">
-            <Medal size={22} className="text-amber-500" /> Achievement work shop
+          <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight relative z-10">
+            <Medal size={22} className="text-amber-500" /> Achievement Workshop
           </h3>
-          <div className="space-y-6 relative z-10">
+          <div className="space-y-4 relative z-10">
             {Array.isArray(badgeLibrary) && badgeLibrary.map((badge, index) => (
-              <div key={index} className="bg-background border border-border rounded-[2rem] p-6 md:p-8 group/badge relative hover:border-amber-500/30 transition-all shadow-inner">
-                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr_1.5fr_auto] gap-8 items-center">
+              <div key={index} className="bg-background border border-border rounded-2xl p-4 md:p-5 group/badge relative hover:border-amber-500/30 transition-all shadow-inner">
+                <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr_1fr_1.5fr_auto] gap-5 items-center">
                   <div className="flex flex-col items-center gap-3">
                     <div 
                       className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-2xl transition-all border border-white/10 dark:border-white/5"
@@ -711,7 +713,7 @@ const Settings = ({ tenantId }) => {
                 </div>
               </div>
             ))}
-            <button onClick={addBadge} className="w-full py-8 border-2 border-dashed border-border rounded-[2.5rem] text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-4 text-xs font-black uppercase tracking-[0.3em] group active:scale-[0.99]">
+            <button onClick={addBadge} className="w-full py-4 border-2 border-dashed border-border rounded-2xl text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 transition-all flex items-center justify-center gap-4 text-xs font-black uppercase tracking-[0.3em] group active:scale-[0.99]">
               <Plus size={24} className="group-hover:rotate-90 transition-transform duration-500" /> Engineer New Achievement Node
             </button>
           </div>
@@ -719,8 +721,8 @@ const Settings = ({ tenantId }) => {
       </div>
 
       {/* STICKY EXECUTION FOOTER */}
-      <div className="mt-12 sticky bottom-6 md:bottom-10 z-[100] px-2">
-        <button onClick={saveSettings} disabled={saving} className={`w-full py-6 rounded-[2.5rem] font-black text-xs sm:text-sm uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${saving ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white dark:text-slate-950 active:scale-95 cursor-pointer shadow-emerald-500/20"}`}>
+      <div className="mt-6 sticky bottom-4 z-[100] px-2">
+        <button onClick={saveSettings} disabled={saving} className={`w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${saving ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white dark:text-slate-950 active:scale-95 cursor-pointer shadow-emerald-500/20"}`}>
             {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Zap size={24} fill="currentColor" />} {saving ? 'TRANSMITTING FACTORY TELEMETRY...' : 'COMMIT GLOBAL UPDATES'}
         </button>
       </div>
