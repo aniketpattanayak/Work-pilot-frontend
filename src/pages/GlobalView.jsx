@@ -39,6 +39,27 @@ const drift = (deadline, completedAt) => {
   return diff > 0 ? `${diff}d overdue` : 'Not due yet';
 };
 
+// Drift colour: the Admin sets the day limits in Settings (default 0-10 green, 11-50 yellow, 51-100 orange, above red).
+const DEFAULT_DRIFT = { greenMax: 10, yellowMax: 50, orangeMax: 100 };
+const DRIFT_TONE = {
+  green: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+  yellow: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-400/20 dark:text-yellow-300',
+  orange: 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300',
+  red: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+  none: ''
+};
+const driftTone = (deadline, completedAt, bands) => {
+  if (!deadline) return 'none';
+  const b = bands || DEFAULT_DRIFT;
+  const diff = Math.floor(((completedAt ? new Date(completedAt) : new Date()) - new Date(deadline)) / 86400000);
+  if (!completedAt && diff <= 0) return 'none'; // not due yet
+  const days = Math.max(0, diff);
+  if (days <= b.greenMax) return 'green';
+  if (days <= b.yellowMax) return 'yellow';
+  if (days <= b.orangeMax) return 'orange';
+  return 'red';
+};
+
 const bucketOf = (r) => {
   const done = r.type === 'FMS' ? r.fms?.instanceStatus === 'completed' : !!r.completedAt;
   if (done) return r.status === 'LATE' ? 'lateDone' : 'onTimeDone';
@@ -53,6 +74,24 @@ const BUCKET_CLASS = {
 };
 
 const cellBase = 'border border-border px-1.5 py-1 text-center tabular-nums';
+
+// Previous period: the Late Target the Admin had set then, next to what the person actually did (late %).
+const PreviousCell = ({ prev }) => {
+  if (!prev) return <td className={`${cellBase} text-slate-300`}>&mdash;</td>;
+  const target = Number(prev.target);
+  const actual = Number(prev.latePct) || 0;
+  const tone = !prev.hasTasks ? '' : (actual > target ? TONE_CLASSES.red : TONE_CLASSES.green);
+  const tip = `${prev.periodName}: target ${target}%${prev.targetSource === 'current' ? ' (current target; no change recorded)' : ''}, ${prev.hasTasks ? 'actual late ' + actual.toFixed(1) + '%' : 'no tasks in that period'}`;
+  return (
+    <td className={`${cellBase} whitespace-nowrap`} title={tip}>
+      <div className="flex items-center justify-center gap-1.5 text-[10px] font-black">
+        <span className="text-slate-500">Target {target}%</span>
+        <span className="text-slate-300">&rarr;</span>
+        {prev.hasTasks ? <span className={`px-1.5 py-0.5 rounded ${tone}`}>Late {actual.toFixed(1)}%</span> : <span className="text-slate-400">no tasks</span>}
+      </div>
+    </td>
+  );
+};
 
 // Late Target box (Admin mode): type 0-100, then press Save (or Enter). Nothing is saved until then.
 const LateTargetInput = ({ value, onSave }) => {
@@ -147,6 +186,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   };
 
   const thresholds = config?.thresholds;
+  const driftBands = config?.driftBands || DEFAULT_DRIFT;
+  const previousName = report.find((r) => r.previous)?.previous?.periodName || '';
 
   const locOptions = useMemo(() => [...new Set(report.map((r) => (r.location || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [report]);
   const deptOptions = useMemo(() => [...new Set(report.map((r) => (r.department || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [report]);
@@ -307,6 +348,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                   <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[90px]">Location</th>
                   <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[110px]">Dept</th>
                   {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[110px]">Late Target (%)</th>}
+                  {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[190px]" title={`Last period${previousName ? ' (' + previousName + ')' : ''}: the target set for the person, and the late % they actually had`}>Previous period<div className="text-[8px] font-bold normal-case tracking-normal text-slate-400">Target &rarr; Actual late %{previousName ? ` · ${previousName}` : ''}</div></th>}
                   {TYPES.map((t) => (
                     <th key={t} colSpan={5} className={`border-b border-border px-2 py-1 ${GROUP_STYLE[KEYS[t]].head}`}>{t}</th>
                   ))}
@@ -331,6 +373,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                         <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
                       </td>
                     )}
+                    {canEdit && <PreviousCell prev={p.previous} />}
                     {TYPES.map((t) => COLS.map(([f]) => {
                       const v = p[KEYS[t]]?.[f] || 0;
                       const tone = v > 0 && f === 'lateDone' ? 'text-amber-600 font-black' : v > 0 && f === 'latePending' ? 'text-red-600 font-black' : v > 0 ? 'text-foreground font-bold' : 'text-slate-300 dark:text-slate-600';
@@ -341,13 +384,13 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                   </tr>
                 ))}
                 {people.length === 0 && (
-                  <tr><td colSpan={canEdit ? 20 : 19} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
+                  <tr><td colSpan={canEdit ? 23 : 21} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
                 )}
               </tbody>
               {people.length > 0 && (
                 <tfoot className="sticky bottom-0 z-20">
                   <tr className="font-black bg-muted">
-                    <td colSpan={canEdit ? 5 : 4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
+                    <td colSpan={canEdit ? 6 : 4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
                     {TYPES.map((t) => COLS.map(([f]) => <td key={t + f} className={`${cellBase}`}>{totals.t[KEYS[t]][f]}</td>))}
                     {pctCell(totals.avgLate)}
                     {pctCell(totals.avgNotDone)}
@@ -433,7 +476,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                             </td>
                             <td className="border border-border px-2 py-1 whitespace-nowrap">{fmtDate(r.deadline)}</td>
                             <td className="border border-border px-2 py-1 whitespace-nowrap">{r.completedAt ? fmtDateTime(r.completedAt) : '—'}</td>
-                            <td className="border border-border px-2 py-1 whitespace-nowrap font-bold">{drift(r.deadline, r.completedAt)}</td>
+                            <td className="border border-border px-2 py-1 whitespace-nowrap font-bold"><span className={`px-1.5 py-0.5 rounded ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>{drift(r.deadline, r.completedAt)}</span></td>
                             <td className="border border-border px-2 py-1 text-center w-28">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
                             </td>

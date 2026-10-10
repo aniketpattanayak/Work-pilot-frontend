@@ -70,7 +70,8 @@ const Settings = ({ tenantId }) => {
     period: 'Monthly',
     weights: { delegation: '1', checklist: '1', fms: '1' },
     overrides: [],
-    thresholds: { red: '20', orange: '10' }
+    thresholds: { red: '20', orange: '10' },
+    driftBands: { greenMax: '10', yellowMax: '50', orangeMax: '100' }
   });
   const [reviewLoaded, setReviewLoaded] = useState(false);
   const [newRule, setNewRule] = useState({ location: '', department: '', delegation: '1', checklist: '1', fms: '1' });
@@ -139,7 +140,8 @@ const Settings = ({ tenantId }) => {
               location: o.location || '', department: o.department || '',
               delegation: str(o.delegation, '1'), checklist: str(o.checklist, '1'), fms: str(o.fms, '1')
             })),
-            thresholds: { red: str(rc.thresholds && rc.thresholds.red, '20'), orange: str(rc.thresholds && rc.thresholds.orange, '10') }
+            thresholds: { red: str(rc.thresholds && rc.thresholds.red, '20'), orange: str(rc.thresholds && rc.thresholds.orange, '10') },
+            driftBands: { greenMax: str(rc.driftBands && rc.driftBands.greenMax, '10'), yellowMax: str(rc.driftBands && rc.driftBands.yellowMax, '50'), orangeMax: str(rc.driftBands && rc.driftBands.orangeMax, '100') }
           });
           setReviewLoaded(true);
         }
@@ -313,7 +315,10 @@ const Settings = ({ tenantId }) => {
     const red = num(reviewCfg.thresholds.red); const orange = num(reviewCfg.thresholds.orange);
     if (![red, orange].every((x) => Number.isFinite(x) && x >= 0 && x <= 100)) return { error: 'Review Meeting: colour limits must be numbers from 0 to 100.' };
     if (orange > red) return { error: 'Review Meeting: the orange limit cannot be higher than the red limit.' };
-    return { payload: { period: reviewCfg.period, weights: base, overrides, thresholds: { red, orange } } };
+    const dg = num(reviewCfg.driftBands.greenMax); const dy = num(reviewCfg.driftBands.yellowMax); const dor = num(reviewCfg.driftBands.orangeMax);
+    if (![dg, dy, dor].every((x) => Number.isInteger(x) && x >= 0 && x <= 100000)) return { error: 'Review Meeting: Drift day limits must be whole numbers of days.' };
+    if (!(dg < dy && dy < dor)) return { error: 'Review Meeting: Drift limits must go up (green end < yellow end < orange end).' };
+    return { payload: { period: reviewCfg.period, weights: base, overrides, thresholds: { red, orange }, driftBands: { greenMax: dg, yellowMax: dy, orangeMax: dor } } };
   };
 
   const saveSettings = async () => {
@@ -561,6 +566,19 @@ const Settings = ({ tenantId }) => {
                 </div>
               </div>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">At or above the red limit = red, at or above the orange limit = orange, below that = green.</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Drift colours (days late / overdue)</label>
+              <div className="grid grid-cols-3 gap-3 max-w-xl">
+                {[['greenMax', 'Green up to (days)', 'text-emerald-600'], ['yellowMax', 'Yellow up to (days)', 'text-yellow-600'], ['orangeMax', 'Orange up to (days)', 'text-orange-500']].map(([k, lab, col]) => (
+                  <div key={k}>
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${col}`}>{lab}</span>
+                    <input type="number" min="0" step="1" value={reviewCfg.driftBands[k]} onChange={(e) => setReviewCfg((p) => ({ ...p, driftBands: { ...p.driftBands, [k]: e.target.value } }))} className="w-full bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">Example 10 / 50 / 100: 0-10 days green, 11-50 yellow, 51-100 orange, more than 100 red. Shown in the Drift column of the audit sheet.</p>
             </div>
           </div>
         </section>

@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
 import { isViewerOnly } from '../utils/viewerMode';
 import { Mail, Calendar, Download, Save, Clock, FileText, Send } from 'lucide-react';
+import ActivityLogPanel from '../components/ActivityLogPanel';
 
 const ReportsTab = ({ tenantId }) => {
   const isViewer = isViewerOnly();
@@ -211,6 +212,8 @@ const ReportsTab = ({ tenantId }) => {
           </div>
         </div>
       </div>
+
+      {!isViewer && <ActivityLogPanel tenantId={tid} showTable={false} />}
     </div>
   );
 };

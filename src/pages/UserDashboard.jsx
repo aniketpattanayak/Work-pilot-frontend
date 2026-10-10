@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
+import ActivityLogPanel from '../components/ActivityLogPanel';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import { RefreshCcw, Trophy, Star, Medal, Zap, ShieldCheck, Flame, Target, Rocket, Award, MapPin, Briefcase, Mail, Plane } from 'lucide-react';
 
@@ -236,6 +237,9 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
           )}
         </>
       )}
+
+      {/* LOG (Admin): who did what, default today */}
+      {isAdmin && <ActivityLogPanel tenantId={currentTenantId} />}
     </div>
   );
 };
