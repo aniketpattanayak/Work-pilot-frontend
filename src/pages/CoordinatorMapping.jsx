@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import { 
   UserCog, 
   Users, 
@@ -88,7 +89,7 @@ const CoordinatorMapping = ({ tenantId }) => {
 
   // --- COMMAND: COMMIT MAPPING TO LEDGER ---
   const handleSave = async () => {
-    if (!selectedSupervisor) return alert("Identify a Supervisor node first.");
+    if (!selectedSupervisor) { await dialog.alert("Please choose a coordinator first.", { tone: "error" }); return; }
     setSaving(true);
     try {
       await API.put('/tasks/update-mapping', {
@@ -96,11 +97,11 @@ const CoordinatorMapping = ({ tenantId }) => {
         targetIds: selectedTargets,
         mappingType: 'managedDoers' 
       });
-      alert("Success: Operational Linkage Synchronized.");
-      fetchEmployees(); 
+      fetchEmployees();
+      await dialog.alert("The mapping has been saved.", { tone: "success", title: "Saved" });
     } catch (err) { 
       console.error("Save Error:", err);
-      alert("Mapping protocol failed: " + (err.response?.data?.message || err.message)); 
+      await dialog.alert(err.response?.data?.message || err.message || "Could not save the mapping.", { tone: "error", title: "Not saved" }); 
     } finally {
       setSaving(false);
     }
@@ -123,28 +124,28 @@ const CoordinatorMapping = ({ tenantId }) => {
     <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-1000 selection:bg-primary/30">
       
       {/* --- EXECUTIVE COMMAND HEADER (Responsive) --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-16 gap-8 px-2">
-        <div className="flex items-center gap-6">
-          <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
-            <UserCog className="text-primary" size={32} />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3 px-1">
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-xl border border-primary/20 shadow-inner shrink-0">
+            <UserCog className="text-primary" size={20} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-foreground text-2xl md:text-4xl font-black tracking-tighter m-0 uppercase leading-none truncate">PC Flock Mapping</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-3 opacity-80 leading-relaxed">
+            <h2 className="text-foreground text-xl font-black tracking-tighter m-0 uppercase leading-none truncate">PC Flock Mapping</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em] mt-1 opacity-80 leading-relaxed">
               Group System Wide Task To Be Viewed By Process Coordinator.
             </p>
           </div>
         </div>
         <button 
           onClick={fetchEmployees} 
-          className="group w-full md:w-auto bg-card hover:bg-background border border-border px-8 py-4 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.25em] transition-all flex items-center justify-center gap-4 active:scale-95 shadow-xl hover:shadow-primary/5"
+          className="group w-full md:w-auto bg-card hover:bg-background border border-border px-5 py-2.5 rounded-xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-sm"
         >
-          <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+          <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
       {error && (
-        <div className="mb-12 p-6 bg-rose-500/10 border border-rose-500/20 rounded-3xl text-rose-600 dark:text-rose-400 flex items-center gap-5 animate-in slide-in-from-top-4">
+        <div className="mb-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-600 dark:text-rose-400 flex items-center gap-5 animate-in slide-in-from-top-4">
           <AlertCircle size={24} /> 
           <span className="text-xs font-black uppercase tracking-widest leading-none">{error}</span>
         </div>
@@ -152,16 +153,16 @@ const CoordinatorMapping = ({ tenantId }) => {
 
 
 <div className="bg-card backdrop-blur-xl 
-p-6 md:p-8 
-rounded-[2rem] md:rounded-[2.5rem] 
+p-4 md:p-6 
+rounded-2xl 
 border border-border 
-shadow-2xl space-y-8">
+shadow-lg space-y-5">
 
   {/* ================= STEP 1 ================= */}
 
 
   <div > 
-    <div className="flex items-center gap-4 mb-6">
+    <div className="flex items-center gap-3 mb-4">
       <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
         <ShieldCheck size={20} className="text-primary" />
       </div>

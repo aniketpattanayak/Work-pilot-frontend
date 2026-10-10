@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import API from '../api/axiosConfig';
 import RevisionPanel from '../components/RevisionPanel';
+import { dialog } from '../components/Dialog';
+import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import {
   CheckCircle,
   Clock,
@@ -39,6 +41,12 @@ import {
  * DOER CHECKLIST: MISSION TERMINAL v3.5
  * Purpose: High-density Excel-style grid for Doer tasks + FMS Integration.
  */
+// What the order is about, taken from the columns this step is meant to show (see FlowMyTasks).
+const fmsDescription = (m) => {
+  const rows = sheetDisplayRows(m).slice(0, 4);
+  return rows.length ? rows.map(r => `${r.label}: ${r.value}`).join(' · ') : (m?.nodeConfig?.question || 'No order details');
+};
+
 const DoerChecklist = ({ doerId }) => {
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -129,7 +137,7 @@ const DoerChecklist = ({ doerId }) => {
 
       setChecklist(safeChecklist);
       setDelegatedTasks(safeDelegated);
-      setFmsMissions(fmsRes.data || []);
+      setFmsMissions(Array.isArray(fmsRes.data) ? fmsRes.data : []);
     } catch (err) {
       console.error("Sync Error:", err);
     } finally {
@@ -211,9 +219,9 @@ const DoerChecklist = ({ doerId }) => {
           dataType: 'FMS',
           uniqueKey: i.instanceId || i._id,
           title: `${i.activeStep?.nodeName || i.templateName || i.nodeName} (#${i.orderIdentifier})`,
-          description: i.rawSheetData?.["Item Name"] || i.sheetData?.["Item Name"] ? `Item: ${i.rawSheetData?.["Item Name"] || i.sheetData?.["Item Name"]}` : 'FMS Mission Sequence',
+          description: fmsDescription(i),
           deadlineDate: i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline,
-          statusLabel: i.status || 'Active',
+          statusLabel: i.isOverdue ? 'Delayed' : 'On track',
           assignerName: i.activeStep?.assignedToName || i.assignerName || 'System'
         }))
       ]
@@ -248,11 +256,6 @@ const DoerChecklist = ({ doerId }) => {
         }
         if (selectedFile) formData.append("evidence", selectedFile);
         await API.post("/tasks/checklist-done", formData);
-      } else if (modalType === "FMS") {
-        formData.append("instanceId", activeTask.instanceId);
-        formData.append("stepIndex", activeTask.stepIndex);
-        if (selectedFile) formData.append("evidence", selectedFile);
-        await API.put(`/fms/execute-step/${activeTask.instanceId}`, { remarks });
       } else {
         formData.append("taskId", activeTask._id);
         formData.append("status", "Completed");
@@ -268,7 +271,7 @@ const DoerChecklist = ({ doerId }) => {
 
     } catch (err) {
       console.error("Submission Error Details:", err.response?.data || err.message);
-      alert("Submission Error: Transmission failed.");
+      await dialog.alert(err.response?.data?.message || "Could not submit. Please try again.", { tone: "error", title: "Not submitted" });
     } finally {
       setUploading(false);
     }
@@ -288,13 +291,13 @@ const DoerChecklist = ({ doerId }) => {
     <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 px-2 sm:px-6">
 
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 py-4 border-b border-border gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 py-2 border-b border-border gap-3">
         <div className="flex items-center gap-3">
           <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner">
             <ClipboardCheck size={20} className="text-primary" />
           </div>
           <div>
-            <h2 className="text-foreground text-lg md:text-xl font-black tracking-tighter uppercase leading-none">Task Hub</h2>
+            <h2 className="text-foreground text-xl font-black tracking-tighter uppercase leading-none">Task Hub</h2>
             <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
@@ -399,8 +402,8 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* EXCEL GRID HEADER WITH RESPONSIVE FLUID TRACKS */}
-      <div className="hidden lg:grid grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
-        <div>#</div>
+      <div className="hidden lg:grid grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center">
+        <div>S. no.</div>
         <div>Mission Identifier</div>
         <div className="text-center">Assigned By</div>
         <div className="text-center">Description</div>
@@ -415,7 +418,7 @@ const DoerChecklist = ({ doerId }) => {
           filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
             const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
             return (
-              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
+              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50 dark:hover:bg-primary/[0.02]">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -470,7 +473,7 @@ const DoerChecklist = ({ doerId }) => {
             const isPastDue = new Date(task.deadline) < new Date();
 
             return (
-              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -519,9 +522,9 @@ const DoerChecklist = ({ doerId }) => {
         ) : activeCategory === 'FMS' ? (
           filteredData.fms.length > 0 ? filteredData.fms.map((mission, index) => {
             const deadline = mission.activeStep?.plannedDeadline || mission.completedAt || mission.plannedDeadline;
-            const isDelayed = deadline && mission.status === 'active' && new Date() > new Date(deadline);
+            const isDelayed = !!mission.isOverdue || (!!deadline && mission.status !== 'completed' && new Date() > new Date(deadline));
             return (
-              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -534,7 +537,7 @@ const DoerChecklist = ({ doerId }) => {
                   {mission.activeStep?.assignedToName || mission.assignerName || 'System'}
                 </div>
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
-                  {mission.rawSheetData?.["Item Name"] || mission.sheetData?.["Item Name"] ? `Item: ${mission.rawSheetData?.["Item Name"] || mission.sheetData?.["Item Name"]}` : 'FMS Mission Sequence'}
+                  {fmsDescription(mission)}
                 </div>
                 <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Clock size={12} className={isDelayed ? 'text-red-500' : 'text-primary/30 shrink-0'} />
@@ -565,7 +568,7 @@ const DoerChecklist = ({ doerId }) => {
             const isFuture = displayDate.getTime() > today.getTime();
 
             return (
-              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[50px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
+              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-slate-50">
                 <div className="text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
@@ -620,6 +623,15 @@ const DoerChecklist = ({ doerId }) => {
         <div className="fixed inset-0 bg-slate-950/90 z-[9999] flex items-center justify-center p-6 backdrop-blur-2xl animate-in fade-in duration-300">
           <div className="bg-card border border-border w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl relative animate-in zoom-in-95">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-foreground transition-all active:scale-90 cursor-pointer"><X size={24} /></button>
+            {modalType === 'FMS' ? (
+              <div className="max-h-[78vh] overflow-y-auto pr-1 -mr-1">
+                <h3 className="text-foreground text-lg font-black uppercase tracking-tight text-center mb-4">FMS Task</h3>
+                <TaskCard
+                  task={activeTask}
+                  onComplete={() => { setShowModal(false); fetchAllTasks(); }}
+                />
+              </div>
+            ) : (
             <form onSubmit={handleFinalSubmit} className="space-y-6">
               <div className="text-center">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border mx-auto mb-4 ${modalType === 'FMS' ? 'bg-slate-900 border-slate-700 text-white' : activeTask?.isBacklog ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' : 'bg-primary/10 border-primary/20 text-primary'}`}><Send size={24} /></div>
@@ -637,62 +649,14 @@ const DoerChecklist = ({ doerId }) => {
                 <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
               </div>
 
-              {modalType === "FMS" && isYesNo ? (
-                <div className="space-y-4">
-                  {!isPaused && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleFinalSubmit}
-                        className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-                      >
-                        DONE
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!remarks || !remarks.trim()) {
-                            alert("Remarks are mandatory for this step");
-                            return;
-                          }
-                          await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-                            decision: "No",
-                            remarks
-                          });
-                          fetchAllTasks();
-                          setShowModal(false);
-                        }}
-                        className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-                      >
-                        ❌ NO – Pause Flow
-                      </button>
-                    </>
-                  )}
-                  {isPaused && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await API.put(`/fms/execute-step/${activeTask.instanceId}`, {
-                          action: "continue"
-                        });
-                        fetchAllTasks();
-                        setShowModal(false);
-                      }}
-                      className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black tracking-widest shadow-lg transition-all active:scale-95"
-                    >
-                      🔄 CONTINUE – Resume Flow
-                    </button>
-                  )}
-                </div>
-              ) : (
                 <button
                   disabled={uploading}
                   className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
                 >
                   Finalize Result
                 </button>
-              )}
             </form>
+            )}
           </div>
         </div>
       )}

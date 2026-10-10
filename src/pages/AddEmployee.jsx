@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
 import BulkUpload from '../components/BulkUpload';
 import API from "../api/axiosConfig"; // Centralized API instance
+import { dialog } from "../components/Dialog";
+
+// WhatsApp numbers are typed as 10 digits (the +91 is added automatically when messages are sent).
+const tenDigits = (v) => {
+  const d = String(v || "").replace(/\D/g, "");
+  return d.length === 12 && d.startsWith("91") ? d.slice(2) : d;
+};
 import {
   ShieldCheck,
   UserPlus,
@@ -230,7 +237,7 @@ const AddEmployee = ({
         department: selectedEmployee.department || "",
         location: selectedEmployee.location || "",
         email: selectedEmployee.email || "",
-        whatsappNumber: selectedEmployee.whatsappNumber || "",
+        whatsappNumber: tenDigits(selectedEmployee.whatsappNumber),
         roles: Array.isArray(selectedEmployee.roles)
           ? selectedEmployee.roles.length > 0
             ? selectedEmployee.roles
@@ -305,7 +312,11 @@ const AddEmployee = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (masters.sectors.length > 0 && !formData.department) {
-      alert("Please select a Sector / Department.");
+      await dialog.alert("Please select a Sector / Department.", { tone: "error", title: "Department needed" });
+      return;
+    }
+    if (!/^\d{10}$/.test(String(formData.whatsappNumber || ""))) {
+      await dialog.alert("Please enter a 10-digit WhatsApp number (digits only, without 91 or +91).", { tone: "error", title: "Check the WhatsApp number" });
       return;
     }
     setLoading(true);
@@ -322,10 +333,10 @@ const AddEmployee = ({
           `/tasks/employees/${selectedEmployee._id}`,
           submissionData
         );
-        alert("Success: Employee Profile Updated.");
+        await dialog.alert("The employee profile has been updated.", { tone: "success", title: "Updated" });
       } else {
         await API.post("/tasks/add-employee", submissionData);
-        alert("Success: New Employee Registered.");
+        await dialog.alert("The new employee has been added.", { tone: "success", title: "Employee added" });
       }
 
       setFormData({
@@ -343,7 +354,7 @@ const AddEmployee = ({
       setIsEditing(false);
       if (onSuccess) onSuccess();
     } catch (err) {
-      alert("Protocol Error: " + (err.response?.data?.message || "Connection Failed"));
+      await dialog.alert(err.response?.data?.message || "Could not save. Please check your connection and try again.", { tone: "error", title: "Not saved" });
     } finally {
       setLoading(false);
     }
@@ -369,12 +380,12 @@ const AddEmployee = ({
           {/* bg-card backdrop-blur-xl rounded-[1.5rem] sm:rounded-[2.5rem] border border-border overflow-hidden shadow-2xl animate-in fade-in duration-700 transition-colors duration-500 */}
 
       <div className="px-4 py-4 sm:px-6 sm:py-5 bg-primary/5 border-b border-border">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex items-start justify-between gap-3 flex-wrap pr-12 sm:pr-14">
           <div className="min-w-0">
             <h2 className="text-primary m-0 flex items-center gap-3 text-base sm:text-lg font-black tracking-tighter uppercase leading-tight">
               <UserPlus size={24} className="sm:w-7 sm:h-7 shrink-0" />{" "}
               {isEditing
-                ? `Modify: ${formData.name}`
+                ? `Edit Employee: ${formData.name || ""}`
                 : "Add New Employees "}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-[9px] sm:text-xs font-medium uppercase tracking-tight opacity-80">
@@ -471,12 +482,16 @@ const AddEmployee = ({
           <div className="flex flex-col">
             <InputLabel icon={Phone} label="WhatsApp number" />
             <input
-              type="text"
-              placeholder="91XXXXXXXXXX"
+              type="tel"
+              inputMode="numeric"
+              maxLength={10}
+              pattern="[0-9]{10}"
+              title="Enter the 10-digit mobile number"
+              placeholder="10-digit mobile number"
               value={formData.whatsappNumber || ""} // Safe Fallback
               required
               className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
             />
           </div>
 
@@ -675,7 +690,7 @@ const AddEmployee = ({
             <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
           )}
           {isEditing
-            ? "Commit Multi-Role Updates"
+            ? "Role Update"
             : "Finalize Employee Registration"}
         </button>
       </form>

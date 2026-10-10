@@ -19,8 +19,25 @@ function countdown(deadline) {
   return { label: `${h}h ${m}m remaining`, late: false };
 }
 
+// Order details to show for a task. Column names are matched ignoring upper/lower case, spaces and
+// punctuation, so "Item Name", "item name" and "ITEM_NAME" all find the same value. When none of the
+// columns chosen for the step can be found, the first few columns of the order are shown instead.
+const normKey = (k) => String(k ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+export function sheetDisplayRows(task) {
+  const raw = task?.rawSheetData && typeof task.rawSheetData === 'object' ? task.rawSheetData : {};
+  const keys = Object.keys(raw);
+  const byNorm = {};
+  keys.forEach(k => { const n = normKey(k); if (!(n in byNorm)) byNorm[n] = k; });
+  const cols = Array.isArray(task?.nodeConfig?.sheetColumnsToShow) ? task.nodeConfig.sheetColumnsToShow : [];
+  const picked = cols
+    .map(col => { const k = byNorm[normKey(col)]; return k === undefined ? null : { label: col, value: raw[k] }; })
+    .filter(Boolean);
+  const rows = picked.length ? picked : keys.slice(0, 6).map(k => ({ label: k, value: raw[k] }));
+  return rows.filter(r => r.value !== undefined && r.value !== null && String(r.value).trim() !== '');
+}
+
 // ─── TASK CARD ────────────────────────────────────────────────────────────────
-function TaskCard({ task, onComplete, openThread }) {
+export function TaskCard({ task, onComplete, openThread }) {
   const [values, setValues] = useState({});
   const [submitting, setSub] = useState(false);
   const [error, setError] = useState('');
@@ -46,10 +63,7 @@ function TaskCard({ task, onComplete, openThread }) {
   };
 
   // Build the data to show
-  const colsToShow = nodeConfig?.sheetColumnsToShow || [];
-  const displayData = colsToShow.length
-    ? colsToShow.map(col => ({ label: col, value: rawSheetData?.[col] })).filter(d => d.value !== undefined)
-    : Object.entries(rawSheetData || {}).slice(0, 6).map(([k, v]) => ({ label: k, value: v }));
+  const displayData = sheetDisplayRows(task);
 
   return (
     <div className={`bg-card border rounded-2xl overflow-hidden shadow-sm transition-all ${isOverdue ? 'border-red-300 dark:border-red-800' : 'border-border'}`}>
@@ -89,7 +103,7 @@ function TaskCard({ task, onComplete, openThread }) {
               {displayData.map(({ label, value }) => (
                 <div key={label} className="bg-muted/60 rounded-lg px-3 py-2">
                   <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-                  <div className="text-[12px] font-semibold mt-0.5 truncate">{String(value ?? '—')}</div>
+                  <div className="text-[12px] font-semibold mt-0.5 break-words">{String(value ?? '—')}</div>
                 </div>
               ))}
             </div>
@@ -240,14 +254,14 @@ export default function FlowMyTasks({ employeeId }) {
   const { openTaskThread } = useChat();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState('pending');
+  const [tab, setTab] = useState('all');
 
   const fetchTasks = useCallback(async () => {
     if (!employeeId) return;
     setLoading(true);
     try {
       const res = await API.get(`/fms2/my-tasks-full/${employeeId}`);
-      setTasks(res.data || []);
+      setTasks(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('My tasks fetch error:', err);
     } finally { setLoading(false); }
@@ -266,12 +280,12 @@ export default function FlowMyTasks({ employeeId }) {
   const displayed = tab === 'overdue' ? overdue : tab === 'pending' ? pending : tasks;
 
   return (
-    <div className="w-full max-w-xl mx-auto px-4 py-6">
+    <div className="w-full max-w-xl mx-auto px-4 py-2">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h1 className="text-lg font-bold">My Flow Tasks</h1>
+          <h1 className="text-xl font-bold leading-tight">My Flow Tasks</h1>
           <p className="text-[11px] text-muted-foreground mt-0.5">
             {tasks.length} pending · {overdue.length} overdue
           </p>
@@ -283,7 +297,7 @@ export default function FlowMyTasks({ employeeId }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-muted p-1 rounded-xl gap-0.5 mb-5">
+      <div className="flex bg-muted p-1 rounded-xl gap-0.5 mb-3">
         {[
           { key: 'all', label: `All (${tasks.length})` },
           { key: 'overdue', label: `Overdue (${overdue.length})` },
