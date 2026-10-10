@@ -32,6 +32,7 @@ import RewardsLog from "./RewardsLog";
 // Review Meeting Integration
 import ReviewMeeting from "./ReviewMeeting";
 import GlobalView from "./GlobalView";
+import UserDashboard from "./UserDashboard";
 
 // Support System Imports
 import RaiseTicket from "./RaiseTicket";
@@ -102,6 +103,8 @@ const [isModalOpen, setIsModalOpen] = useState(false);
     totalPoints: 0 
   });
 
+  const [myBadges, setMyBadges] = useState([]);
+
   // Persistence Logic
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
 
@@ -167,25 +170,17 @@ const sessionUser = liveUser;
   const fetchUserScore = useCallback(async () => {
     if (!userId || !currentTenantId) return;
     try {
-      // Fetching from the unified review-analytics endpoint to ensure data consistency
-      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, {
-        params: { view: 'Weekly', date: new Date().toISOString().split('T')[0] }
+      // One call for this person's own numbers (same source as the dashboard page)
+      const res = await API.get(`/tasks/user-dashboard/${userId}`, { params: { view: 'Weekly' } });
+      const d = res.data || {};
+      const st = d.stats || {};
+      const pc = (x) => (x && x.total > 0 ? (x.notDone / x.total) * 100 : 0);
+      setUserScore({
+        chkNotDone: pc(st.checklist),
+        delNotDone: pc(st.delegation),
+        totalPoints: d.employee?.totalPoints || 0
       });
-      
-      const report = res.data?.report || [];
-      const myStats = report.find(item => item.employeeId === userId);
-
-      if (myStats) {
-        // Percentage Calculation: (NotDone / Total) * 100
-        const chkPerc = myStats.checklist.total > 0 ? (myStats.checklist.notDone / myStats.checklist.total) * 100 : 0;
-        const delPerc = myStats.delegation.total > 0 ? (myStats.delegation.notDone / myStats.delegation.total) * 100 : 0;
-
-        setUserScore({
-          chkNotDone: chkPerc,
-          delNotDone: delPerc,
-          totalPoints: currentUserData?.totalPoints || 0
-        });
-      }
+      setMyBadges(Array.isArray(d.employee?.earnedBadges) ? d.employee.earnedBadges : []);
     } catch (err) {
       console.error("Failed to fetch dual efficiency stats:", err);
     }
@@ -207,10 +202,8 @@ const sessionUser = liveUser;
     ? employees.find((emp) => emp._id === userId)
     : null;
 
-  const latestBadge =
-    currentUserData?.earnedBadges?.length > 0
-      ? currentUserData.earnedBadges[currentUserData.earnedBadges.length - 1]
-      : null;
+  const badgeSource = currentUserData?.earnedBadges?.length > 0 ? currentUserData.earnedBadges : myBadges;
+  const latestBadge = badgeSource.length > 0 ? badgeSource[badgeSource.length - 1] : null;
 
   const HeaderBadgeIcon = latestBadge
     ? badgeIconMap[latestBadge.iconName] || Star
@@ -429,7 +422,7 @@ useEffect(() => {
                   <div className="flex items-center gap-2">
                     <Trophy size={14} className="text-amber-500" />
                     <div className="flex flex-col">
-                       <span className="text-xs font-black text-foreground leading-none">{currentUserData?.totalPoints || 0}</span>
+                       <span className="text-xs font-black text-foreground leading-none">{userScore.totalPoints || currentUserData?.totalPoints || 0}</span>
                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Points</span>
                     </div>
                   </div>
@@ -461,68 +454,7 @@ useEffect(() => {
           </Routes>
           ) : (
           <Routes>
-            <Route path="/" element={
-                <div className="space-y-10">
-                  <div className="mb-6 text-left">
-                    <h1 className="text-3xl md:text-5xl font-black tracking-tighter mb-3 text-foreground leading-none uppercase">Station Overview</h1>
-                    <p className="text-slate-500 text-sm font-bold uppercase tracking-wide opacity-80 italic">Main performance hub.</p>
-                  </div>
-
-                  <div className="bg-card backdrop-blur-xl p-6 md:p-10 rounded-[2.5rem] border border-border shadow-2xl relative overflow-hidden group">
-                    <div className="absolute -top-24 -right-24 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none transition-all duration-1000 group-hover:scale-110" />
-                    <div className="flex justify-between items-center mb-10 relative z-10">
-                      <h3 className="text-lg font-black flex items-center gap-3 text-primary uppercase"><ShieldCheck size={24} /> System Identity</h3>
-                    </div>
-
-                    <div className="relative z-10 grid grid-cols-1 xl:grid-cols-[1fr_1.5fr] gap-10 items-start">
-                      <div className="bg-background/80 p-4 md:p-8 rounded-[2rem] border border-border shadow-inner hover:shadow-primary/5 transition-all duration-500">
-                        <ScoreBadge employeeId={userId} />
-                      </div>
-
-                      <div className="space-y-8">
-                        {Array.isArray(currentUserData?.earnedBadges) &&
-                        currentUserData.earnedBadges.length > 0 ? (
-                          <div className="animate-in fade-in slide-in-from-right-4 duration-700">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8 flex items-center gap-3 px-1"><Sparkles size={16} className="text-amber-500" /> Milestone Audit</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {currentUserData.earnedBadges.map( (badge, bIdx) => {
-                                  const BadgeIcon = badgeIconMap[badge.iconName] || Star;
-                                  return (
-                                    <div key={bIdx} className="flex items-center gap-5 bg-background border border-border p-5 rounded-3xl hover:border-primary/30 transition-all shadow-sm">
-                                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center border border-border shadow-inner" style={{ backgroundColor: `${badge.color}15` }}>
-                                        <BadgeIcon size={22} color={badge.color} />
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="text-sm font-black text-foreground truncate uppercase tracking-tight">{badge.name}</span>
-                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 opacity-70">Mission Specialist</span>
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="h-full min-h-[200px] flex flex-col items-center justify-center p-10 border-2 border-dashed border-border rounded-[2rem] opacity-30 grayscale">
-                            <Activity size={48} className="text-slate-500 mb-4" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-center">Awaiting telemetry...</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-12 pt-8 border-t border-border/50 flex gap-3 flex-wrap relative z-10">
-                      {userRoles.map((role, idx) => (
-                        <span key={idx} className="text-[9px] font-black tracking-widest uppercase text-slate-500 bg-background px-6 py-3 rounded-2xl border border-border shadow-sm hover:border-primary transition-all">
-                          {role} Clearance
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  {isAdmin && <PerformanceLeaderboard />}
-                </div>
-              }
-            />
+            <Route path="/" element={<UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
 
             <Route path="review-meeting" element={<ReviewMeeting tenantId={currentTenantId} />} />
             <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />

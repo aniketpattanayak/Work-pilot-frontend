@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
-import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -54,7 +54,45 @@ const BUCKET_CLASS = {
 
 const cellBase = 'border border-border px-1.5 py-1 text-center tabular-nums';
 
-const GlobalView = ({ tenantId }) => {
+// Late Target box (Admin mode): type 0-100, then press Save (or Enter). Nothing is saved until then.
+const LateTargetInput = ({ value, onSave }) => {
+  const [draft, setDraft] = useState(String(value ?? ''));
+  const [base, setBase] = useState(value);
+  const [state, setState] = useState('idle'); // idle | saving | saved
+  useEffect(() => { setDraft(String(value ?? '')); setBase(value); }, [value]);
+  const clamp = (raw) => {
+    if (raw === '') return '';
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return String(base ?? '');
+    return String(Math.min(100, Math.max(0, n)));
+  };
+  const dirty = draft !== '' && Number(draft) !== Number(base);
+  const commit = async () => {
+    if (!dirty || state === 'saving') return;
+    setState('saving');
+    const ok = await onSave(Number(draft));
+    if (ok) { setBase(Number(draft)); setState('saved'); setTimeout(() => setState('idle'), 2000); }
+    else { setState('idle'); setDraft(String(base ?? '')); }
+  };
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <input type="number" min={0} max={100} step={1} value={draft}
+        onChange={(e) => setDraft(clamp(e.target.value))}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+        className="w-14 bg-background border border-border rounded-md text-center font-black text-[11px] py-0.5 focus:border-primary outline-none" />
+      {dirty && (
+        <button onClick={commit} disabled={state === 'saving'} className="px-1.5 py-0.5 rounded-md bg-primary text-white text-[9px] font-black uppercase disabled:opacity-50">
+          {state === 'saving' ? '…' : 'Save'}
+        </button>
+      )}
+      {state === 'saved' && <span className="text-[9px] font-black text-emerald-600">✓</span>}
+    </div>
+  );
+};
+
+const GlobalView = ({ tenantId, mode = 'view' }) => {
+  // 'view' = read-only (Viewer role). 'review' = Admin Review Meeting: same sheet plus Late Target and delete.
+  const canEdit = mode === 'review';
   const [report, setReport] = useState([]);
   const [config, setConfig] = useState(null);
   const [periodInfo, setPeriodInfo] = useState(null);
@@ -93,6 +131,17 @@ const GlobalView = ({ tenantId }) => {
   }, [currentTenantId, refDate]);
 
   useEffect(() => { load(); }, [load]);
+
+  const saveTarget = async (employeeId, target) => {
+    try {
+      await API.put('/tasks/update-weekly-target', { employeeId, target });
+      load();
+      return true;
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not save the late target. Please try again.');
+      return false;
+    }
+  };
 
   const thresholds = config?.thresholds;
 
@@ -142,6 +191,20 @@ const GlobalView = ({ tenantId }) => {
     }
   };
 
+  const deleteRecord = async (r) => {
+    const msg = r.type === 'Checklist'
+      ? `Delete the WHOLE checklist task "${r.name}" (every run of it, not just this date)?`
+      : `Delete the task "${r.name}"?`;
+    if (!window.confirm(msg)) return;
+    try {
+      await API.delete(r.type === 'Checklist' ? `/tasks/checklist/${r.id}` : `/tasks/${r.id}`);
+      if (active) openAudit(active, start, end);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Delete failed.');
+    }
+  };
+
   const shownRows = useMemo(() => (typeFilter === 'All' ? rows : rows.filter((r) => r.type === typeFilter)), [rows, typeFilter]);
   const counts = useMemo(() => {
     const c = { total: shownRows.length, onTimeDone: 0, lateDone: 0, pendingOnTime: 0, latePending: 0 };
@@ -162,8 +225,8 @@ const GlobalView = ({ tenantId }) => {
         <div className="flex items-center gap-3">
           <div className="bg-primary p-2.5 rounded-xl"><Globe className="text-white" size={22} /></div>
           <div>
-            <h2 className="text-foreground text-2xl font-black tracking-tight uppercase leading-none">Global View</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">Read-only company review sheet</p>
+            <h2 className="text-foreground text-2xl font-black tracking-tight uppercase leading-none">{canEdit ? 'Review Meeting' : 'Global View'}</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{canEdit ? 'Live compliance ledger' : 'Read-only company review sheet'}</p>
           </div>
         </div>
         {periodInfo?.startDate && (
@@ -183,7 +246,10 @@ const GlobalView = ({ tenantId }) => {
       <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3 flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-3 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-64" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-7 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-64" />
+          {search && (
+            <button type="button" aria-label="Clear search" title="Clear" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
+          )}
         </div>
         <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by location">
           <option value="All">All Locations</option>
@@ -217,19 +283,20 @@ const GlobalView = ({ tenantId }) => {
             <table className="w-full border-collapse text-[11px] min-w-[1250px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-black uppercase tracking-wider">
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 w-10">#</th>
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 text-left min-w-[170px]">Employee</th>
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 text-left min-w-[110px]">Location</th>
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 text-left min-w-[130px]">Dept</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 w-10">S.no</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[150px]">Employee</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[90px]">Location</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[110px]">Dept</th>
+                  {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[110px]">Late Target (%)</th>}
                   {TYPES.map((t) => (
-                    <th key={t} colSpan={5} className={`border border-border px-2 py-1 ${GROUP_STYLE[KEYS[t]].head}`}>{t}</th>
+                    <th key={t} colSpan={5} className={`border-b border-border px-2 py-1 ${GROUP_STYLE[KEYS[t]].head}`}>{t}</th>
                   ))}
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 min-w-[78px]" title="(late done + late pending) / all tasks due">Late %</th>
-                  <th rowSpan={2} className="border border-border bg-background px-2 py-1 min-w-[78px]" title="(pending + late pending) / all tasks due">Not Done %</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(late done + late pending) / all tasks due">Late %</th>
+                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(pending + late pending) / all tasks due">Not Done %</th>
                 </tr>
                 <tr className="text-[9px] font-black">
                   {TYPES.map((t) => COLS.map(([f, label, tip]) => (
-                    <th key={t + f} title={tip} className={`border border-border px-1 py-0.5 ${GROUP_STYLE[KEYS[t]].sub}`}>{label}</th>
+                    <th key={t + f} title={tip} className={`border-b border-border px-1 py-0.5 ${GROUP_STYLE[KEYS[t]].sub}`}>{label}</th>
                   )))}
                 </tr>
               </thead>
@@ -240,6 +307,11 @@ const GlobalView = ({ tenantId }) => {
                     <td className="border border-border px-2 py-1 font-black uppercase text-foreground whitespace-nowrap">{p.employeeName}</td>
                     <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.location || '—'}</td>
                     <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.department || '—'}</td>
+                    {canEdit && (
+                      <td className="border border-border px-1 py-0.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
+                      </td>
+                    )}
                     {TYPES.map((t) => COLS.map(([f]) => {
                       const v = p[KEYS[t]]?.[f] || 0;
                       const tone = v > 0 && f === 'lateDone' ? 'text-amber-600 font-black' : v > 0 && f === 'latePending' ? 'text-red-600 font-black' : v > 0 ? 'text-foreground font-bold' : 'text-slate-300 dark:text-slate-600';
@@ -250,13 +322,13 @@ const GlobalView = ({ tenantId }) => {
                   </tr>
                 ))}
                 {people.length === 0 && (
-                  <tr><td colSpan={19} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
+                  <tr><td colSpan={canEdit ? 20 : 19} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
                 )}
               </tbody>
               {people.length > 0 && (
                 <tfoot className="sticky bottom-0 z-20">
                   <tr className="font-black bg-muted">
-                    <td colSpan={4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
+                    <td colSpan={canEdit ? 5 : 4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
                     {TYPES.map((t) => COLS.map(([f]) => <td key={t + f} className={`${cellBase}`}>{totals.t[KEYS[t]][f]}</td>))}
                     {pctCell(totals.avgLate)}
                     {pctCell(totals.avgNotDone)}
@@ -320,7 +392,7 @@ const GlobalView = ({ tenantId }) => {
                 <table className="w-full border-collapse text-[11px] min-w-[900px]">
                   <thead className="sticky top-0 z-20 bg-background">
                     <tr className="text-[10px] font-black uppercase tracking-wider">
-                      {['#', 'Type', 'Task', 'Deadline', 'Completed', 'Drift', 'Status'].map((h) => (
+                      {['S.no', 'Type', 'Task', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
                         <th key={h} className="border border-border px-2 py-1 text-left bg-background">{h}</th>
                       ))}
                     </tr>
@@ -346,10 +418,17 @@ const GlobalView = ({ tenantId }) => {
                             <td className="border border-border px-2 py-1 text-center w-28">
                               <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
                             </td>
+                            {canEdit && (
+                              <td className="border border-border px-2 py-1 text-center w-16" onClick={(e) => e.stopPropagation()}>
+                                {r.type === 'FMS' ? '—' : (
+                                  <button type="button" title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'} onClick={() => deleteRecord(r)} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                                )}
+                              </td>
+                            )}
                           </tr>
                           {isFms && open && (
                             <tr>
-                              <td colSpan={7} className="border border-border bg-muted/40 px-4 py-2">
+                              <td colSpan={canEdit ? 8 : 7} className="border border-border bg-muted/40 px-4 py-2">
                                 {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
                                 {f.steps.length > 0 && (
                                   <table className="w-full border-collapse text-[11px] mb-2">
