@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axiosConfig';
+import { dialog } from './Dialog';
 import {
   LayoutDashboard,
   Users,
@@ -44,6 +45,10 @@ import {
  * State persisted to localStorage so it survives page refresh.
  */
 const Sidebar = ({ roles = [], tenantId, onLogout }) => {
+  const confirmLogout = async () => {
+    const yes = await dialog.confirm('Are you sure you want to sign out?', { title: 'Sign out', confirmText: 'Yes', cancelText: 'No' });
+    if (yes) onLogout();
+  };
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -313,7 +318,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       {/* ── LOGOUT ────────────────────────────────────────────── */}
       <div className="border-t border-border/50 px-2 py-3 flex-shrink-0">
         <button
-          onClick={onLogout}
+          onClick={confirmLogout}
           title="Logout"
           className={`
             w-full flex items-center rounded-xl text-red-500

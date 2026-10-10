@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { dialog } from '../components/Dialog';
 import {
   Shield, Building2, Users, DollarSign, Zap, RefreshCw, Plus,
   Ticket, LogOut, Search, ChevronRight, MoreVertical, Activity,
@@ -1375,7 +1376,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
             {avatar(user?.name||'SA', 24)}
             <span style={{ fontSize:13, fontWeight:500, color:C.text2 }}>{user?.name||'SuperAdmin'}</span>
           </div>
-          <button onClick={handleLogout}
+          <button title="Sign out" onClick={async () => { if (await dialog.confirm('Are you sure you want to sign out?', { title: 'Sign out', confirmText: 'Yes', cancelText: 'No' })) handleLogout(); }}
             style={{ ...iconBtn, color:C.red, borderColor:C.red+'40' }}>
             <LogOut size={15}/>
           </button>
