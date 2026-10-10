@@ -167,6 +167,9 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [gFlow,   setGFlow]             = useState('');    // template name filter
   const [gAssign, setGAssign]           = useState('');    // assigned to filter
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
+  const [liveLimit, setLiveLimit] = useState(50);
+  const [globalLimit, setGlobalLimit] = useState(200);
+  const [globalTotal, setGlobalTotal] = useState(0);
 
   const serverStatus = (statusFilter === 'ontime' || statusFilter === 'delayed') ? 'active' : statusFilter;
 
@@ -175,20 +178,21 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
     setLoading(true);
     try {
       const [instRes, statsRes, tmplRes, allInstRes] = await Promise.all([
-        API.get(`/fms2/instances/${tenantId}`, { params: { status: serverStatus, templateId: templateFilter || undefined } }),
+        API.get(`/fms2/instances/${tenantId}`, { params: { status: serverStatus, templateId: templateFilter || undefined, limit: liveLimit } }),
         API.get(`/fms2/monitor-stats/${tenantId}`),
         API.get(`/fms2/templates/${tenantId}`),
-        API.get(`/fms2/instances/${tenantId}`, { params: { status: 'all', limit: 200 } }),
+        API.get(`/fms2/instances/${tenantId}`, { params: { status: 'all', limit: globalLimit } }),
       ]);
       setInstances(instRes.data?.instances || []);
       setAllInstances(allInstRes.data?.instances || []);
+      setGlobalTotal(allInstRes.data?.pagination?.total || 0);
       setPagination(instRes.data?.pagination || {});
       setStats(statsRes.data || {});
       setTemplates(tmplRes.data || []);
     } catch (err) {
       console.error('Monitor fetch error:', err);
     } finally { setLoading(false); }
-  }, [tenantId, statusFilter, templateFilter]);
+  }, [tenantId, statusFilter, templateFilter, liveLimit, globalLimit]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -486,6 +490,12 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                 </tbody>
               </table>
             </div>
+            {(pagination.total || 0) > instances.length && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, padding:'10px 0', borderTop:'1px solid var(--color-border)', fontSize:12, color:'var(--color-muted-foreground)' }}>
+                Showing {instances.length} of {pagination.total} orders
+                <button onClick={() => setLiveLimit(l => l + 50)} style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--color-border)', background:'var(--color-card)', cursor:'pointer', fontWeight:700, fontSize:12 }}>Show 50 more</button>
+              </div>
+            )}
           </div>
         )}
 
@@ -631,6 +641,12 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
               </tbody>
             </table>
             </div>
+            {globalTotal > allInstances.length && (
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, padding:'10px 0', fontSize:12, color:'var(--color-muted-foreground)' }}>
+                Showing {allInstances.length} of {globalTotal} orders
+                <button onClick={() => setGlobalLimit(l => l + 200)} style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--color-border)', background:'var(--color-card)', cursor:'pointer', fontWeight:700, fontSize:12 }}>Show 200 more</button>
+              </div>
+            )}
           </div>
         </div>
       )}

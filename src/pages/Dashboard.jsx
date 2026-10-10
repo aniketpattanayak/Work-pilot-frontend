@@ -548,6 +548,14 @@ useEffect(() => {
           )}
           </ErrorBoundary>
         </main>
+
+        {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls */}
+        <footer className="sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 text-center">
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
+            Powered by{' '}
+            <a href="https://lrbc.ai" target="_blank" rel="noopener noreferrer" className="font-black text-primary hover:underline">LRBC</a>
+          </span>
+        </footer>
       </div>
 
       <style>{`

@@ -56,9 +56,13 @@ function getSocket() {
         notify();
       }).catch(() => {});
     }
-    const existing = _messages[convId] || [];
-    if (existing.some(m => m._id === msg._id)) return;
-    _messages = { ..._messages, [convId]: [...existing, msg] };
+    // A chat that was never opened has no history loaded yet: only the preview/unread change here,
+    // the full history is fetched when the chat is opened (so it never shows just this one message).
+    const existing = _messages[convId];
+    if (existing) {
+      if (existing.some(m => m._id === msg._id)) return;
+      _messages = { ..._messages, [convId]: [...existing, msg] };
+    }
     _conversations = _conversations.map(c => {
       if (c._id !== convId) return c;
       const isActive = _activeConvId === convId;
