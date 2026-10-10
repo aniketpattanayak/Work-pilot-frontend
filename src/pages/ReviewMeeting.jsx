@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { isViewerOnly } from '../utils/viewerMode';
+import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import {
   BarChart3,
   RefreshCcw,
@@ -23,7 +24,7 @@ import {
  * (a type with no tasks counts as 0%).
  * Detail view: filter All / Delegation / Checklist / FMS.
  */
-const EMPTY = { total: 0, done: 0, overdue: 0, late: 0, notDone: 0 };
+const EMPTY = { total: 0, done: 0, overdue: 0, late: 0, notDone: 0, onTimeDone: 0, lateDone: 0, latePending: 0, pendingOnTime: 0 };
 const TYPES = ['Delegation', 'Checklist', 'FMS'];
 
 const pct = (count, total) => (total ? (count / total) * 100 : 0);
@@ -93,7 +94,9 @@ const LateTargetInput = ({ value, disabled, onSave }) => {
 
 const ReviewMeeting = ({ tenantId }) => {
   const [viewType] = useState('All');
-  const [selectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [periodInfo, setPeriodInfo] = useState(null);
+  const [reviewConfig, setReviewConfig] = useState(null);
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -121,9 +124,11 @@ const ReviewMeeting = ({ tenantId }) => {
     try {
       setLoading(true);
       const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, {
-        params: { view: viewType, date: selectedDate }
+        params: { date: selectedDate }
       });
       setReportData(res.data?.report || []);
+      setPeriodInfo({ view: res.data?.view, startDate: res.data?.startDate, endDate: res.data?.endDate });
+      setReviewConfig(res.data?.config || null);
     } catch (err) {
       console.error('Analytics fetch failed:', err);
       setReportData([]);
@@ -202,6 +207,8 @@ const ReviewMeeting = ({ tenantId }) => {
           employeeId: item.employeeId,
           name,
           dept: item.department || 'GENERAL',
+          location: item.location || '',
+          overall: item.overall || null,
           lateTarget: item.weeklyLateTarget || 20,
           delegation: { ...EMPTY },
           checklist: { ...EMPTY },
@@ -226,8 +233,9 @@ const ReviewMeeting = ({ tenantId }) => {
     return Object.values(map).map((p) => {
       p.history.sort((a, b) => b.period.localeCompare(a.period));
       const parts = [p.delegation, p.checklist, p.fms];
-      const avgLate = parts.reduce((sum, s) => sum + pct(s.late, s.total), 0) / 3;
-      const avgNotDone = parts.reduce((sum, s) => sum + pct(s.notDone, s.total), 0) / 3;
+      // The server blends the three task types with the company's weightage; the old plain average is only a fallback.
+      const avgLate = p.overall ? p.overall.latePct : parts.reduce((sum, s) => sum + pct(s.late, s.total), 0) / 3;
+      const avgNotDone = p.overall ? p.overall.notDonePct : parts.reduce((sum, s) => sum + pct(s.notDone, s.total), 0) / 3;
       const notDoneCount = parts.reduce((sum, s) => sum + s.notDone, 0);
       return { ...p, avgLate, avgNotDone, notDoneCount };
     });
@@ -343,6 +351,34 @@ const ReviewMeeting = ({ tenantId }) => {
         </button>
       </div>
 
+      {/* REVIEW PERIOD */}
+      {periodInfo && periodInfo.startDate && (
+        <div className="bg-card border border-border rounded-2xl px-5 py-3 mb-4 flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setSelectedDate(d); }}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+          >&larr; Previous</button>
+          <div className="text-xs font-black uppercase tracking-widest text-foreground">
+            {PERIOD_LABELS[periodInfo.view] || periodInfo.view} review &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
+          </div>
+          <button
+            onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setSelectedDate(d); }}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+          >Next &rarr;</button>
+          <button
+            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+          >Current</button>
+          {reviewConfig && reviewConfig.thresholds && (
+            <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+              <span className={`px-2 py-1 rounded ${TONE_CLASSES.red}`}>&ge; {reviewConfig.thresholds.red}%</span>
+              <span className={`px-2 py-1 rounded ${TONE_CLASSES.orange}`}>&ge; {reviewConfig.thresholds.orange}%</span>
+              <span className={`px-2 py-1 rounded ${TONE_CLASSES.green}`}>below</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* SEARCH */}
       <div className="bg-card p-6 border border-border rounded-[2.5rem] mb-10 shadow-sm">
         <div className="relative max-w-xl">
@@ -365,7 +401,7 @@ const ReviewMeeting = ({ tenantId }) => {
               <tr className="text-foreground text-[10px] font-black uppercase tracking-[0.2em]">
                 <th className="px-6 py-6 border-r border-slate-700 text-center w-20">NO.</th>
                 <th className="px-6 py-6 border-r border-slate-700">PERSONNEL IDENTITY</th>
-                <th className="px-6 py-6 border-r border-slate-700">DEPT.</th>
+                <th className="px-6 py-6 border-r border-slate-700">DEPT. / LOCATION</th>
                 <th className="px-6 py-6 border-r border-slate-700 text-center">LATE TARGET (%)</th>
                 <th className="px-6 py-6 border-r border-slate-700 text-center">DELEGATION</th>
                 <th className="px-6 py-6 border-r border-slate-700 text-center">CHECKLIST</th>
@@ -389,7 +425,7 @@ const ReviewMeeting = ({ tenantId }) => {
                       </div>
                     </td>
                     <td onClick={() => openHistoryModal(row)} className="px-6 py-5 border-r border-border text-[10px] font-black uppercase text-muted-foreground">
-                      {row.dept}
+                      {row.dept}{row.location ? <span className="block text-[9px] font-bold text-slate-400 normal-case tracking-normal">{row.location}</span> : null}
                     </td>
                     <td className="px-6 py-5 border-r border-border text-center">
                       <LateTargetInput
@@ -401,10 +437,11 @@ const ReviewMeeting = ({ tenantId }) => {
                     {countCell(row, row.delegation, 'text-purple-700')}
                     {countCell(row, row.checklist, 'text-sky-700')}
                     {countCell(row, row.fms, 'text-orange-600')}
-                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 border-r border-border text-center font-black text-[11px] ${isOverTarget ? 'text-amber-600 bg-amber-50/50' : 'text-slate-400'}`}>
+                    <td onClick={() => openHistoryModal(row)} title="Late % = (late done + late pending) / all tasks due in the period" className={`px-6 py-5 border-r border-border text-center font-black text-[11px] ${TONE_CLASSES[pctTone(row.avgLate, reviewConfig && reviewConfig.thresholds)]}`}>
                       {fmtPct(row.avgLate)} {isOverTarget && <ArrowUpRight size={12} className="inline ml-1" />}
+                      {row.overall ? <div className="text-[9px] font-bold opacity-80">late done {fmtPct(row.overall.lateDonePct)} &middot; late pending {fmtPct(row.overall.latePendingPct)}</div> : null}
                     </td>
-                    <td onClick={() => openHistoryModal(row)} className={`px-6 py-5 text-center font-black text-[11px] ${row.avgNotDone > 20 ? 'text-red-600 bg-red-50/50' : 'text-foreground'}`}>
+                    <td onClick={() => openHistoryModal(row)} title="Not done % = (pending on time + late pending) / all tasks due in the period" className={`px-6 py-5 text-center font-black text-[11px] ${TONE_CLASSES[pctTone(row.avgNotDone, reviewConfig && reviewConfig.thresholds)]}`}>
                       {fmtPct(row.avgNotDone)} ({row.notDoneCount})
                     </td>
                   </tr>

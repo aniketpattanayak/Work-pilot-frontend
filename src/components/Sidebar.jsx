@@ -32,6 +32,7 @@ import {
   FileText,
   ShoppingCart,
   MessageSquare,
+  Globe,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -57,6 +58,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
   const [tenantFeatures, setTenantFeatures] = useState({});
   const safeRoles = Array.isArray(roles) ? roles : [];
+  // A Viewer-only account sees one tab only: Global View.
+  const viewerOnly = safeRoles.length > 0 && safeRoles.every((r) => String(r).toLowerCase() === 'viewer');
   const iconMap = { Star, Trophy, Medal, Zap, ShieldCheck: ShieldCheckIcon, Flame, Target, Rocket, Award };
 
   const toggleCollapsed = () => {
@@ -94,6 +97,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       label: 'Main',
       items: [
         { name: 'Dashboard',        icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
+        { name: 'Global View', icon: <Globe />, roles: ['Viewer'], featureKey: 'reviewMeeting' },
         { name: 'Manage Tasks', icon: <ClipboardList />, roles: ['Admin', 'Assigner', 'Viewer'] },
         { name: 'Manage Checklist', icon: <LayoutList />, roles: ['Admin', 'Viewer'] },
         { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
@@ -245,7 +249,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 custom-scrollbar">
         {categories.map((cat, catIdx) => {
           const filteredItems = cat.items.filter(item =>
-            item.roles.some(r => safeRoles.includes(r)) &&
+            (viewerOnly ? item.name === 'Global View' : item.roles.some(r => safeRoles.includes(r))) &&
             (!item.featureKey || tenantFeatures[item.featureKey] !== false)
           );
           if (filteredItems.length === 0) return null;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import API from "../api/axiosConfig";
 
 // Component Imports
@@ -31,6 +31,7 @@ import RewardsLog from "./RewardsLog";
 
 // Review Meeting Integration
 import ReviewMeeting from "./ReviewMeeting";
+import GlobalView from "./GlobalView";
 
 // Support System Imports
 import RaiseTicket from "./RaiseTicket";
@@ -453,6 +454,12 @@ useEffect(() => {
 
         {/* MAIN ROUTE HUB */}
         <main className="p-4 md:p-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
+          {isViewerOnly() ? (
+          <Routes>
+            <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
+            <Route path="*" element={<Navigate to="/dashboard/global-view" replace />} />
+          </Routes>
+          ) : (
           <Routes>
             <Route path="/" element={
                 <div className="space-y-10">
@@ -518,6 +525,7 @@ useEffect(() => {
             />
 
             <Route path="review-meeting" element={<ReviewMeeting tenantId={currentTenantId} />} />
+            <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
            {/* <Route path="employees" element={
                 <div className="flex flex-col gap-10">
                   <div className="bg-card p-2 rounded-[2.5rem] border border-border shadow-2xl">
@@ -602,6 +610,7 @@ useEffect(() => {
             <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
             <Route path="flow-tasks" element={<FlowMyTasks employeeId={userId} />} />
           </Routes>
+          )}
         </main>
       </div>
 

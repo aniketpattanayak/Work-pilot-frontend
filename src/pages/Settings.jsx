@@ -64,6 +64,16 @@ const Settings = ({ tenantId }) => {
   const [newLocation, setNewLocation] = useState('');
   const [mastersLoaded, setMastersLoaded] = useState(false); // only save the lists once they were read
 
+  // Review Meeting settings (period, weightage, colour limits). Everything here is optional.
+  const [reviewCfg, setReviewCfg] = useState({
+    period: 'Monthly',
+    weights: { delegation: '1', checklist: '1', fms: '1' },
+    overrides: [],
+    thresholds: { red: '20', orange: '10' }
+  });
+  const [reviewLoaded, setReviewLoaded] = useState(false);
+  const [newRule, setNewRule] = useState({ location: '', department: '', delegation: '1', checklist: '1', fms: '1' });
+
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
   const availableIcons = [
@@ -117,6 +127,21 @@ const Settings = ({ tenantId }) => {
         setSectorList(Array.isArray(data.sectors) ? data.sectors : []);
         setLocationList(Array.isArray(data.locations) ? data.locations : []);
         setMastersLoaded(true);
+        {
+          const rc = data.reviewConfig || {};
+          const w = rc.weights || {};
+          const str = (v, d) => (v === undefined || v === null ? d : String(v));
+          setReviewCfg({
+            period: rc.period || 'Monthly',
+            weights: { delegation: str(w.delegation, '1'), checklist: str(w.checklist, '1'), fms: str(w.fms, '1') },
+            overrides: (Array.isArray(rc.overrides) ? rc.overrides : []).map((o) => ({
+              location: o.location || '', department: o.department || '',
+              delegation: str(o.delegation, '1'), checklist: str(o.checklist, '1'), fms: str(o.fms, '1')
+            })),
+            thresholds: { red: str(rc.thresholds && rc.thresholds.red, '20'), orange: str(rc.thresholds && rc.thresholds.orange, '10') }
+          });
+          setReviewLoaded(true);
+        }
       }
     } catch (err) {
       console.error("Fetch failure:", err);
@@ -253,8 +278,50 @@ const Settings = ({ tenantId }) => {
     (kind === 'sector' ? setSectorList : setLocationList)((prev) => prev.filter((x) => x !== name));
   };
 
+  const REVIEW_PERIOD_OPTIONS = [
+    ['Daily', 'Daily'], ['Weekly', 'Weekly (Mon - Sun)'], ['TwiceMonthly', 'Twice a month (1st-15th and 16th-end)'],
+    ['Monthly', 'Monthly'], ['Quarterly', 'Quarterly']
+  ];
+  const updateRule = (i, key, val) => setReviewCfg((p) => ({ ...p, overrides: p.overrides.map((o, idx) => (idx === i ? { ...o, [key]: val } : o)) }));
+  const removeRule = (i) => setReviewCfg((p) => ({ ...p, overrides: p.overrides.filter((_, idx) => idx !== i) }));
+  const addRule = () => {
+    if (!newRule.location && !newRule.department) { alert('Pick a location, a department, or both for the rule.'); return; }
+    const same = reviewCfg.overrides.some((o) => o.location.toLowerCase() === newRule.location.toLowerCase() && o.department.toLowerCase() === newRule.department.toLowerCase());
+    if (same) { alert('There is already a rule for this location and department.'); return; }
+    setReviewCfg((p) => ({ ...p, overrides: [...p.overrides, { ...newRule }] }));
+    setNewRule({ location: '', department: '', delegation: '1', checklist: '1', fms: '1' });
+  };
+  // Returns { payload } or { error }
+  const buildReviewPayload = () => {
+    const num = (v) => (String(v).trim() === '' ? NaN : Number(v));
+    const okW = (o) => {
+      const w = { delegation: num(o.delegation), checklist: num(o.checklist), fms: num(o.fms) };
+      if (![w.delegation, w.checklist, w.fms].every((x) => Number.isFinite(x) && x >= 0 && x <= 1000)) return null;
+      if (w.delegation + w.checklist + w.fms <= 0) return null;
+      return w;
+    };
+    const base = okW(reviewCfg.weights);
+    if (!base) return { error: 'Review Meeting: weightage must be numbers from 0 to 1000 and at least one above 0.' };
+    const overrides = [];
+    for (const o of reviewCfg.overrides) {
+      const w = okW(o);
+      if (!w) return { error: 'Review Meeting: every weightage rule needs numbers from 0 to 1000 with at least one above 0.' };
+      overrides.push({ location: o.location, department: o.department, ...w });
+    }
+    const red = num(reviewCfg.thresholds.red); const orange = num(reviewCfg.thresholds.orange);
+    if (![red, orange].every((x) => Number.isFinite(x) && x >= 0 && x <= 100)) return { error: 'Review Meeting: colour limits must be numbers from 0 to 100.' };
+    if (orange > red) return { error: 'Review Meeting: the orange limit cannot be higher than the red limit.' };
+    return { payload: { period: reviewCfg.period, weights: base, overrides, thresholds: { red, orange } } };
+  };
+
   const saveSettings = async () => {
     if (saving) return;
+    let reviewPayload = null;
+    if (reviewLoaded) {
+      const rv = buildReviewPayload();
+      if (rv.error) { alert(rv.error); return; }
+      reviewPayload = rv.payload;
+    }
     try {
       setSaving(true);
       // SENDING WEEKENDS ARRAY TO SERVER
@@ -265,7 +332,8 @@ const Settings = ({ tenantId }) => {
         holidays: holidayList,
         pointSettings: pointSettings,
         badgeLibrary: badgeLibrary,
-        ...(mastersLoaded ? { sectors: sectorList, locations: locationList } : {})
+        ...(mastersLoaded ? { sectors: sectorList, locations: locationList } : {}),
+        ...(reviewPayload ? { reviewConfig: reviewPayload } : {})
       });
   
       if (response.status === 200) {
@@ -399,6 +467,100 @@ const Settings = ({ tenantId }) => {
             ))}
           </div>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-8 ml-1">Removing a name here does not change employees who already have it.</p>
+        </section>
+
+        {/* SECTION: REVIEW MEETING (period, weightage, colour limits) */}
+        <section className="bg-card backdrop-blur-xl rounded-[2rem] md:rounded-[3rem] border border-border p-6 md:p-10 shadow-2xl">
+          <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 mb-6 uppercase tracking-tight">
+            <Target size={22} className="text-primary" /> Review Meeting
+          </h3>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-8 ml-1">All of this is optional. If you change nothing: monthly review, all task types count equally, red from 20% and orange from 10%. Click "Commit Global Updates" below to save.</p>
+
+          <div className="space-y-8">
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Review period (for the whole company)</label>
+              <select value={reviewCfg.period} onChange={(e) => setReviewCfg((p) => ({ ...p, period: e.target.value }))} className="w-full md:w-96 bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner">
+                {REVIEW_PERIOD_OPTIONS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+              </select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Weightage of each task type (default for everyone)</label>
+              <div className="grid grid-cols-3 gap-3 max-w-xl">
+                {[['delegation', 'Delegation'], ['checklist', 'Checklist'], ['fms', 'FMS']].map(([k, label]) => (
+                  <div key={k}>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+                    <input type="number" min="0" max="1000" step="any" value={reviewCfg.weights[k]} onChange={(e) => setReviewCfg((p) => ({ ...p, weights: { ...p.weights, [k]: e.target.value } }))} className="w-full bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">The three percentages are blended into one score using these weights. A type with no tasks for a person in the period is left out.</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Different weightage for a location / department (optional)</label>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Location</span>
+                  <select value={newRule.location} onChange={(e) => setNewRule((p) => ({ ...p, location: e.target.value }))} className="bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner">
+                    <option value="">All locations</option>
+                    {locationList.map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Department</span>
+                  <select value={newRule.department} onChange={(e) => setNewRule((p) => ({ ...p, department: e.target.value }))} className="bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner">
+                    <option value="">All departments</option>
+                    {sectorList.map((x) => <option key={x} value={x}>{x}</option>)}
+                  </select>
+                </div>
+                {[['delegation', 'Del'], ['checklist', 'Chk'], ['fms', 'FMS']].map(([k, label]) => (
+                  <div key={k}>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">{label}</span>
+                    <input type="number" min="0" max="1000" step="any" value={newRule[k]} onChange={(e) => setNewRule((p) => ({ ...p, [k]: e.target.value }))} className="w-20 bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" />
+                  </div>
+                ))}
+                <button type="button" onClick={addRule} className="px-5 py-2.5 rounded-xl bg-primary text-white font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 flex items-center gap-2"><FiPlus size={14} /> Add rule</button>
+              </div>
+              {reviewCfg.overrides.length > 0 && (
+                <div className="overflow-x-auto rounded-2xl border border-border">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-background"><tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                      <th className="px-4 py-2">Location</th><th className="px-4 py-2">Department</th><th className="px-4 py-2">Delegation</th><th className="px-4 py-2">Checklist</th><th className="px-4 py-2">FMS</th><th className="px-4 py-2" />
+                    </tr></thead>
+                    <tbody>
+                      {reviewCfg.overrides.map((o, i) => (
+                        <tr key={i} className="border-t border-border">
+                          <td className="px-4 py-2 font-bold">{o.location || 'All locations'}</td>
+                          <td className="px-4 py-2 font-bold">{o.department || 'All departments'}</td>
+                          {['delegation', 'checklist', 'fms'].map((k) => (
+                            <td key={k} className="px-4 py-2"><input type="number" min="0" max="1000" step="any" value={o[k]} onChange={(e) => updateRule(i, k, e.target.value)} className="w-20 bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" /></td>
+                          ))}
+                          <td className="px-4 py-2 text-right"><button type="button" onClick={() => removeRule(i)} className="p-1.5 rounded-full text-red-500 hover:bg-red-500/10" title="Remove rule"><FiX size={14} /></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">A person gets the most specific matching rule: location + department, then location only, then department only, then the default above. People with no location only match "All locations" rules.</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Colours for Late % and Not Done %</label>
+              <div className="grid grid-cols-2 gap-3 max-w-md">
+                <div>
+                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Red from (%)</span>
+                  <input type="number" min="0" max="100" step="any" value={reviewCfg.thresholds.red} onChange={(e) => setReviewCfg((p) => ({ ...p, thresholds: { ...p.thresholds, red: e.target.value } }))} className="w-full bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" />
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Orange from (%)</span>
+                  <input type="number" min="0" max="100" step="any" value={reviewCfg.thresholds.orange} onChange={(e) => setReviewCfg((p) => ({ ...p, thresholds: { ...p.thresholds, orange: e.target.value } }))} className="w-full bg-background border border-border text-foreground px-3 py-2 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner" />
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">At or above the red limit = red, at or above the orange limit = orange, below that = green.</p>
+            </div>
+          </div>
         </section>
 
         {/* SECTION 1: WORKING HOURS */}
