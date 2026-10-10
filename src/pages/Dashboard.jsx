@@ -17,6 +17,8 @@ import FlowManagement  from './FlowManagement';
 import ChatPage        from './ChatPage';
 import FloatingChat from '../components/FloatingChat';
 import { isViewerOnly } from '../utils/viewerMode';
+import { DialogHost } from '../components/Dialog';
+import ErrorBoundary from '../components/ErrorBoundary';
 import OrderFormsPage  from './OrderFormsPage';
 import NewOrderPage    from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
@@ -446,7 +448,8 @@ useEffect(() => {
         </header>
 
         {/* MAIN ROUTE HUB */}
-        <main className="p-4 md:p-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
+        <main className="p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
+          <ErrorBoundary resetKey={location.pathname}>
           {isViewerOnly() ? (
           <Routes>
             <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
@@ -543,6 +546,7 @@ useEffect(() => {
             <Route path="flow-tasks" element={<FlowMyTasks employeeId={userId} />} />
           </Routes>
           )}
+          </ErrorBoundary>
         </main>
       </div>
 
@@ -558,6 +562,7 @@ useEffect(() => {
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
       {!isViewerOnly() && <FloatingChat currentUser={user} />}
+      <DialogHost />
     </div>
   );
 };

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import CreateChecklist from './CreateChecklist';
 import BulkUpload from '../components/BulkUpload';
+import { dialog } from '../components/Dialog';
 
 const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const todayYmd = () => ymd(new Date());
@@ -43,7 +44,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const [editingId, setEditingId] = useState(null);
 
   // MODAL STATE
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
 
@@ -156,7 +157,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
    * MODAL TOGGLES
    */
   const toggleEditDay = (dayIndex) => {
-    const current = [...editData.frequencyConfig.daysOfWeek];
+    const current = [...(editData.frequencyConfig.daysOfWeek || [])];
     const idx = current.indexOf(dayIndex);
     if (idx > -1) current.splice(idx, 1);
     else current.push(dayIndex);
@@ -164,7 +165,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   };
 
   const toggleEditDate = (dateNum) => {
-    const current = [...editData.frequencyConfig.daysOfMonth];
+    const current = [...(editData.frequencyConfig.daysOfMonth || [])];
     const idx = current.indexOf(dateNum);
     if (idx > -1) current.splice(idx, 1);
     else current.push(dateNum);
@@ -207,7 +208,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       taskName: item.taskName,
       description: item.description || '',
       frequency: item.frequency,
-      frequencyConfig: item.frequencyConfig || { daysOfWeek: [], daysOfMonth: [] },
+      frequencyConfig: { ...(item.frequencyConfig || {}), daysOfWeek: Array.isArray(item.frequencyConfig?.daysOfWeek) ? item.frequencyConfig.daysOfWeek : [], daysOfMonth: Array.isArray(item.frequencyConfig?.daysOfMonth) ? item.frequencyConfig.daysOfMonth : [] },
       createdAt: item.createdAt,
       // shown in Frequency Tuning; only sent to the server if the admin changes it
       startDate: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
@@ -216,25 +217,29 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   };
 
   const handleUpdate = async (id, e) => {
-    e.stopPropagation();
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (!String(editData.taskName || '').trim()) { dialog.alert('Please enter the task name.', { tone: 'error' }); return; }
+    if (!editData.doerId) { dialog.alert('Please choose who the checklist is assigned to.', { tone: 'error' }); return; }
+    const { startDate, startDateChanged, ...rest } = editData;
+    if (startDateChanged && !/^\d{4}-\d{2}-\d{2}$/.test(startDate || '')) { dialog.alert('Please choose a valid start date.', { tone: 'error' }); return; }
     try {
-      const { startDate, startDateChanged, ...rest } = editData;
-      if (startDateChanged && startDate && startDate < todayYmd()) {
-        alert("Start date cannot be in the past.");
-        return;
-      }
+      setSaving(true);
       const payload = startDateChanged ? { ...rest, startDate } : rest;
-      await API.put(`/tasks/checklist/${id}`, payload);
-      alert("Success: Registry updated.");
+      await API.put('/tasks/checklist/' + id, payload);
       setEditingId(null);
       fetchData();
-    } catch (err) { alert(err.response?.data?.message || "Update failed."); }
+      dialog.alert('The checklist task was updated.', { tone: 'success' });
+    } catch (err) {
+      dialog.alert(err.response?.data?.message || 'The checklist task could not be updated.', { tone: 'error' });
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id, taskName, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm(`Delete "${taskName}"?`)) return;
-    try { await API.delete(`/tasks/checklist/${id}`); fetchData(); } catch (err) { alert("Deletion error."); }
+    const yes = await dialog.confirm('Delete "' + taskName + '"? The task and its history will be permanently removed.', { title: 'Delete checklist task', danger: true, confirmText: 'Delete' });
+    if (!yes) return;
+    try { await API.delete('/tasks/checklist/' + id); fetchData(); }
+    catch (err) { dialog.alert(err.response?.data?.message || 'The checklist task could not be deleted.', { tone: 'error' }); }
   };
 
   if (loading) return (
@@ -247,51 +252,40 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   return (
     <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-6 selection:bg-primary/30">
       {/* ================= HEADER ================= */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-3 rounded-xl border border-primary/20">
-            <ClipboardList className="text-primary" size={24} />
-          </div>
-
-          <div>
-            <h2 className="text-foreground text-xl md:text-2xl font-black tracking-tight uppercase leading-tight">
-              Task Registry
-            </h2>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest opacity-70">
-              Operational Grid
-            </p>
-          </div>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <ClipboardList className="text-primary shrink-0" size={20} />
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Task Registry</h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchData}
-            className="group bg-card hover:bg-background border border-border px-5 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-md active:scale-95 transition"
+            className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
             Refresh
           </button>
 
           {!isViewer && (
-<button
-            onClick={() => setShowBulk(true)}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition"
-          >
-            <Upload size={14} />
-            Bulk Upload
-          </button>
-)}
+            <button
+              onClick={() => setShowBulk(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
+            >
+              <Upload size={14} />
+              Bulk Upload
+            </button>
+          )}
 
           {!isViewer && (
-<button
-            onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
-          >
-            <Plus size={14} />
-            New Task
-          </button>
-)}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+            >
+              <Plus size={14} />
+              New Task
+            </button>
+          )}
         </div>
       </div>
 
@@ -308,29 +302,29 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       )}
 
       {/* ================= FILTER BAR ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-card/40 p-4 rounded-2xl border border-border">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3 bg-card/40 p-2.5 rounded-xl border border-border">
         {/* SEARCH */}
-        <div className="relative group">
+        <div className="relative group w-full md:w-56 shrink-0">
           <input
             type="text"
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-background border border-border text-foreground px-10 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/10 text-sm font-semibold"
+            className="w-full bg-background border border-border text-foreground pl-9 pr-8 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-primary/10 text-sm font-semibold"
           />
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary" />
+          {searchTerm && (
+            <button type="button" aria-label="Clear search" onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
+          )}
         </div>
 
-        {/* TABS */}
-        <div className="flex bg-background p-1 rounded-xl border border-border overflow-x-auto custom-scrollbar">
+        {/* TABS — all visible, no sideways scrolling */}
+        <div className="flex flex-wrap bg-background p-1 rounded-lg border border-border gap-1 flex-1">
           {frequencyTabs.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-1.5 rounded-lg font-black text-[9px] uppercase tracking-widest transition whitespace-nowrap ${activeTab === tab
-                  ? 'bg-primary text-primary-foreground shadow'
-                  : 'text-slate-500 hover:text-foreground'
-                }`}
+              className={'flex-1 px-2 py-1 rounded-md font-black text-[9px] uppercase tracking-wider transition whitespace-nowrap ' + (activeTab === tab ? 'bg-primary text-primary-foreground shadow' : 'text-slate-500 hover:text-foreground')}
             >
               {tab}
             </button>
@@ -346,7 +340,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           <div className="w-[1000px] sm:w-full text-sm">
             {/* HEADER */}
             <div className="grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
-              <span className="text-center">#</span>
+              <span className="text-center">S no.</span>
               <span>Title</span>
               <span>Assigned to</span>
               <span>Description</span>
@@ -356,104 +350,34 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
             </div>
 
             {/* ROWS */}
+            {filteredChecklists.length === 0 && (
+              <div className="py-16 text-center text-sm text-muted-foreground font-medium">No checklist tasks found</div>
+            )}
             {filteredChecklists.map((item, index) => {
-              const isEditing = editingId === item._id;
               const schedule = getNextFiveDates(item);
-
               return (
                 <div
                   key={item._id}
-                  className={`grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0 ${isEditing ? 'bg-primary/5' : ''
-                    }`}
+                  className="grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
                 >
-                  {/* POS */}
-                  <span className="text-center text-xs font-black text-slate-400">
-                    #{String(index + 1).padStart(2, '0')}
-                  </span>
+                  <span className="text-center text-xs font-black text-slate-400">{index + 1}</span>
 
-                  {/* NAME (FULL TEXT WRAPPING) */}
                   <div className="min-w-0 pr-2">
-                    {isEditing ? (
-                      <input
-                        value={editData.taskName}
-                        onChange={(e) => setEditData({ ...editData, taskName: e.target.value })}
-                        className="w-full bg-background border border-primary/30 p-2 rounded-lg text-sm font-bold"
-                      />
-                    ) : (
-                      <span className="font-black text-sm whitespace-normal break-words block">
-                        {item.taskName}
-                      </span>
-                    )}
+                    <span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>
                   </div>
 
-                  {/* PERSON */}
                   <div className="min-w-0 pr-2">
-                    {isEditing ? (
-                      <select
-                        value={editData.doerId}
-                        onChange={(e) => {
-                          const emp = employees.find(emp => emp._id === e.target.value);
-                          setSelectedEmployee(emp);
-                          setEditData({ ...editData, doerId: e.target.value });
-                        }}
-                        className="w-full bg-background border border-primary/30 p-2 rounded-lg text-xs"
-                      >
-                        {employees.map(emp => (
-                          <option key={emp._id} value={emp._id}>{emp.name}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="truncate block text-sm font-semibold">
-                        {item.doerId?.name || 'UNMAPPED'}
-                      </span>
-                    )}
+                    <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span>
                   </div>
 
-                  {/* DESCRIPTION (FULL TEXT WRAPPING) */}
                   <div className="min-w-0 pr-2">
-                    {isEditing ? (
-                      <textarea
-                        value={editData.description}
-                        onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                        className="w-full bg-background border border-primary/30 p-2 rounded-lg text-xs h-16 resize-none"
-                      />
-                    ) : (
-                      <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">
-                        {item.description || "No briefing."}
-                      </p>
-                    )}
+                    <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p>
                   </div>
 
-                  {/* FREQUENCY */}
                   <div className="text-center min-w-0">
-                    {isEditing ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingId(item._id);
-                          setEditData((prev) => ({
-                            ...item,
-                            ...prev,
-                            frequency: prev.frequency || item.frequency,
-                            frequencyConfig: prev.frequencyConfig || item.frequencyConfig || {
-                              daysOfWeek: [],
-                              daysOfMonth: []
-                            }
-                          }));
-                          setIsConfigModalOpen(true);
-                        }}
-                        className="text-[9px] px-3 py-1 bg-primary/10 border rounded-lg"
-                      >
-                        {item.frequency}
-                      </button>
-                    ) : (
-                      <span className="text-[10px] font-bold text-primary truncate">
-                        {item.frequency}
-                      </span>
-                    )}
+                    <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span>
                   </div>
 
-                  {/* SCHEDULE */}
                   <div className="min-w-0">
                     <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
                       {schedule.length > 0 ? schedule.map((obj, i) => (
@@ -462,33 +386,18 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                     </select>
                   </div>
 
-                  {/* ACTIONS */}
                   <div className="flex justify-end gap-2 min-w-0">
-                    {isEditing ? (
-                      <>
-                        <button onClick={(e) => handleUpdate(item._id, e)} className="p-2 bg-emerald-600 text-white rounded-lg">
-                          <Save size={14} />
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="p-2 bg-slate-400 rounded-lg">
-                          <X size={14} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {!isViewer && (
-<button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist">
-                          <Edit3 size={14} />
-                        </button>
-)}
-                        {!isViewer && (
-<button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist">
-                          <Trash2 size={14} />
-                        </button>
-)}
-                      </>
+                    {!isViewer && (
+                      <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist">
+                        <Edit3 size={14} />
+                      </button>
+                    )}
+                    {!isViewer && (
+                      <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist">
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
-
                 </div>
               );
             })}
@@ -496,70 +405,63 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         </div>
       </div>
 
-      {isConfigModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg md:max-w-xl rounded-[2rem] shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-300">
-            {/* HEADER */}
-            <div className="px-6 md:px-8 py-5 bg-background/60 border-b border-border flex justify-between items-center">
+      {/* ── EDIT POPUP ── */}
+      {editingId && (
+        <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <form onSubmit={(e) => handleUpdate(editingId, e)} className="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
-                  <Settings2 className="text-primary" size={20} />
-                </div>
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center"><Edit3 size={16} className="text-primary" /></div>
                 <div>
-                  <h3 className="text-foreground font-black text-lg uppercase tracking-tight">
-                    Frequency Tuning
-                  </h3>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
-                    Adjust parameters
-                  </p>
+                  <p className="text-sm font-black text-foreground uppercase tracking-tight">Edit Checklist Task</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-widest">Update details, frequency and start date</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsConfigModalOpen(false)}
-                className="text-slate-400 hover:text-foreground transition"
-              >
-                <X size={22} />
+              <button type="button" aria-label="Close" onClick={() => setEditingId(null)} className="w-8 h-8 rounded-lg bg-muted hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center justify-center group">
+                <X size={15} className="text-slate-400 group-hover:text-red-500 transition-colors" />
               </button>
             </div>
 
-            {/* BODY */}
-            <div className="p-6 md:p-8 space-y-8">
-              {/* START DATE */}
-              <div className="space-y-3">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                  Start Date
-                </label>
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Task Name</label>
                 <input
-                  type="date"
-                  value={editData.startDate || ''}
-                  min={todayYmd()}
-                  onChange={(e) => {
-                    let v = e.target.value;
-                    if (v && v < todayYmd()) v = todayYmd();
-                    setEditData({ ...editData, startDate: v, startDateChanged: true });
-                  }}
-                  className="w-full p-4 border border-border rounded-xl bg-background text-foreground text-sm font-bold"
+                  type="text" required value={editData.taskName}
+                  onChange={(e) => setEditData({ ...editData, taskName: e.target.value })}
+                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 />
-                <p className="text-[9px] text-slate-500 font-bold">
-                  Entered the wrong start date? Change it here — the next due date is recalculated from it. Past dates are not allowed.
-                </p>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Assigned To</label>
+                <select
+                  value={editData.doerId}
+                  onChange={(e) => {
+                    const emp = employees.find(x => x._id === e.target.value);
+                    setSelectedEmployee(emp);
+                    setEditData({ ...editData, doerId: e.target.value });
+                  }}
+                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                >
+                  {employees.map(emp => (<option key={emp._id} value={emp._id}>{emp.name}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Description</label>
+                <textarea
+                  rows={3} value={editData.description}
+                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+                />
               </div>
 
-              {/* FREQUENCY SELECT */}
-              <div className="space-y-3">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                  Lifecycle
-                </label>
-
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Frequency</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map(f => (
                     <button
-                      key={f}
+                      type="button" key={f}
                       onClick={() => setEditData({ ...editData, frequency: f })}
-                      className={`py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest border transition ${editData.frequency === f
-                          ? 'bg-primary text-white border-primary shadow-md'
-                          : 'bg-background text-slate-400 border-border hover:border-primary/40'
-                        }`}
+                      className={'py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border transition ' + (editData.frequency === f ? 'bg-primary text-white border-primary shadow-md' : 'bg-background text-slate-400 border-border hover:border-primary/40')}
                     >
                       {f}
                     </button>
@@ -567,86 +469,62 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                 </div>
               </div>
 
-              {/* CONFIG AREA */}
-              <div className="bg-background/40 p-5 rounded-xl border border-border border-dashed min-h-[120px] flex flex-col justify-center items-center">
-                {/* WEEKLY */}
-                {editData.frequency === 'Weekly' && (
-                  <div className="space-y-4 text-center">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                      Select Days
-                    </span>
-
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
-                        const isSunday = i === 0;
-                        const isDisabled = isSunday && selectedEmployee && !selectedEmployee.workOnSunday;
-
-                        return (
-                          <button
-                            key={i}
-                            disabled={isDisabled}
-                            onClick={() => !isDisabled && toggleEditDay(i)}
-                            className={`w-10 h-10 rounded-lg text-[10px] font-black border transition
-                              ${editData.frequencyConfig.daysOfWeek.includes(i)
-                                ? 'bg-primary text-white border-primary'
-                                : 'bg-card text-slate-400 border-border'}
-                              ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
-                            `}
-                            title={isDisabled ? "Employee doesn't work on Sundays" : ""}
-                          >
-                            {d}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* MONTHLY */}
-                {editData.frequency === 'Monthly' && (
-                  <div className="space-y-4 text-center w-full">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                      Select Dates
-                    </span>
-
-                    <div className="grid grid-cols-7 gap-1 max-h-[150px] overflow-y-auto custom-scrollbar">
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+              {editData.frequency === 'Weekly' && (
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Select Days</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
+                      const isDisabled = i === 0 && selectedEmployee && !selectedEmployee.workOnSunday;
+                      const on = (editData.frequencyConfig.daysOfWeek || []).includes(i);
+                      return (
                         <button
-                          key={d}
-                          onClick={() => toggleEditDate(d)}
-                          className={`h-8 rounded text-[10px] font-black border transition ${editData.frequencyConfig.daysOfMonth.includes(d)
-                              ? 'bg-emerald-600 text-white border-emerald-600'
-                              : 'bg-card text-slate-400 border-border'
-                            }`}
+                          type="button" key={i} disabled={isDisabled}
+                          onClick={() => !isDisabled && toggleEditDay(i)}
+                          className={'w-10 h-10 rounded-lg text-[10px] font-black border transition ' + (on ? 'bg-primary text-white border-primary' : 'bg-card text-slate-400 border-border') + (isDisabled ? ' opacity-40 cursor-not-allowed' : '')}
+                          title={isDisabled ? "Employee doesn't work on Sundays" : ''}
                         >
                           {d}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* OTHER */}
-                {!['Weekly', 'Monthly'].includes(editData.frequency) && (
-                  <div className="text-center">
-                    <CheckCircle2 className="text-primary/30 mx-auto mb-2" size={30} />
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                      Auto mode active
-                    </p>
+              {editData.frequency === 'Monthly' && (
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Select Dates</label>
+                  <div className="grid grid-cols-7 gap-1 max-h-[150px] overflow-y-auto custom-scrollbar">
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <button
+                        type="button" key={d}
+                        onClick={() => toggleEditDate(d)}
+                        className={'h-8 rounded text-[10px] font-black border transition ' + ((editData.frequencyConfig.daysOfMonth || []).includes(d) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-card text-slate-400 border-border')}
+                      >
+                        {d}
+                      </button>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={editData.startDate || ''}
+                  onChange={(e) => setEditData({ ...editData, startDate: e.target.value, startDateChanged: true })}
+                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+                <p className="text-[10px] text-slate-500 font-bold mt-1">Changing this recalculates the next due date from it. Past dates are allowed.</p>
               </div>
-
-              {/* ACTION */}
-              <button
-                onClick={() => setIsConfigModalOpen(false)}
-                className="w-full py-4 rounded-xl bg-primary text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-lg hover:scale-[1.02] active:scale-95 transition"
-              >
-                Apply
-              </button>
-
             </div>
-          </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-border flex-shrink-0">
+              <button type="button" onClick={() => setEditingId(null)} className="px-5 py-2.5 rounded-xl border border-border bg-card text-foreground font-black text-[11px] uppercase tracking-wider hover:bg-background transition">Cancel</button>
+              <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-black text-[11px] uppercase tracking-wider shadow-lg shadow-primary/25 hover:opacity-90 transition disabled:opacity-60">{saving ? 'Saving...' : 'Save Changes'}</button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -681,6 +559,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
             {/* Modal Body */}
             <div className="overflow-y-auto flex-1">
               <CreateChecklist
+                hideHeader
                 tenantId={currentTenantId}
                 onSuccess={() => { setIsCreateOpen(false); fetchData(); }}
               />

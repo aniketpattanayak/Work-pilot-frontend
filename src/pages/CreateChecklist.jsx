@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, forwardRef, useRef } from 'rea
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import { 
   User, PlusCircle, Clock, CheckCircle2, Settings2,
   CalendarDays, Activity, RefreshCcw, AlignLeft,
@@ -33,7 +34,7 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   </div>
 ));
 
-const CreateChecklist = ({ tenantId, onSuccess }) => {
+const CreateChecklist = ({ tenantId, onSuccess, hideHeader = false }) => {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -168,14 +169,14 @@ const isDisabledDate = (date) =>
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.doerId) return alert("Please select a personnel.");
-    if (formData.frequency === 'Weekly' && formData.frequencyConfig.daysOfWeek.length === 0) return alert("Select at least one day.");
-    if (formData.frequency === 'Monthly' && formData.frequencyConfig.daysOfMonth.length === 0) return alert("Select at least one date.");
+    if (!formData.doerId) return dialog.alert("Please select who the checklist is assigned to.", { tone: 'error' });
+    if (formData.frequency === 'Weekly' && formData.frequencyConfig.daysOfWeek.length === 0) return dialog.alert("Select at least one day.", { tone: 'error' });
+    if (formData.frequency === 'Monthly' && formData.frequencyConfig.daysOfMonth.length === 0) return dialog.alert("Select at least one date.", { tone: 'error' });
 
     setLoading(true);
     try {
       await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId });
-      alert("Success: Master Directive synchronized.");
+      dialog.alert("The checklist task was created.", { tone: 'success' });
       setFormData({ 
         taskName: '', description: '', doerId: '', frequency: 'Daily',
         startDate: todayYmd(),
@@ -184,7 +185,7 @@ const isDisabledDate = (date) =>
       setSearchTerm('');
       if (onSuccess) onSuccess();
     } catch (err) {
-      alert("System Error: " + (err.response?.data?.message || err.message));
+      dialog.alert(err.response?.data?.message || err.message || "The checklist task could not be created.", { tone: 'error' });
     } finally {
       setLoading(false);
     }
@@ -210,13 +211,15 @@ const isDisabledDate = (date) =>
  <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 animate-in fade-in duration-700 selection:bg-primary/30">
 
   {/* HEADER */}
-  <div className="mb-8 flex items-center gap-5">
-    <div>
-      <h2 className="text-foreground text-2xl md:text-3xl font-black uppercase leading-none ">
-        Create Checklist Task
-      </h2>
+  {!hideHeader && (
+    <div className="mb-8 flex items-center gap-5">
+      <div>
+        <h2 className="text-foreground text-2xl md:text-3xl font-black uppercase leading-none ">
+          Create Checklist Task
+        </h2>
+      </div>
     </div>
-  </div>
+  )}
 
   <form onSubmit={handleSubmit} className="bg-card p-6 sm:p-8 lg:p-10 rounded-[2rem] border border-border shadow-2xl">
 
@@ -311,11 +314,10 @@ const isDisabledDate = (date) =>
         {/* START DATE */}
         <div className="space-y-2">
           <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Start Date:  <t></t>
+            Start Date
           </label>
           <DatePicker
   selected={parseYmd(formData.startDate)}
-  minDate={startOfToday()}
   onChange={(date) => {
     if (!date) return;
     const pad = (n) => String(n).padStart(2, '0');

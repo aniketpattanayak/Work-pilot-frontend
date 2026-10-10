@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, forwardRef, useRef } from "react";
 import API from '../api/axiosConfig'; 
+import { dialog } from '../components/Dialog';
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
 import {
@@ -32,7 +33,7 @@ const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   </div>
 ));
 
-const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSuccess }) => {
+const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSuccess, hideHeader = false }) => {
   const [task, setTask] = useState({
     title: "",
     description: "",
@@ -170,7 +171,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
       else if (f.size > MAX_MB * 1024 * 1024) problems.push('"' + f.name + '" is larger than ' + MAX_MB + ' MB.');
       else ok.push(f);
     });
-    if (problems.length) alert(problems.join('\n') + '\n\nAllowed: images, PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP (max ' + MAX_MB + ' MB each).');
+    if (problems.length) dialog.alert(problems.join('\n') + '\n\nAllowed: images, PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP (max ' + MAX_MB + ' MB each).', { tone: 'error', title: 'File not added' });
     setSelectedFiles([...selectedFiles, ...ok]);
     e.target.value = '';
   };
@@ -181,8 +182,8 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!task.doerId) return alert("Please search and select a Primary Doer (Lead).");
-    if (!task.deadline) return alert("Please select a completion deadline.");
+    if (!task.doerId) return dialog.alert("Please search and select who the task is assigned to.", { tone: 'error' });
+    if (!task.deadline) return dialog.alert("Please select a completion deadline.", { tone: 'error' });
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -202,7 +203,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
       await API.post("/tasks/create-task", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Success: Mission Assigned Successfully!");
+      dialog.alert("The task was assigned.", { tone: 'success' });
       setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, coworkers: [] });
       setSelectedFiles([]);
       setSelectedHelpers([]);
@@ -210,7 +211,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
       setFollowerSearch('');
       if (onSuccess) onSuccess();
     } catch (err) {
-      alert("Error: " + (err.response?.data?.message || "Task Creation Failed"));
+      dialog.alert(err.response?.data?.message || "The task could not be created. Please try again.", { tone: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -229,10 +230,12 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
         <div className="bg-card/80 backdrop-blur border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6 sm:p-8">
 
           {/* HEADER */}
-          <div className="mb-6 border-b border-border pb-4">
-            <h2 className="text-2xl font-bold text-foreground">Create New Delegation Task</h2>
-            <p className="text-sm text-slate-500 mt-1">Assign work and track progress</p>
-          </div>
+          {!hideHeader && (
+            <div className="mb-6 border-b border-border pb-4">
+              <h2 className="text-2xl font-bold text-foreground">Create New Delegation Task</h2>
+              <p className="text-sm text-slate-500 mt-1">Assign work and track progress</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
 

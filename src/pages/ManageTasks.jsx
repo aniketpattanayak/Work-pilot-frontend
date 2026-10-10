@@ -31,6 +31,7 @@ import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
 import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
+import { dialog } from '../components/Dialog';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -158,20 +159,27 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
   const handleVerifyTask = async (taskId, isSatisfied) => {
     const status = isSatisfied ? 'Verified' : 'Accepted';
-    const remarks = !isSatisfied ? prompt("Tactical Feedback: Identify required corrections:") : "Directive evidence verified.";
-    if (!isSatisfied && !remarks) return;
+    let remarks = 'Directive evidence verified.';
+    if (isSatisfied) {
+      const yes = await dialog.confirm('Mark this task as verified? This confirms the work was done to your satisfaction.', { title: 'Verify task', confirmText: 'Verify' });
+      if (!yes) return;
+    } else {
+      const text = await dialog.prompt('What needs to be corrected? The doer will see this.', { title: 'Send back for correction', required: true, placeholder: 'Describe the corrections needed...', confirmText: 'Send back', danger: true });
+      if (!text) return;
+      remarks = text;
+    }
     try {
       await API.put('/tasks/respond', { taskId, status, remarks, doerId: currentAssignerId });
-      alert(isSatisfied ? "Handshake Complete: Mission Verified." : "Correction Issued: Returning to Node.");
       fetchData();
-    } catch { alert("Protocol Error: Status update failed."); }
+      dialog.alert(isSatisfied ? 'The task is verified.' : 'The task was sent back to the doer.', { tone: 'success' });
+    } catch (err) { dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' }); }
   };
 
-  const handleCancelTask = async (taskId) => {
-    if (window.confirm("PERMANENT TERMINATION: Purge this mission node from the registry?")) {
-      try { await API.delete(`/tasks/${taskId}`); fetchData(); }
-      catch { alert("Action failed."); }
-    }
+  const handleCancelTask = async (taskId, title) => {
+    const yes = await dialog.confirm('Delete "' + (title || 'this task') + '"? This cannot be undone.', { title: 'Delete task', danger: true, confirmText: 'Delete' });
+    if (!yes) return;
+    try { await API.delete('/tasks/' + taskId); fetchData(); }
+    catch (err) { dialog.alert(err.response?.data?.message || 'The task could not be deleted.', { tone: 'error' }); }
   };
 
   const handleOpenEdit = (task) => {
@@ -191,13 +199,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     if (!editingTask) return;
     try {
       await API.put(`/tasks/${editingTask._id}`, editFormData);
-      alert("Success: Task updated successfully.");
       setIsEditOpen(false);
       setEditingTask(null);
       fetchData();
+      dialog.alert("The task was updated.", { tone: 'success' });
     } catch (err) {
       console.error("Update error:", err);
-      alert(err.response?.data?.message || "Failed to update task.");
+      dialog.alert(err.response?.data?.message || "The task could not be updated. Please try again.", { tone: 'error' });
     }
   };
 
@@ -219,61 +227,53 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       )}
 
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-8">
-        <div className="flex items-center gap-5">
-          <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 shadow-inner shrink-0">
-            <LucideClipboard size={32} className="text-primary" />
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-foreground text-2xl md:text-3xl font-black tracking-tighter uppercase leading-none truncate">Work Monitor</h2>
-          </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <LucideClipboard size={20} className="text-primary shrink-0" />
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Work Monitor</h2>
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-6 py-3 rounded-2xl text-foreground font-black text-[11px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 active:scale-95 shadow-xl">
-            <RefreshCcw size={16} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
+            <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
           {!isViewer && (
-<button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
-            <Plus size={16} /> New Task
-          </button>
-)}
+            <button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
+              <Plus size={14} /> New Task
+            </button>
+          )}
         </div>
       </div>
 
       {/* ── FILTERS ROW — time filters + status dropdown + name search ── */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center">
-        {/* Time filter buttons */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-3 items-start sm:items-center">
         <div className="flex flex-wrap gap-2">
           {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
             <button
               key={range}
               onClick={() => setTimeFilter(range)}
-              className={`px-5 py-2.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 shadow-sm ${timeFilter === range
-                ? 'bg-primary text-white border-primary shadow-primary/20'
-                : 'bg-card text-slate-500 border-border hover:border-slate-400'
-                }`}
+              className={'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ' + (timeFilter === range ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border hover:border-slate-400')}
             >
               {range}
             </button>
           ))}
         </div>
 
-        {/* Status Dropdown Filter */}
         <div className="relative">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer shadow-sm"
+            className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
           >
             <option value="All">Status: All</option>
             <option value="Pending">Pending</option>
+            <option value="Accepted">Accepted</option>
+            <option value="Revision Requested">Revision</option>
             <option value="Completed">Completed</option>
             <option value="Verified">Verified</option>
-            <option value="Revision Requested">Revision Requested</option>
+            <option value="Rejected">Rejected</option>
           </select>
         </div>
 
-        {/* Name / title search */}
         <div className="relative flex-1 min-w-[200px] sm:max-w-xs ml-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -281,10 +281,10 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             placeholder="Filter by name or title…"
             value={nameFilter}
             onChange={e => setNameFilter(e.target.value)}
-            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            className="w-full pl-9 pr-8 py-1.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           />
           {nameFilter && (
-            <button onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+            <button aria-label="Clear search" onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
               <X size={13} />
             </button>
           )}
@@ -305,7 +305,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <div className="w-[1050px] sm:w-full">
             {/* HEADER */}
             <div className="grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
-              <div>#</div>
+              <div>S no.</div>
               <div>Task Name</div>
               <div>Assigned To</div>
               <div>Description</div>
@@ -391,7 +391,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         </button>
 )}
                         {!isViewer && !passedOnOnly(task) && (
-<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id); }}
+<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id, task.title); }}
                           className="p-2 bg-background border border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all active:scale-90" title="Delete Task">
                           <Trash2 size={14} />
                         </button>
@@ -548,6 +548,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             </div>
             <div className="overflow-y-auto flex-1">
               <CreateTask
+                hideHeader
                 tenantId={tenantId}
                 assignerId={assignerId}
                 onSuccess={() => { setIsCreateOpen(false); fetchData(); }}
