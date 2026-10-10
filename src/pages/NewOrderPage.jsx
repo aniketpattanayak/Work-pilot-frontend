@@ -221,64 +221,56 @@ export default function NewOrderPage({ tenantId }) {
     </div>
   );
 
-  // ── FORM PICKER — always shown first ─────────────────────────────────────────
+  // ── FORM PICKER — always shown first (page title is already in the top header) ──
   if (!selectedForm) return (
-    <div className="w-full max-w-3xl mx-auto py-10 px-4">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Package size={24} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-black">New Order</h1>
-          <p className="text-sm text-muted-foreground">Select the form to fill and submit an order</p>
-        </div>
-      </div>
+    <div className="w-full max-w-6xl mx-auto pt-1 pb-6 px-4">
+      <p className="text-xs text-muted-foreground mb-3">Select the form to fill and submit an order.</p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {forms.map(form => {
-          const cfg     = form.orderIdConfig || {};
-          const sep     = cfg.separator || '-';
-          const yr      = new Date().getFullYear();
-          const preview = [cfg.prefix || 'ORD', cfg.includeYear !== false ? yr : null, '0001'].filter(Boolean).join(sep);
-          const oCount  = (form.orderFields || []).filter(f => f.label).length;
-          const iCount  = (form.itemFields  || []).filter(f => f.label).length;
+      <div className="border border-border rounded-xl bg-card overflow-hidden">
+        <div className="max-h-[calc(100vh-12rem)] overflow-y-auto">
+          <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+            <thead>
+              <tr className="text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border w-16">S. no.</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border">Form name</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border">Order fields</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border">Line item fields</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border">Order ID</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border">Shareable link</th>
+                <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {forms.map((form, idx) => {
+                const cfg     = form.orderIdConfig || {};
+                const sep     = cfg.separator || '-';
+                const yr      = new Date().getFullYear();
+                const preview = [cfg.prefix || 'ORD', cfg.includeYear !== false ? yr : null, '0001'].filter(Boolean).join(sep);
+                const oCount  = (form.orderFields || []).filter(f => f.label).length;
+                const iCount  = (form.itemFields  || []).filter(f => f.label).length;
 
-          return (
-            <div key={form._id}
-              className="border border-border rounded-2xl bg-card hover:border-primary/50 hover:shadow-md transition-all group overflow-hidden">
-              {/* Clickable main area */}
-              <button onClick={() => setSelectedForm(form)}
-                className="w-full text-left p-5 pb-3">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <FileText size={20} className="text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm mb-1">{form.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {oCount} order field{oCount !== 1 ? 's' : ''} · {iCount} line item field{iCount !== 1 ? 's' : ''}
-                    </div>
-                    <div className="mt-2">
+                return (
+                  <tr key={form._id} className="hover:bg-muted/40 transition-colors">
+                    <td className="px-4 py-3 border-b border-border text-muted-foreground">{idx + 1}</td>
+                    <td className="px-4 py-3 border-b border-border font-bold">{form.name}</td>
+                    <td className="px-4 py-3 border-b border-border">{oCount}</td>
+                    <td className="px-4 py-3 border-b border-border">{iCount}</td>
+                    <td className="px-4 py-3 border-b border-border">
                       <code className="text-[11px] font-mono text-primary bg-primary/10 px-2 py-0.5 rounded-md">{preview}</code>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 w-full py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold text-center group-hover:bg-primary group-hover:text-white transition-all">
-                  Fill & Submit →
-                </div>
-              </button>
-
-              {/* Share link row */}
-              <div className="px-5 py-3 border-t border-border bg-muted/30 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Link2 size={11} />
-                  Shareable link
-                </div>
-                <CopyLinkBtn formId={form._id} />
-              </div>
-            </div>
-          );
-        })}
+                    </td>
+                    <td className="px-4 py-3 border-b border-border"><CopyLinkBtn formId={form._id} /></td>
+                    <td className="px-4 py-3 border-b border-border text-right whitespace-nowrap">
+                      <button onClick={() => setSelectedForm(form)}
+                        className="px-4 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition">
+                        Fill & Submit
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -288,7 +280,7 @@ export default function NewOrderPage({ tenantId }) {
   const itemFields  = (selectedForm.itemFields  || []).filter(f => f.label);
 
   return (
-    <div className="w-full max-w-3xl mx-auto py-8 px-4">
+    <div className="w-full max-w-3xl mx-auto pt-2 pb-8 px-4">
 
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">

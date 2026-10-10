@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import {
   Plus, Trash2, Save, RefreshCcw, AlertCircle, Edit2,
   GripVertical, Hash, Type, List, Calendar, AlignLeft,
@@ -64,59 +65,50 @@ function DropdownOptionsInput({ options, onChange }) {
   );
 }
 
-// ─── FIELD CARD ───────────────────────────────────────────────────────────────
-function FieldCard({ field, onUpdate, onDelete }) {
-  const [open, setOpen] = useState(false);
-  const Icon = FIELD_TYPES.find(t => t.value === field.type)?.icon || Type;
+// ─── FIELD ROW ────────────────────────────────────────────────────────────────
+const FIELD_COLS = 'minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.3fr) 72px 32px';
 
+function FieldHeader() {
+  const h = { fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--color-muted-foreground)' };
   return (
-    <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
-      <div onClick={() => setOpen(p => !p)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-muted)', cursor: 'pointer' }}>
-        <GripVertical size={13} style={{ color: 'var(--color-muted-foreground)', flexShrink: 0 }} />
-        <Icon size={13} style={{ color: 'var(--color-muted-foreground)', flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, flex: 1 }}>{field.label || 'Untitled field'}</span>
-        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'var(--color-background)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}>{field.type}</span>
-        {field.required && <span style={{ fontSize: 9, color: '#A32D2D', fontWeight: 700 }}>REQ</span>}
-        <button onClick={e => { e.stopPropagation(); onDelete(field.id); }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted-foreground)', padding: 2, display: 'flex' }}
+    <div style={{ display: 'grid', gridTemplateColumns: FIELD_COLS, gap: 10, padding: '0 10px 6px', minWidth: 620 }}>
+      <span style={h}>Label <span style={{ color: '#ef4444' }}>*</span></span>
+      <span style={h}>Type</span>
+      <span style={h}>Placeholder</span>
+      <span style={{ ...h, textAlign: 'center' }}>Required</span>
+      <span />
+    </div>
+  );
+}
+
+function FieldCard({ field, onUpdate, onDelete }) {
+  return (
+    <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10, marginBottom: 8, minWidth: 620, background: 'var(--color-card)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: FIELD_COLS, gap: 10, alignItems: 'center' }}>
+        <Inp placeholder="e.g. Customer Name" value={field.label}
+          onChange={e => onUpdate(field.id, { label: e.target.value })} />
+        <Sel value={field.type} onChange={e => onUpdate(field.id, { type: e.target.value })}>
+          {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </Sel>
+        <Inp placeholder="Optional hint" value={field.placeholder || ''}
+          onChange={e => onUpdate(field.id, { placeholder: e.target.value })} />
+        <label style={{ display: 'flex', justifyContent: 'center', cursor: 'pointer' }} title="Required field">
+          <input type="checkbox" aria-label="Required" checked={field.required || false}
+            onChange={e => onUpdate(field.id, { required: e.target.checked })} />
+        </label>
+        <button onClick={() => onDelete(field.id)} title="Remove field" aria-label="Remove field"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted-foreground)', padding: 4, display: 'flex', justifyContent: 'center' }}
           onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
           onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted-foreground)'}>
-          <Trash2 size={12} />
+          <Trash2 size={14} />
         </button>
-        {open ? <ChevronUp size={13} style={{ color: 'var(--color-muted-foreground)' }} /> : <ChevronDown size={13} style={{ color: 'var(--color-muted-foreground)' }} />}
       </div>
-      {open && (
-        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--color-border)' }}>
-          <div>
-            <Lbl ch="Label" />
-            <Inp placeholder="e.g. Customer Name" value={field.label}
-              onChange={e => onUpdate(field.id, { label: e.target.value })} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <Lbl ch="Type" />
-              <Sel value={field.type} onChange={e => onUpdate(field.id, { type: e.target.value })}>
-                {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </Sel>
-            </div>
-            <div>
-              <Lbl ch="Placeholder" />
-              <Inp placeholder="Optional hint" value={field.placeholder || ''}
-                onChange={e => onUpdate(field.id, { placeholder: e.target.value })} />
-            </div>
-          </div>
-          {field.type === 'dropdown' && (
-            <DropdownOptionsInput
-              options={field.options || []}
-              onChange={opts => onUpdate(field.id, { options: opts })}
-            />
-          )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', color: 'var(--color-muted-foreground)' }}>
-            <input type="checkbox" checked={field.required || false}
-              onChange={e => onUpdate(field.id, { required: e.target.checked })} />
-            Required
-          </label>
+      {field.type === 'dropdown' && (
+        <div style={{ marginTop: 10 }}>
+          <DropdownOptionsInput
+            options={field.options || []}
+            onChange={opts => onUpdate(field.id, { options: opts })}
+          />
         </div>
       )}
     </div>
@@ -212,7 +204,7 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {/* Editor header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
         <div>
@@ -249,7 +241,7 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
 
       {/* Form name */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', flexShrink: 0 }}>
-        <Lbl ch="Form name *" />
+        <Lbl ch={<span>Form name <span style={{ color: '#ef4444' }}>*</span></span>} />
         <Inp placeholder="e.g. Navtech Sales Order Form" value={formName}
           onChange={e => setFormName(e.target.value)} />
       </div>
@@ -270,6 +262,7 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
             <div style={{ fontSize: 12, color: 'var(--color-muted-foreground)', marginBottom: 12, lineHeight: 1.6 }}>
               These fields appear once per order — filled by the employee when creating a new order. Examples: Customer Name, Order Date, Remarks.
             </div>
+            {orderFields.length > 0 && <FieldHeader />}
             {orderFields.map(f => (
               <FieldCard key={f.id} field={f}
                 onUpdate={(id, p) => updateField('orderFields', id, p)}
@@ -288,6 +281,7 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
             <div style={{ fontSize: 12, color: 'var(--color-muted-foreground)', marginBottom: 12, lineHeight: 1.6 }}>
               These fields repeat for every line item — filled once per item in the order. Examples: Item Name, Qty, Unit, Promise Date.
             </div>
+            {itemFields.length > 0 && <FieldHeader />}
             {itemFields.map(f => (
               <FieldCard key={f.id} field={f}
                 onUpdate={(id, p) => updateField('itemFields', id, p)}
@@ -322,7 +316,7 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
             {/* Order ID config */}
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Order ID</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
                 <div><Lbl ch="Prefix" /><Inp placeholder="ORD" value={orderIdConfig.prefix || ''} onChange={e => setOIC(p => ({ ...p, prefix: e.target.value.toUpperCase() }))} /></div>
                 <div><Lbl ch="Separator" /><Inp placeholder="-" value={orderIdConfig.separator || '-'} onChange={e => setOIC(p => ({ ...p, separator: e.target.value }))} /></div>
                 <div><Lbl ch="Number digits" /><Inp type="number" min={1} max={8} value={orderIdConfig.digits || 4} onChange={e => setOIC(p => ({ ...p, digits: +e.target.value }))} /></div>
@@ -390,148 +384,127 @@ export default function OrderFormsPage({ tenantId }) {
   useEffect(() => { fetchForms(); }, [fetchForms]);
 
   const handleDelete = async (formId) => {
-    if (!window.confirm('Delete this form? It will be unlinked from any flows using it.')) return;
+    const target = forms.find(f => f._id === formId);
+    const yes = await dialog.confirm(
+      'Delete "' + (target?.name || 'this form') + '"? It will be unlinked from any flows using it.',
+      { title: 'Delete form', danger: true, confirmText: 'Delete' }
+    );
+    if (!yes) return;
     setDeleting(formId);
     try {
-      await API.delete(`/fms2/forms/${formId}`);
+      await API.delete('/fms2/forms/' + formId);
       fetchForms();
-    } catch { alert('Delete failed'); }
-    finally { setDeleting(null); }
+    } catch (err) {
+      await dialog.alert(err.response?.data?.message || 'Could not delete this form. Please try again.', { tone: 'error', title: 'Not deleted' });
+    } finally { setDeleting(null); }
   };
 
-  // ── EDITOR VIEW ─────────────────────────────────────────────────────────────
+  // ── EDITOR VIEW (popup form) ────────────────────────────────────────────────
   if (editing !== null) return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <FormEditor
-        form={editing === 'new' ? null : editing}
-        tenantId={tenantId}
-        onSaved={() => { fetchForms(); setEditing(null); }}
-        onCancel={() => setEditing(null)}
-      />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div role="dialog" aria-label="Order form"
+        style={{ width: '100%', maxWidth: 880, height: 'min(88vh, 740px)', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.35)' }}>
+        <FormEditor
+          form={editing === 'new' ? null : editing}
+          tenantId={tenantId}
+          onSaved={() => { fetchForms(); setEditing(null); }}
+          onCancel={() => setEditing(null)}
+        />
+      </div>
     </div>
   );
 
   // ── LIST VIEW ────────────────────────────────────────────────────────────────
+  const th = { textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--color-muted-foreground)', background: 'var(--color-muted)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 1, whiteSpace: 'nowrap' };
+  const td = { padding: '10px 14px', fontSize: 13, borderBottom: '1px solid var(--color-border)', verticalAlign: 'middle' };
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ padding: '4px 24px 24px' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={24} style={{ color: '#185FA5' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Order Forms</h1>
-            <p style={{ fontSize: 13, color: 'var(--color-muted-foreground)', lineHeight: 1.5 }}>
-              Build forms your team uses to create orders. Each form can be linked to one or more FMS flows.
-            </p>
-          </div>
-        </div>
+      {/* Toolbar (the page title is already in the top header) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+        <p style={{ fontSize: 12, color: 'var(--color-muted-foreground)', lineHeight: 1.5, margin: 0, flex: 1, minWidth: 260 }}>
+          Build forms your team uses to create orders. To use one: <strong>Flow Management → New flow → WorkPilot Form</strong>, then select the form.
+        </p>
         <button onClick={() => setEditing('new')}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
-          <Plus size={15} /> New form
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', flexShrink: 0 }}>
+          <Plus size={14} /> New form
         </button>
       </div>
 
-      {/* How it works */}
-      <div style={{ background: '#E6F1FB', borderLeft: '2px solid #185FA5', borderRadius: '0 10px 10px 0', padding: '12px 16px', fontSize: 12, color: '#0C447C', lineHeight: 1.7, marginBottom: 24 }}>
-        <strong>How it works:</strong> Build a form here first → then go to <strong>Flow Management → New flow</strong> → choose <strong>WorkPilot Form</strong> as the data source → select this form. When an employee submits an order, WorkPilot auto-generates the Order ID, creates a flow instance per line item, and starts the flow.
+      <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-card)', overflow: 'hidden' }}>
+        <div style={{ maxHeight: 'calc(100vh - 13rem)', overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, width: 64 }}>S. no.</th>
+                <th style={th}>Form name</th>
+                <th style={th}>Order fields</th>
+                <th style={th}>Line item fields</th>
+                <th style={th}>ID format</th>
+                <th style={th}>Status</th>
+                <th style={{ ...th, textAlign: 'right' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: 'var(--color-muted-foreground)', padding: 28 }}>
+                  <RefreshCcw size={15} style={{ animation: 'spin 1s linear infinite', verticalAlign: 'middle', marginRight: 8 }} /> Loading forms…
+                </td></tr>
+              )}
+              {!loading && forms.length === 0 && (
+                <tr><td colSpan={7} style={{ ...td, textAlign: 'center', color: 'var(--color-muted-foreground)', padding: 40, borderBottom: 'none' }}>
+                  <FileText size={32} style={{ opacity: 0.2, margin: '0 auto 8px', display: 'block' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No order forms yet</div>
+                  <div style={{ fontSize: 12 }}>Click "New form" to create your first one. You can link it to a flow later.</div>
+                </td></tr>
+              )}
+              {!loading && forms.map((form, idx) => {
+                const orderCount = (form.orderFields || []).length;
+                const itemCount  = (form.itemFields || []).length;
+                const cfg        = form.orderIdConfig || {};
+                const year       = new Date().getFullYear();
+                const sep        = cfg.separator || '-';
+                const previewId  = [cfg.prefix || 'ORD', cfg.includeYear !== false ? year : null, '0001'].filter(Boolean).join(sep);
+                const linked     = !!form.templateId;
+                const labels     = [...(form.orderFields || []), ...(form.itemFields || [])].map(f => f.label || 'Untitled');
+                const summary    = labels.slice(0, 4).join(', ') + (labels.length > 4 ? ' +' + (labels.length - 4) + ' more' : '');
+
+                return (
+                  <tr key={form._id}>
+                    <td style={{ ...td, color: 'var(--color-muted-foreground)' }}>{idx + 1}</td>
+                    <td style={td}>
+                      <div style={{ fontWeight: 700 }}>{form.name}</div>
+                      {summary && <div style={{ fontSize: 11, color: 'var(--color-muted-foreground)', marginTop: 2, maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{summary}</div>}
+                    </td>
+                    <td style={td}>{orderCount}</td>
+                    <td style={td}>{itemCount}</td>
+                    <td style={td}><code style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600 }}>{previewId}</code></td>
+                    <td style={td}>
+                      {linked ? (
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#EAF3DE', color: '#27500A', fontWeight: 600, whiteSpace: 'nowrap' }}>✓ Linked to a flow</span>
+                      ) : (
+                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#FAEEDA', color: '#854F0B', fontWeight: 600, whiteSpace: 'nowrap' }}>Not linked yet</span>
+                      )}
+                    </td>
+                    <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button onClick={() => setEditing(form)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-card)', cursor: 'pointer', color: 'var(--color-foreground)', marginRight: 8 }}>
+                        <Edit2 size={13} /> Edit
+                      </button>
+                      <button onClick={() => handleDelete(form._id)} disabled={deleting === form._id} title="Delete form" aria-label="Delete form"
+                        style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 10px', fontSize: 12, border: '1px solid #F09595', borderRadius: 8, background: 'transparent', cursor: 'pointer', color: '#A32D2D' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 24, color: 'var(--color-muted-foreground)', fontSize: 13 }}>
-          <RefreshCcw size={16} style={{ animation: 'spin 1s linear infinite' }} /> Loading forms…
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && forms.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', border: '1px dashed var(--color-border)', borderRadius: 14, color: 'var(--color-muted-foreground)' }}>
-          <FileText size={40} style={{ opacity: 0.2, margin: '0 auto 12px' }} />
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No order forms yet</div>
-          <div style={{ fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
-            Create your first form. You can link it to an FMS flow later.
-          </div>
-          <button onClick={() => setEditing('new')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', fontSize: 13, fontWeight: 600, background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-            <Plus size={14} /> Create first form
-          </button>
-        </div>
-      )}
-
-      {/* Forms list */}
-      {!loading && forms.map(form => {
-        const orderCount = (form.orderFields || []).length;
-        const itemCount  = (form.itemFields || []).length;
-        const cfg        = form.orderIdConfig || {};
-        const year       = new Date().getFullYear();
-        const sep        = cfg.separator || '-';
-        const previewId  = [cfg.prefix || 'ORD', cfg.includeYear !== false ? year : null, '0001'].filter(Boolean).join(sep);
-        const linked     = !!form.templateId;
-
-        return (
-          <div key={form._id}
-            style={{ border: '1px solid var(--color-border)', borderRadius: 14, padding: '18px 20px', marginBottom: 12, background: 'var(--color-card)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-
-            {/* Icon */}
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Package size={20} style={{ color: '#185FA5' }} />
-            </div>
-
-            {/* Info */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 14, fontWeight: 700 }}>{form.name}</span>
-                {linked ? (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#EAF3DE', color: '#27500A', fontWeight: 600 }}>
-                    ✓ Linked to a flow
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#FAEEDA', color: '#854F0B', fontWeight: 600 }}>
-                    Not linked yet
-                  </span>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--color-muted-foreground)', flexWrap: 'wrap', marginBottom: 8 }}>
-                <span>{orderCount} order field{orderCount !== 1 ? 's' : ''}</span>
-                <span>{itemCount} line item field{itemCount !== 1 ? 's' : ''}</span>
-                <span>ID: <code style={{ fontFamily: 'monospace', color: 'var(--color-primary)', fontWeight: 600 }}>{previewId}</code></span>
-              </div>
-
-              {/* Field badges */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {[...(form.orderFields || []), ...(form.itemFields || [])].slice(0, 6).map(f => (
-                  <span key={f.id} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-muted-foreground)' }}>
-                    {f.label || 'Untitled'}
-                  </span>
-                ))}
-                {(orderCount + itemCount) > 6 && (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                    +{orderCount + itemCount - 6} more
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              <button onClick={() => setEditing(form)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', borderRadius: 8, background: 'var(--color-card)', cursor: 'pointer', color: 'var(--color-foreground)' }}>
-                <Edit2 size={13} /> Edit
-              </button>
-              <button onClick={() => handleDelete(form._id)} disabled={deleting === form._id}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', fontSize: 12, fontWeight: 600, border: '1px solid #F09595', borderRadius: 8, background: 'transparent', cursor: 'pointer', color: '#A32D2D' }}>
-                <Trash2 size={13} />
-              </button>
-            </div>
-          </div>
-        );
-      })}
-
-      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <style>{'@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}'}</style>
     </div>
   );
 }
