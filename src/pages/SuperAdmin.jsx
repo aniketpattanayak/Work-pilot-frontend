@@ -198,6 +198,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const [newPwd, setNewPwd]       = useState('');
   const [showPwd, setShowPwd]     = useState(false);
   const [features, setFeatures]   = useState({});
+  const [hrModules, setHrModules] = useState({ attendance: false, leave: false, payroll: false });
   const [customMongoUri, setCustomMongoUri]     = useState('');
   const [customWhatsappKey, setCustomWhatsappKey] = useState('');
   const [pauseReason, setPauseReason] = useState('');
@@ -216,6 +217,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       setRenewal(sa.renewalDate ? sa.renewalDate.slice(0,10) : '');
       setNote(sa.internalNote || '');
       setFeatures(sa.features || {});
+      setHrModules({ attendance: false, leave: false, payroll: false, ...(r.data.tenant?.hrModules || {}) });
       setCustomMongoUri(sa.customMongoUri || '');
       setCustomWhatsappKey(sa.customWhatsappKey || '');
     }).catch(()=>{});
@@ -735,6 +737,29 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/features`,{features}))}
                   disabled={saving} style={primaryBtn}>
                   <Save size={14}/>{saving?'Saving…':'Save features'}
+                </button>
+              </Section>
+
+              {/* HR modules (off for every company until switched on here) */}
+              <Section icon={Calendar} title="HR modules (Attendance, Leave, Payroll)" color={C.green} accent={C.greenL}>
+                <p style={{ fontSize:12, color:C.muted, margin:'0 0 12px' }}>These are off for every company until you switch them on. Payroll needs Attendance and Leave to be on first. Switching a module off hides it; nothing is deleted.</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+                  {[['attendance','Attendance'],['leave','Leave'],['payroll','Payroll']].map(([k, labelText]) => {
+                    const on = !!hrModules[k];
+                    return (
+                      <label key={k} aria-label={'HR module ' + labelText} onClick={()=>setHrModules(p=>({...p,[k]:!p[k]}))}
+                        style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                          padding:'10px 14px', border:`1px solid ${on?C.blue:C.border}`,
+                          borderRadius:8, cursor:'pointer', background: on?C.blueL:C.card, transition:'all .12s' }}>
+                        <span style={{ fontSize:13, fontWeight:500, color:on?C.text:C.muted2 }}>{labelText}</span>
+                        {on ? <ToggleRight size={20} color={C.blue}/> : <ToggleLeft size={20} color={C.muted2}/>}
+                      </label>
+                    );
+                  })}
+                </div>
+                <button onClick={()=>api(()=>SA.put(`/tasks/access/modules/${tenantId}`,{modules:hrModules}))}
+                  disabled={saving} style={primaryBtn}>
+                  <Save size={14}/>{saving?'Saving…':'Save HR modules'}
                 </button>
               </Section>
 
