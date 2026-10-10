@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone } from 'lucide-react';
+import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone, Trash2 } from 'lucide-react';
 import { useChat } from '../components/useChat';
+import { dialog } from '../components/Dialog';
 
 // ─── TINY HELPERS ─────────────────────────────────────────────────────────────
 function timeStr(date) {
@@ -169,7 +170,7 @@ export default function ChatPage({ currentUser }) {
     conversations, activeConvId, activeConversation,
     messages, typingUsers, loadingMsgs, employees,
     openConversation, closeConversation,
-    sendMessage, startDM, uploadFile, sendTyping,
+    sendMessage, startDM, deleteConversation, uploadFile, sendTyping,
   } = useChat();
 
   const [search, setSearch]       = useState('');
@@ -197,7 +198,24 @@ export default function ChatPage({ currentUser }) {
   const convName = conv?.displayName || 'Chat';
   const convTyping = typingUsers[activeConvId] || [];
   const isAnnouncement = conv?.type === 'announcement';
-  const canType = !isAnnouncement || currentUser?.role === 'Admin';
+  const isAdmin = currentUser?.role === 'Admin' || (Array.isArray(currentUser?.roles) && currentUser.roles.includes('Admin'));
+  const canType = !isAnnouncement || isAdmin;
+  const canDelete = !!conv && (!isAnnouncement || isAdmin);
+
+  const handleDelete = async () => {
+    const text = isAnnouncement
+      ? 'Delete this announcement for everyone?'
+      : `Delete this chat with ${convName}? It will disappear from your list. The other person keeps their copy.`;
+    if (!(await dialog.confirm(text, { title: 'Delete chat', danger: true, confirmText: 'Delete' }))) return;
+    try {
+      await deleteConversation(activeConvId);
+    } catch (err) {
+      await dialog.alert(err.response?.data?.message || 'Could not delete this chat. Please try again.', { tone: 'error', title: 'Not deleted' });
+    }
+  };
+
+  // People for the "+ New" list (shown instead of the conversation list)
+  const people = (Array.isArray(employees) ? employees : []).filter(e => !search || (e.name || '').toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div style={{
@@ -212,7 +230,7 @@ export default function ChatPage({ currentUser }) {
         <div style={{ padding:'16px 16px 10px', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
             <span style={{ fontSize:17, fontWeight:700 }}>Messages</span>
-            <button onClick={()=>setShowNewDM(p=>!p)}
+            <button onClick={()=>{ setShowNewDM(p=>!p); setSearch(''); }}
               style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 10px', background:showNewDM?'#185FA5':'var(--color-muted)', color:showNewDM?'white':'var(--color-foreground)', border:'none', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', transition:'all .15s' }}>
               <Plus size={13}/> New
             </button>
@@ -221,14 +239,14 @@ export default function ChatPage({ currentUser }) {
           {/* Search */}
           <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--color-muted)', borderRadius:10, padding:'8px 12px', marginBottom:10 }}>
             <Search size={13} style={{ color:'var(--color-muted-foreground)', flexShrink:0 }}/>
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search conversations…"
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={showNewDM ? 'Search people…' : 'Search conversations…'}
               style={{ background:'none', border:'none', outline:'none', fontSize:13, color:'var(--color-foreground)', width:'100%' }}/>
           </div>
 
           {/* Filters */}
           <div style={{ display:'flex', gap:4 }}>
             {[['all','All'],['dm','DM'],['task','📋'],['announcement','📢']].map(([f,label])=>(
-              <button key={f} onClick={()=>setFilter(f)}
+              <button key={f} onClick={()=>{ setFilter(f); setShowNewDM(false); }}
                 style={{ flex:1, padding:'5px 0', fontSize:11, fontWeight:600, borderRadius:7, border:'none', cursor:'pointer', background: filter===f?'#185FA5':'var(--color-muted)', color: filter===f?'white':'var(--color-muted-foreground)', transition:'all .12s' }}>
                 {label}
               </button>
@@ -236,44 +254,42 @@ export default function ChatPage({ currentUser }) {
           </div>
         </div>
 
-        {/* New DM picker */}
-        {showNewDM && (
-          <div style={{ margin:'0 8px 8px', background:'var(--color-muted)', borderRadius:10, overflow:'hidden', flexShrink:0 }}>
-            <div style={{ padding:'8px 12px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em', color:'var(--color-muted-foreground)' }}>
+        {showNewDM ? (
+          /* + New: only the people list is shown */
+          <div style={{ flex:1, overflowY:'auto', paddingBottom:8 }}>
+            <div style={{ padding:'4px 16px 8px', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em', color:'var(--color-muted-foreground)' }}>
               Start a conversation
             </div>
-            <div style={{ maxHeight:180, overflowY:'auto' }}>
-              {employees.map(emp=>(
-                <div key={emp._id}
-                  onClick={async()=>{ await startDM(emp._id); setShowNewDM(false); }}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', cursor:'pointer', borderTop:'1px solid var(--color-border)' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='var(--color-background)'}
-                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                  <Avatar name={emp.name} size={30}/>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:600 }}>{emp.name}</div>
-                    <div style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>{emp.role || emp.roles?.[0] || ''}</div>
-                  </div>
+            {people.map(emp=>(
+              <div key={emp._id}
+                onClick={async()=>{ await startDM(emp._id); setShowNewDM(false); setSearch(''); setFilter('all'); }}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', cursor:'pointer', borderRadius:10, margin:'2px 6px' }}
+                onMouseEnter={e=>e.currentTarget.style.background='var(--color-muted)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                <Avatar name={emp.name} size={32}/>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{emp.name}</div>
+                  <div style={{ fontSize:11, color:'var(--color-muted-foreground)' }}>{emp.role || emp.roles?.[0] || ''}</div>
                 </div>
-              ))}
-              {employees.length === 0 && <div style={{ padding:'12px', fontSize:12, color:'var(--color-muted-foreground)', textAlign:'center' }}>No employees found</div>}
-            </div>
+              </div>
+            ))}
+            {people.length === 0 && <div style={{ padding:'24px 12px', fontSize:12, color:'var(--color-muted-foreground)', textAlign:'center' }}>{search ? 'No matching people' : 'No employees found'}</div>}
+          </div>
+        ) : (
+          /* List */
+          <div style={{ flex:1, overflowY:'auto', paddingBottom:8 }}>
+            {filtered.length === 0 && (
+              <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--color-muted-foreground)' }}>
+                <MessageSquare size={32} style={{ opacity:.15, margin:'0 auto 10px' }}/>
+                <div style={{ fontSize:13 }}>{search ? 'No results' : 'No conversations yet'}</div>
+                {!search && <div style={{ fontSize:12, marginTop:4 }}>Click "+ New" to start chatting</div>}
+              </div>
+            )}
+            {filtered.map(c=>(
+              <ConvItem key={c._id} conv={c} active={c._id===activeConvId} onClick={()=>openConversation(c._id)}/>
+            ))}
           </div>
         )}
-
-        {/* List */}
-        <div style={{ flex:1, overflowY:'auto', paddingBottom:8 }}>
-          {filtered.length === 0 && (
-            <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--color-muted-foreground)' }}>
-              <MessageSquare size={32} style={{ opacity:.15, margin:'0 auto 10px' }}/>
-              <div style={{ fontSize:13 }}>{search ? 'No results' : 'No conversations yet'}</div>
-              {!search && <div style={{ fontSize:12, marginTop:4 }}>Click "+ New" to start chatting</div>}
-            </div>
-          )}
-          {filtered.map(c=>(
-            <ConvItem key={c._id} conv={c} active={c._id===activeConvId} onClick={()=>openConversation(c._id)}/>
-          ))}
-        </div>
       </div>
 
       {/* ── RIGHT PANEL ── */}
@@ -304,6 +320,14 @@ export default function ChatPage({ currentUser }) {
                 {conv?.type === 'dm' ? 'Direct message' : conv?.type === 'task' ? 'Task thread' : 'Announcement'}
               </div>
             </div>
+            {canDelete && (
+              <button onClick={handleDelete} title="Delete chat" aria-label="Delete chat"
+                style={{ background:'none', border:'none', cursor:'pointer', padding:8, display:'flex', color:'var(--color-muted-foreground)', borderRadius:8 }}
+                onMouseEnter={e=>{ e.currentTarget.style.color='#dc2626'; e.currentTarget.style.background='var(--color-muted)'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.color='var(--color-muted-foreground)'; e.currentTarget.style.background='none'; }}>
+                <Trash2 size={17}/>
+              </button>
+            )}
           </div>
 
           {/* Messages */}

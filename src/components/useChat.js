@@ -49,6 +49,13 @@ function getSocket() {
   });
   _socket.on('new_message', (msg) => {
     const convId = msg.conversationId;
+    if (!_conversations.some(c => c._id === convId)) {
+      API.get('/chat/conversations').then(r => {
+        _conversations = r.data || [];
+        _totalUnread = _conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+        notify();
+      }).catch(() => {});
+    }
     const existing = _messages[convId] || [];
     if (existing.some(m => m._id === msg._id)) return;
     _messages = { ..._messages, [convId]: [...existing, msg] };
@@ -206,13 +213,33 @@ export function useChat() {
 
   const startDM = useCallback(async (otherEmployeeId) => {
     const res = await API.post('/chat/dm', { otherEmployeeId });
-    const conv = res.data;
-    if (!_conversations.some(c => c._id === conv._id)) {
+    const conv = { ...res.data };
+    // List the chat under the person's name (older servers do not send it)
+    if (!conv.displayName) conv.displayName = _employees.find(e => e._id === otherEmployeeId)?.name || 'Direct Message';
+    if (_conversations.some(c => c._id === conv._id)) {
+      _conversations = _conversations.map(c => c._id === conv._id ? { ...c, displayName: c.displayName || conv.displayName } : c);
+    } else {
       _conversations = [conv, ..._conversations];
     }
     await openConversation(conv._id);
     return conv;
   }, [openConversation]);
+
+  // Delete chat: hides it for this person only (the server keeps the messages for everyone else)
+  const deleteConversation = useCallback(async (convId) => {
+    await API.delete(`/chat/${convId}`);
+    const socket = getSocket();
+    if (_activeConvId === convId) {
+      if (socket?.connected) socket.emit('leave_conversation', convId);
+      _activeConvId = null;
+    }
+    const gone = _conversations.find(c => c._id === convId);
+    _conversations = _conversations.filter(c => c._id !== convId);
+    const { [convId]: _drop, ...restMsgs } = _messages;
+    _messages = restMsgs;
+    _totalUnread = Math.max(0, _totalUnread - (gone?.unreadCount || 0));
+    notify();
+  }, []);
 
   const createGroup = useCallback(async ({ title, participants, groupAvatar }) => {
     const res = await API.post('/chat/group', { title, participants, groupAvatar });
@@ -273,6 +300,7 @@ export function useChat() {
     closeConversation,
     sendMessage,
     startDM,
+    deleteConversation,
     createGroup,
     openTaskThread,
     sendTyping,
