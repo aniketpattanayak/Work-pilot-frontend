@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
 import { isViewerOnly } from '../utils/viewerMode';
 import { Mail, Calendar, Download, Save, Clock, FileText, Send } from 'lucide-react';
 
 const ReportsTab = ({ tenantId }) => {
   const isViewer = isViewerOnly();
+  const tid = tenantId || localStorage.getItem('tenantId');
+  const [downloading, setDownloading] = useState(null); // 'weekly' | 'monthly' | null
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [settings, setSettings] = useState({
@@ -15,8 +18,8 @@ const ReportsTab = ({ tenantId }) => {
 
   // 1. Load existing factory settings on mount
   useEffect(() => {
-    if (tenantId) {
-      API.get(`/reports/settings/${tenantId}`)
+    if (tid) {
+      API.get(`/reports/settings/${tid}`)
         .then(res => {
           if (res.data) {
             setSettings({
@@ -28,34 +31,51 @@ const ReportsTab = ({ tenantId }) => {
         })
         .catch(err => console.error("Error loading report settings:", err));
     }
-  }, [tenantId]);
+  }, [tid]);
 
   // 2. Save factory-specific preferences
   const handleSave = async () => {
-    if (!settings.reportEmail) return alert("Please enter an email address first.");
+    const email = (settings.reportEmail || '').trim();
+    if (!email) { await dialog.alert('Please enter an email address first.', { tone: 'error', title: 'Email needed' }); return; }
+    if (!/^\S+@\S+\.\S+$/.test(email)) { await dialog.alert('Please enter a valid email address.', { tone: 'error', title: 'Check the email' }); return; }
+    const day = Number(settings.monthlyReportDate);
+    if (!Number.isInteger(day) || day < 1 || day > 31) { await dialog.alert('Monthly date must be a number from 1 to 31.', { tone: 'error', title: 'Check the date' }); return; }
     setLoading(true);
     try {
-      await API.post('/reports/settings', { ...settings, tenantId });
-      alert("Success! Your reporting preferences have been saved.");
+      await API.post('/reports/settings', { ...settings, reportEmail: email, tenantId: tid });
+      await dialog.alert('Your reporting preferences have been saved.', { tone: 'success', title: 'Saved' });
     } catch (err) {
-      alert("Failed to save settings. Please try again.");
+      await dialog.alert(err.response?.data?.message || 'Failed to save settings. Please try again.', { tone: 'error', title: 'Not saved' });
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Trigger a manual download of the "Who-Did-What" log
-  const downloadManual = async (range) => {
-    // Uses Vite's env if it exists, otherwise falls back to your local port
-    //const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    
-    
-    
-    
-    
-    // This opens the direct download link we created in the backend
+  // The server sends a JSON error as a blob when a download fails; read the reason out of it
+  const downloadError = async (err) => {
+    let reason = '';
     try {
-      const res = await API.get(`/reports/download/${tenantId}`, { params: { range }, responseType: 'blob' });
+      const d = err?.response?.data;
+      if (d && typeof d.text === 'function') {
+        const t = await d.text();
+        try { const j = JSON.parse(t); reason = [j.message, j.error].filter(Boolean).join(' — '); } catch { reason = t.slice(0, 200); }
+      } else if (d?.message) { reason = d.message; }
+    } catch { /* keep the generic text */ }
+    const status = err?.response?.status ? ' (HTTP ' + err.response.status + ')' : '';
+    return (reason || err?.message || 'Unknown error') + status;
+  };
+
+  // 3. Download the "Who-Did-What" report for the last 7 / 30 days as an Excel file
+  const downloadManual = async (range) => {
+    if (!tid) { await dialog.alert('Your company could not be identified. Please refresh the page and try again.', { tone: 'error', title: 'Cannot download' }); return; }
+    if (downloading) return;
+    setDownloading(range);
+    try {
+      const res = await API.get(`/reports/download/${tid}`, { params: { range }, responseType: 'blob' });
+      const type = res.data?.type || '';
+      if (type.includes('json') || type.startsWith('text/')) {
+        throw Object.assign(new Error('The server did not send a spreadsheet.'), { response: { data: res.data, status: res.status } });
+      }
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
@@ -66,28 +86,30 @@ const ReportsTab = ({ tenantId }) => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Report download failed:', err);
-      alert('Failed to download the report. Please try again.');
+      await dialog.alert('Could not download the report.\n' + (await downloadError(err)), { tone: 'error', title: 'Download failed' });
+    } finally {
+      setDownloading(null);
     }
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="px-6 pt-2 pb-6 max-w-5xl mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* HEADER SECTION */}
-      <div className="bg-slate-900 p-8 rounded-[2.5rem] border-b-8 border-primary shadow-2xl relative overflow-hidden">
+      <div className="bg-slate-900 px-6 py-4 rounded-3xl border-b-4 border-primary shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <h2 className="text-white text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-            <FileText className="text-primary" size={32} /> Reports & Analytics Hub
+          <h2 className="text-white text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
+            <FileText className="text-primary" size={26} /> Reports & Analytics Hub
           </h2>
-          <p className="text-slate-400 text-xs font-bold uppercase mt-2 tracking-widest">
+          <p className="text-slate-400 text-xs font-bold uppercase mt-1 tracking-widest">
             Detailed "Who-Did-What" Logs for Factory Admins
           </p>
         </div>
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-            <FileText size={120} className="text-white"/>
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+            <FileText size={80} className="text-white"/>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* AUTOMATION SETTINGS CARD */}
         {!isViewer && (
 <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl space-y-8">
@@ -156,29 +178,29 @@ const ReportsTab = ({ tenantId }) => {
           </h3>
           <div className="bg-white p-6 rounded-2xl border border-slate-200">
              <p className="text-slate-500 text-xs font-bold leading-relaxed italic">
-                Get a clean ".txt" log showing every completed task, the doer name, and the exact timestamp. No counts—just the real work facts.
+                Get an Excel spreadsheet showing every task, who did it, the status and when it was completed. No guesses—just the real work facts.
              </p>
           </div>
           
           <div className="space-y-4 pt-2">
             <button 
-                onClick={() => downloadManual('weekly')} 
+                onClick={() => downloadManual('weekly')} disabled={!!downloading} style={downloading ? { opacity: 0.6 } : undefined} 
                 className="w-full bg-white border-2 border-slate-100 p-5 rounded-2xl font-black uppercase text-[11px] hover:border-primary hover:text-primary transition-all flex justify-between items-center group shadow-sm"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-primary/10"><Clock size={16}/></div>
-                Download Last 7 Days
+                {downloading === 'weekly' ? 'Preparing…' : 'Download Last 7 Days'}
               </div>
               <Download size={16} className="text-slate-300 group-hover:text-primary"/>
             </button>
 
             <button 
-                onClick={() => downloadManual('monthly')} 
+                onClick={() => downloadManual('monthly')} disabled={!!downloading} style={downloading ? { opacity: 0.6 } : undefined} 
                 className="w-full bg-white border-2 border-slate-100 p-5 rounded-2xl font-black uppercase text-[11px] hover:border-primary hover:text-primary transition-all flex justify-between items-center group shadow-sm"
             >
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-primary/10"><Calendar size={16}/></div>
-                Download Last 30 Days
+                {downloading === 'monthly' ? 'Preparing…' : 'Download Last 30 Days'}
               </div>
               <Download size={16} className="text-slate-300 group-hover:text-primary"/>
             </button>
