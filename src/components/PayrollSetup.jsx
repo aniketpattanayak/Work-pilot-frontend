@@ -15,13 +15,14 @@ const err = (e, d) => e?.response?.data?.message || d;
 const STAT_DEFAULTS = {
   pf: { enabled: false, capWages: true, wageCeiling: 15000, employeePct: 12, employerPct: 12, epsPct: 8.33, epsCeiling: 15000, adminPct: 0.5, edliPct: 0.5 },
   esi: { enabled: false, grossLimit: 21000, employeePct: 0.75, employerPct: 3.25 },
-  pt: { enabled: false, state: '', slabs: [] }
+  pt: { enabled: false, state: '', slabs: [] },
+  tds: { enabled: false, defaultRegime: 'new' }
 };
 const fromServer = (config) => {
   const st = config.statutory || {};
   return {
     ...config, components: (config.components || []).map((c) => ({ ...c })),
-    statutory: { pf: { ...STAT_DEFAULTS.pf, ...(st.pf || {}) }, esi: { ...STAT_DEFAULTS.esi, ...(st.esi || {}) }, pt: { ...STAT_DEFAULTS.pt, ...(st.pt || {}), slabs: ((st.pt && st.pt.slabs) || []).map((x) => ({ ...x })) } }
+    statutory: { pf: { ...STAT_DEFAULTS.pf, ...(st.pf || {}) }, esi: { ...STAT_DEFAULTS.esi, ...(st.esi || {}) }, pt: { ...STAT_DEFAULTS.pt, ...(st.pt || {}), slabs: ((st.pt && st.pt.slabs) || []).map((x) => ({ ...x })) }, tds: { ...STAT_DEFAULTS.tds, ...(st.tds || {}) } }
   };
 };
 
@@ -75,7 +76,7 @@ const PayrollSetup = ({ can }) => {
         employerName: cfg.employerName || '', employerAddress: cfg.employerAddress || '',
         components: cfg.components.map((c) => ({ key: c.key, name: c.name, type: c.type, calc: c.calc, value: Number(c.value), prorate: !!c.prorate, active: c.active !== false, pf: c.type === 'earning' && !!c.pf })),
         statutory: {
-          pf: { ...cfg.statutory.pf }, esi: { ...cfg.statutory.esi },
+          pf: { ...cfg.statutory.pf }, esi: { ...cfg.statutory.esi }, tds: { enabled: !!cfg.statutory.tds.enabled, defaultRegime: cfg.statutory.tds.defaultRegime === 'old' ? 'old' : 'new' },
           pt: { enabled: !!cfg.statutory.pt.enabled, state: cfg.statutory.pt.state || '', slabs: cfg.statutory.pt.slabs.map((x) => ({ from: Number(x.from), amount: Number(x.amount), ...(x.febAmount !== undefined && x.febAmount !== null && x.febAmount !== '' ? { febAmount: Number(x.febAmount) } : {}) })) }
         }
       };
@@ -188,6 +189,16 @@ const PayrollSetup = ({ can }) => {
                 </div>
                 {canConfig && <button type="button" className={ghost} onClick={addSlab}><Plus size={12} className="inline mr-1" />Add slab</button>}
                 <p className="text-[10px] font-bold text-muted-foreground">The slab with the highest "from" that is at or below the month's gross applies. Remove any "Professional Tax" line from salary components so it is not deducted twice. States that collect twice a year are not covered: enter the yearly amount spread over months if your state allows.</p>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="flex items-center gap-2 text-sm font-black text-foreground cursor-pointer"><input type="checkbox" aria-label="Income tax on" checked={!!cfg.statutory.tds.enabled} onChange={(e) => setStat('tds', 'enabled', e.target.checked)} />Income tax on salary (TDS)</label>
+            {cfg.statutory.tds.enabled && (
+              <div className="mt-3 space-y-3 max-w-md">
+                <div><label className={label}>Regime used when a person has not chosen one</label>
+                  <select aria-label="Default tax regime" className={input} value={cfg.statutory.tds.defaultRegime} onChange={(e) => setStat('tds', 'defaultRegime', e.target.value)}><option value="new">New regime</option><option value="old">Old regime</option></select></div>
+                <p className="text-[10px] font-bold text-muted-foreground">Each month, tax is worked out for the whole year (salary so far, this month, and the months to come) and the balance is spread over the months left. A person's regime, investments and earlier income go in their salary form under "Income tax declaration". Bonuses raise that month's tax. Perquisites, two employers at once and surcharge relief are not handled, so ask your CA to review the first runs.</p>
               </div>
             )}
           </div>

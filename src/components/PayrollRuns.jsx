@@ -56,6 +56,17 @@ const LineEditor = ({ run, line, editable, onClose, onSaved }) => {
           <div><p className={label}>Earnings</p>{base(line.earnings).map((e) => <div key={e.key} className="flex justify-between border-b border-border py-1"><span>{e.name}</span><span>{inr(e.amount)}</span></div>)}</div>
           <div><p className={label}>Deductions</p>{base(line.deductions).length ? base(line.deductions).map((e) => <div key={e.key} className="flex justify-between border-b border-border py-1"><span>{e.name}</span><span>{inr(e.amount)}</span></div>) : <p className="text-muted-foreground py-1">None</p>}</div>
         </div>
+        {line.statutoryInfo && line.statutoryInfo.tds && (
+          <div className="mb-4 text-sm font-bold text-foreground">
+            <p className={label}>Income tax working ({line.statutoryInfo.tds.regime === 'old' ? 'old' : 'new'} regime, year {line.statutoryInfo.tds.fy})</p>
+            <div className="flex justify-between border-b border-border py-1"><span>Income for the year (projected)</span><span>{inr(line.statutoryInfo.tds.projectedIncome)}</span></div>
+            {(line.statutoryInfo.tds.deductions || []).map((d) => <div key={d.name} className="flex justify-between border-b border-border py-1"><span>Less: {d.name}</span><span>{inr(d.amount)}</span></div>)}
+            <div className="flex justify-between border-b border-border py-1"><span>Taxable income</span><span>{inr(line.statutoryInfo.tds.taxable)}</span></div>
+            <div className="flex justify-between border-b border-border py-1"><span>Tax for the year (with cess)</span><span>{inr(line.statutoryInfo.tds.annualTax)}</span></div>
+            <div className="flex justify-between border-b border-border py-1"><span>Already deducted this year</span><span>{inr(line.statutoryInfo.tds.alreadyDeducted)}</span></div>
+            <div className="flex justify-between py-1"><span>Divided over {line.statutoryInfo.tds.monthsLeft} month(s) left</span><span>{inr((line.deductions.find((x) => x.key === 'tds') || { amount: 0 }).amount)}</span></div>
+          </div>
+        )}
         {(line.employer || []).length > 0 && (
           <div className="mb-4 text-sm font-bold text-foreground">
             <p className={label}>Employer contributions (paid by the company, not taken from the pay)</p>
@@ -131,7 +142,7 @@ const RunDetail = ({ runId, can, onBack }) => {
     if (!(await dialog.confirm(`Release the payroll for ${monthLabel(run.month)}? Payslips become visible to ${t.count} people and this payroll is locked.`, { confirmText: 'Release' }))) return;
     act(() => API.put(`/tasks/payroll/runs/${run._id}/release`, {}), 'Payroll released. Payslips are now visible to employees.');
   };
-  const file = (kind) => act(async () => { const r = await API.get(`/tasks/payroll/runs/${run._id}/export`, { params: { kind } }); downloadCsv(r.data.filename, r.data.csv); });
+  const file = (kind) => act(async () => { const r = await API.get(`/tasks/payroll/runs/${run._id}/export`, { params: { kind } }); downloadCsv(r.data.filename, r.data.csv, r.data.plain); if ((r.data.notes || []).length) await dialog.alert(r.data.notes.join(' '), { tone: 'warning' }); });
 
   const draft = run.status === 'Draft';
   return (
@@ -148,6 +159,9 @@ const RunDetail = ({ runId, can, onBack }) => {
             {run.status === 'Approved' && can('payroll.release') && <button type="button" className={primary} disabled={busy} onClick={release}>Release payslips</button>}
             {can('payroll.export') && <button type="button" className={ghost} disabled={busy} onClick={() => file('register')}><Download size={12} className="inline mr-1" />Payroll register</button>}
             {can('payroll.export') && run.status !== 'Draft' && <button type="button" className={ghost} disabled={busy} onClick={() => file('bank')}><Download size={12} className="inline mr-1" />Bank file</button>}
+            {can('payroll.export') && run.status !== 'Draft' && [['pf', 'pf', 'PF return file'], ['esi', 'esi', 'ESI file'], ['pt', 'pt', 'Professional tax'], ['tds', 'tds', 'TDS summary']].filter(([, key]) => run.statutory && run.statutory[key] && run.statutory[key].enabled).map(([kind, , name]) => (
+              <button key={kind} type="button" className={ghost} disabled={busy} onClick={() => file(kind)}><Download size={12} className="inline mr-1" />{name}</button>
+            ))}
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

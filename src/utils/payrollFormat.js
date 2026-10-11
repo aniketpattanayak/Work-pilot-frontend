@@ -29,8 +29,9 @@ export const rupeesInWords = (amount) => {
   return words.charAt(0).toUpperCase() + words.slice(1) + ' only';
 };
 
-export const downloadCsv = (filename, csv) => {
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+export const downloadCsv = (filename, csv, plain) => {
+  // plain: a text file for a government upload portal (the PF return file), so no byte-order mark is added
+  const blob = new Blob([plain ? csv : '﻿' + csv], { type: plain ? 'text/plain;charset=utf-8' : 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;

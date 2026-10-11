@@ -119,6 +119,7 @@ const Editor = ({ person, canEdit, onClose, onSaved }) => {
                 <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Leave out of professional tax" checked={form.ptExempt} onChange={(e) => setForm({ ...form, ptExempt: e.target.checked })} />No professional tax</label>
               </div>
             </div>
+            <Declaration person={person} />
             <div><label className={label}>Note (optional)</label><input aria-label="Note" className={input} maxLength={200} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="For example: annual increment" /></div>
             <button type="button" className={primary} onClick={save}>Save salary</button>
           </div>
@@ -138,6 +139,48 @@ const Editor = ({ person, canEdit, onClose, onSaved }) => {
           <PayslipHistory person={person} />
         </div>
       </div>
+    </div>
+  );
+};
+
+// Income tax declaration for the current financial year (used for TDS when the company has it switched on)
+const DECL_FIELDS = [['section80C', 'Investments under 80C (PF is added automatically)'], ['section80D', 'Health insurance (80D)'], ['nps80CCD1B', 'NPS extra (80CCD(1B))'], ['homeLoanInterest', 'Home loan interest'], ['hraExemption', 'House rent exemption'], ['otherDeductions', 'Other deductions']];
+const Declaration = ({ person }) => {
+  const [d, setD] = useState(null);
+  const [meta, setMeta] = useState({});
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    API.get(`/tasks/payroll/declarations/${person._id}`).then((r) => { if (live) { setD({ ...r.data.declaration }); setMeta({ fy: r.data.fy, defaultRegime: r.data.defaultRegime, tdsOn: r.data.tdsOn }); } }).catch(() => {});
+    return () => { live = false; };
+  }, [person._id]);
+  if (!d) return null;
+  const set = (k, v) => setD((x) => ({ ...x, [k]: v }));
+  const regime = d.regime || meta.defaultRegime || 'new';
+  const save = async () => {
+    setBusy(true);
+    try {
+      await API.put(`/tasks/payroll/declarations/${person._id}`, { fy: meta.fy, ...d });
+      await dialog.alert('Tax declaration saved. Press Recalculate on a draft payroll to use it.', { tone: 'success' });
+    } catch (e) { await dialog.alert(err(e, 'Could not save the tax declaration.'), { tone: 'error' }); }
+    setBusy(false);
+  };
+  return (
+    <div>
+      <label className={label}>Income tax declaration for {meta.fy}</label>
+      <p className="text-[10px] font-bold text-muted-foreground mt-1">{meta.tdsOn ? 'Used to work out tax deducted from the salary.' : 'Income tax is not switched on for the company yet (Setup), so this is not used.'}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+        <div><label className={label}>Tax regime</label>
+          <select aria-label="Tax regime" className={input} value={d.regime} onChange={(e) => set('regime', e.target.value)}>
+            <option value="">Company default ({meta.defaultRegime === 'old' ? 'old' : 'new'})</option><option value="new">New regime</option><option value="old">Old regime</option>
+          </select></div>
+        <div />
+        {regime === 'old' && DECL_FIELDS.map(([k, t]) => <div key={k}><label className={label}>{t}</label><input aria-label={t} type="number" min="0" step="any" className={input} value={d[k]} onChange={(e) => set(k, e.target.value)} /></div>)}
+        <div><label className={label}>Salary already paid this year before this payroll</label><input aria-label="Earlier income" type="number" min="0" step="any" className={input} value={d.prevIncome} onChange={(e) => set('prevIncome', e.target.value)} /></div>
+        <div><label className={label}>Tax already deducted on that</label><input aria-label="Earlier tax" type="number" min="0" step="any" className={input} value={d.prevTds} onChange={(e) => set('prevTds', e.target.value)} /></div>
+      </div>
+      <p className="text-[10px] font-bold text-muted-foreground mt-1">Earlier income means salary from April to the first month run here, or from a previous employer. Leave it at 0 if Work-Pilot paid this person since April.</p>
+      <button type="button" className={`${ghost} mt-2`} disabled={busy} onClick={save}>Save tax declaration</button>
     </div>
   );
 };
