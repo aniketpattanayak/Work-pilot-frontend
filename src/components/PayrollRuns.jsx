@@ -56,6 +56,13 @@ const LineEditor = ({ run, line, editable, onClose, onSaved }) => {
           <div><p className={label}>Earnings</p>{base(line.earnings).map((e) => <div key={e.key} className="flex justify-between border-b border-border py-1"><span>{e.name}</span><span>{inr(e.amount)}</span></div>)}</div>
           <div><p className={label}>Deductions</p>{base(line.deductions).length ? base(line.deductions).map((e) => <div key={e.key} className="flex justify-between border-b border-border py-1"><span>{e.name}</span><span>{inr(e.amount)}</span></div>) : <p className="text-muted-foreground py-1">None</p>}</div>
         </div>
+        {(line.employer || []).length > 0 && (
+          <div className="mb-4 text-sm font-bold text-foreground">
+            <p className={label}>Employer contributions (paid by the company, not taken from the pay)</p>
+            {line.employer.map((e) => <div key={e.key} className="flex justify-between border-b border-border py-1"><span>{e.name}</span><span>{inr(e.amount)}</span></div>)}
+            <div className="flex justify-between py-1"><span>Total employer cost</span><span>{inr(line.employerTotal)}</span></div>
+          </div>
+        )}
         <div>
           <p className={label}>Additions and recoveries (bonus, advance recovery ...)</p>
           <div className="space-y-2 mt-2">
@@ -144,7 +151,7 @@ const RunDetail = ({ runId, can, onBack }) => {
           </div>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Stat title="People paid" value={t.count || 0} /><Stat title="Gross" value={`Rs. ${inr(t.gross)}`} /><Stat title="Deductions" value={`Rs. ${inr(t.deductions)}`} /><Stat title="Net pay" value={`Rs. ${inr(t.net)}`} /><Stat title="On hold" value={t.held || 0} />
+          <Stat title="People paid" value={t.count || 0} /><Stat title="Gross" value={`Rs. ${inr(t.gross)}`} /><Stat title="Deductions" value={`Rs. ${inr(t.deductions)}`} /><Stat title="Net pay" value={`Rs. ${inr(t.net)}`} /><Stat title="On hold" value={t.held || 0} />{t.employer > 0 && <Stat title="Employer PF/ESI" value={`Rs. ${inr(t.employer)}`} />}
         </div>
         {draft && attention.length > 0 && <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 mt-4"><AlertTriangle size={13} className="inline mr-1" />{attention.length} {attention.length === 1 ? 'person needs' : 'people need'} a look before approval</p>}
         {draft && <p className="text-[11px] font-bold text-muted-foreground mt-3">This is a draft. Days come from Attendance and approved Leave. If you correct attendance, press Recalculate.</p>}

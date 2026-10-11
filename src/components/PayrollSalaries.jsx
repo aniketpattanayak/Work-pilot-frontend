@@ -26,7 +26,9 @@ const Editor = ({ person, canEdit, onClose, onSaved }) => {
       items[c.key] = it ? { on: true, amount: String(it.amount), auto: false } : { on: false, amount: String(defaultAmount(c, basic)), auto: true };
     });
     const b = (version && version.bank) || {};
-    return { effectiveFrom: todayIST().slice(0, 8) + '01', basic, items, bank: { accountName: b.accountName || '', bankName: b.bankName || '', accountNumber: '', ifsc: b.ifsc || '' }, bankHint: b.accountNumber || '', note: '' };
+    return { effectiveFrom: todayIST().slice(0, 8) + '01', basic, items, bank: { accountName: b.accountName || '', bankName: b.bankName || '', accountNumber: '', ifsc: b.ifsc || '' }, bankHint: b.accountNumber || '', note: '',
+      uan: (version && version.uan) || '', esiNumber: (version && version.esiNumber) || '', pan: (version && version.pan) || '',
+      pfExempt: !!(version && version.pfExempt), esiExempt: !!(version && version.esiExempt), ptExempt: !!(version && version.ptExempt) };
   }, []);
 
   useEffect(() => {
@@ -57,7 +59,8 @@ const Editor = ({ person, canEdit, onClose, onSaved }) => {
       await API.put(`/tasks/payroll/salaries/${person._id}`, {
         effectiveFrom: form.effectiveFrom, basic: Number(form.basic),
         items: comps.filter((c) => form.items[c.key].on).map((c) => ({ key: c.key, amount: Number(form.items[c.key].amount) })),
-        bank: form.bank, note: form.note
+        bank: form.bank, note: form.note,
+        uan: form.uan, esiNumber: form.esiNumber, pan: form.pan, pfExempt: form.pfExempt, esiExempt: form.esiExempt, ptExempt: form.ptExempt
       });
       await dialog.alert('Salary saved.', { tone: 'success' });
       onSaved();
@@ -100,6 +103,20 @@ const Editor = ({ person, canEdit, onClose, onSaved }) => {
                 <input aria-label="Bank name" className={input} placeholder="Bank name" maxLength={80} value={form.bank.bankName} onChange={(e) => setForm({ ...form, bank: { ...form.bank, bankName: e.target.value } })} />
                 <input aria-label="Account number" className={input} placeholder={form.bankHint ? `Saved: ${form.bankHint} (leave empty to keep)` : 'Account number'} maxLength={30} value={form.bank.accountNumber} onChange={(e) => setForm({ ...form, bank: { ...form.bank, accountNumber: e.target.value } })} />
                 <input aria-label="IFSC" className={input} placeholder="IFSC (for example HDFC0001234)" maxLength={15} value={form.bank.ifsc} onChange={(e) => setForm({ ...form, bank: { ...form.bank, ifsc: e.target.value } })} />
+              </div>
+            </div>
+            <div>
+              <label className={label}>PF, ESI and tax details</label>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1">Used when the company has PF, ESI or professional tax switched on. Tick "left out" for someone who should not have it deducted.</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <input aria-label="UAN" className={input} placeholder="UAN (12 digits)" maxLength={14} value={form.uan} onChange={(e) => setForm({ ...form, uan: e.target.value })} />
+                <input aria-label="ESI number" className={input} placeholder="ESI number" maxLength={20} value={form.esiNumber} onChange={(e) => setForm({ ...form, esiNumber: e.target.value })} />
+                <input aria-label="PAN" className={input} placeholder="PAN (ABCDE1234F)" maxLength={12} value={form.pan} onChange={(e) => setForm({ ...form, pan: e.target.value })} />
+              </div>
+              <div className="flex flex-wrap gap-4 mt-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Leave out of PF" checked={form.pfExempt} onChange={(e) => setForm({ ...form, pfExempt: e.target.checked })} />Left out of PF</label>
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Leave out of ESI" checked={form.esiExempt} onChange={(e) => setForm({ ...form, esiExempt: e.target.checked })} />Left out of ESI</label>
+                <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Leave out of professional tax" checked={form.ptExempt} onChange={(e) => setForm({ ...form, ptExempt: e.target.checked })} />No professional tax</label>
               </div>
             </div>
             <div><label className={label}>Note (optional)</label><input aria-label="Note" className={input} maxLength={200} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="For example: annual increment" /></div>

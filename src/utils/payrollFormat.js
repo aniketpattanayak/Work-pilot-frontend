@@ -61,12 +61,13 @@ export const payslipHtml = (p, company) => {
   @media print{body{padding:0}.box{border:none}}
 </style></head><body><div class="box">
 <div class="head"><h1>${esc((company && company.name) || '')}</h1>${company && company.address ? `<div>${esc(company.address)}</div>` : ''}<h2>Payslip for ${esc(monthLabel(p.month))}</h2></div>
-<div class="grid"><div><b>Name:</b> ${esc(p.name)}<br><b>Department:</b> ${esc(p.department || '-')}</div>
+<div class="grid"><div><b>Name:</b> ${esc(p.name)}<br><b>Department:</b> ${esc(p.department || '-')}${p.ids && p.ids.uan ? `<br><b>UAN:</b> ${esc(p.ids.uan)}` : ''}${p.ids && p.ids.esiNumber ? `<br><b>ESI no:</b> ${esc(p.ids.esiNumber)}` : ''}${p.ids && p.ids.pan ? `<br><b>PAN:</b> ${esc(p.ids.pan)}` : ''}</div>
 <div><b>Days in month:</b> ${esc(d.daysInMonth)}<br><b>Paid days:</b> ${esc(d.payableDays)}<br><b>Unpaid days:</b> ${esc(d.unpaidDays)}</div>
 <div><b>Bank:</b> ${esc(bank.bankName || '-')}<br><b>Account:</b> ${esc(bank.accountNumber || '-')}<br><b>IFSC:</b> ${esc(bank.ifsc || '-')}</div></div>
 <div class="grid"><div><table><tr><th>Earnings</th><th class="r">Amount (Rs.)</th></tr>${rows(earn)}<tr class="tot"><td>Gross earnings</td><td class="r">${num(p.gross)}</td></tr></table></div>
 <div><table><tr><th>Deductions</th><th class="r">Amount (Rs.)</th></tr>${rows(ded)}<tr class="tot"><td>Total deductions</td><td class="r">${num(p.totalDeductions)}</td></tr></table></div></div>
 ${p.rounding ? `<div class="m">Rounding: ${num(p.rounding)}</div>` : ''}
+${(p.employer || []).length ? `<div style="margin-top:12px"><table><tr><th>Employer contributions (paid by the company, not deducted from your pay)</th><th class="r">Amount (Rs.)</th></tr>${rows(p.employer)}<tr class="tot"><td>Total</td><td class="r">${num(p.employerTotal)}</td></tr></table></div>` : ''}
 <div class="net"><span>Net pay</span><span>Rs. ${num(p.net)}</span></div><div class="w">${esc(rupeesInWords(p.net))}</div>
 <div class="foot">This is a computer-generated payslip and does not need a signature.</div>
 </div></body></html>`;
