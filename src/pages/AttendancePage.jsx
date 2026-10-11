@@ -124,7 +124,7 @@ const Today = () => {
             <div className="mt-2 flex flex-wrap items-center gap-2"><Chip s={d.status} />
               {d.late && <span className="text-[11px] font-black text-amber-600">Late by {d.lateMinutes} min</span>}
               {d.flagged && <span className="text-[11px] font-black text-amber-600">Waiting for a manager to check a punch</span>}</div>
-            <p className="text-[11px] font-bold text-muted-foreground mt-2">{data.shift ? `Shift ${data.shift.name}: ${data.shift.start} to ${data.shift.end}` : 'No shift set'}{d.workedMinutes ? ` · Worked ${hm(d.workedMinutes)}` : ''}</p>
+            <p className="text-[11px] font-bold text-muted-foreground mt-2">{data.shift ? `${data.shift.name === 'Company hours' ? 'Working hours' : 'Shift ' + data.shift.name}: ${data.shift.start} to ${data.shift.end}` : 'No working hours set'}{d.workedMinutes ? ` · Worked ${hm(d.workedMinutes)}` : ''}</p>
           </div>
           <button type="button" aria-label="Punch" disabled={busy} onClick={punch} className={`${primary} !px-10 !py-5 !text-sm flex items-center gap-2`}>
             {data.nextAction === 'in' ? <LogIn size={18} /> : <LogOut size={18} />}{busy ? 'Please wait…' : data.nextAction === 'in' ? 'Punch in' : 'Punch out'}

@@ -43,7 +43,7 @@ const AttendanceSetup = ({ can }) => {
 
   const saveCfg = async () => {
     try {
-      const b = { requireLocation: cfg.requireLocation, allowOutsideSite: cfg.allowOutsideSite, faceMode: cfg.faceMode, faceThreshold: Number(cfg.faceThreshold), fullDayMinutes: Number(cfg.fullDayMinutes), halfDayMinutes: Number(cfg.halfDayMinutes), regularizeDays: Number(cfg.regularizeDays), defaultShiftId: cfg.defaultShiftId || null };
+      const b = { requireLocation: cfg.requireLocation, allowOutsideSite: cfg.allowOutsideSite, faceMode: cfg.faceMode, faceThreshold: Number(cfg.faceThreshold), fullDayMinutes: Number(cfg.fullDayMinutes), halfDayMinutes: Number(cfg.halfDayMinutes), regularizeDays: Number(cfg.regularizeDays), defaultShiftId: cfg.defaultShiftId || null, graceMinutes: Number(cfg.graceMinutes) };
       await API.put('/tasks/attendance/config', b);
       await dialog.alert('Attendance settings saved.', { tone: 'success', title: 'Saved' }); await load();
     } catch (e) { await dialog.alert(err(e, 'Could not save.'), { tone: 'error', title: 'Not saved' }); }
@@ -101,11 +101,16 @@ const AttendanceSetup = ({ can }) => {
         <div className={card}>
           <h3 className="text-foreground text-base font-black uppercase tracking-tight mb-4">Settings</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Field title="Default shift" hint="Used for people with no shift of their own. Without a shift nobody is marked late.">
-              <select aria-label="Default shift" className={input} value={cfg.defaultShiftId || ''} onChange={(e) => setCfg({ ...cfg, defaultShiftId: e.target.value })}>
-                <option value="">No default shift</option>{shifts.map((s) => <option key={s._id} value={s._id}>{s.name} ({s.start} to {s.end})</option>)}
-              </select>
+            <Field title="Late allowance (minutes)" hint="Working hours come from Settings, Operational Hours. Anyone arriving more than this many minutes after opening is marked late.">
+              <input aria-label="Late allowance" type="number" min="0" max="180" className={input} value={cfg.graceMinutes ?? 10} onChange={(e) => setCfg({ ...cfg, graceMinutes: e.target.value })} />
             </Field>
+            {cfg.defaultShiftId && (
+              <Field title="Company default shift (old setting)" hint="This overrides Operational Hours for everyone without a shift of their own. Choose Use Operational Hours to remove it.">
+                <select aria-label="Default shift" className={input} value={cfg.defaultShiftId || ''} onChange={(e) => setCfg({ ...cfg, defaultShiftId: e.target.value })}>
+                  <option value="">Use Operational Hours</option>{shifts.map((s) => <option key={s._id} value={s._id}>{s.name} ({s.start} to {s.end})</option>)}
+                </select>
+              </Field>
+            )}
             <Field title="Face check" hint="Optional: only people who set it up are checked. Required: everyone is checked, and a punch without a matching face needs a manager's approval.">
               <select aria-label="Face check" className={input} value={cfg.faceMode} onChange={(e) => setCfg({ ...cfg, faceMode: e.target.value })}>
                 <option value="off">Off</option><option value="optional">Optional</option><option value="required">Required</option>
@@ -134,9 +139,9 @@ const AttendanceSetup = ({ can }) => {
 
       {canConfig && (
         <div className={card}>
-          <div className="flex items-center justify-between mb-4"><h3 className="text-foreground text-base font-black uppercase tracking-tight">Shifts</h3>
+          <div className="flex items-center justify-between mb-4"><h3 className="text-foreground text-base font-black uppercase tracking-tight">Special shifts (optional)</h3>
             <button type="button" onClick={() => setShift({ ...blankShift })} className={`${ghost} flex items-center gap-1`}><Plus size={14} /> Add shift</button></div>
-          {shifts.length === 0 && <p className="text-xs font-bold text-muted-foreground">No shifts yet. Attendance still works: a full day is {cfg.fullDayMinutes} minutes of work.</p>}
+          {shifts.length === 0 && <p className="text-xs font-bold text-muted-foreground">Most companies do not need this. Everyone follows the company working hours from Settings, Operational Hours. Add a shift only for people who work different timings, then choose it for them under People below.</p>}
           <div className="space-y-2">
             {shifts.map((s) => (
               <div key={s._id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-border bg-muted/40">
@@ -195,7 +200,7 @@ const AttendanceSetup = ({ can }) => {
                   <p className="text-sm font-black text-foreground">{p.name}{p.department ? <span className="text-[11px] font-bold text-muted-foreground"> · {p.department}</span> : null}</p>
                   <div className="flex flex-wrap items-center gap-2">
                     <select aria-label={`Shift for ${p.name}`} className={`${input} !w-auto`} value={p.shiftId} onChange={(e) => setPerson(p._id, { shiftId: e.target.value })}>
-                      <option value="">Default shift</option>{shifts.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+                      <option value="">Company hours</option>{shifts.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
                     </select>
                     <button type="button" aria-label={`Save ${p.name}`} onClick={() => savePerson(p)} className={ghost}>Save</button>
                   </div>

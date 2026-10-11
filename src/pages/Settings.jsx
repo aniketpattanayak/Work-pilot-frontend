@@ -355,6 +355,32 @@ const Settings = ({ tenantId }) => {
     }
   };
 
+  // ---- Navigation: pick a category, or search. Every section stays mounted (only hidden), so
+  // "Commit global updates" still saves everything on the page.
+  const SETTINGS_CATS = [['company', 'Company'], ['time', 'Working time'], ['performance', 'Performance and rewards'], ['access', 'Roles and access']];
+  const SETTINGS_SECTIONS = [
+    { id: 'identity', cat: 'company', title: 'Company name and logo', keywords: 'brand logo name organisation identity' },
+    { id: 'masters', cat: 'company', title: 'Departments and locations', keywords: 'sector department location branch' },
+    { id: 'weekend', cat: 'time', title: 'Weekly off', keywords: 'weekend weekly saturday sunday off days' },
+    { id: 'hours', cat: 'time', title: 'Operational hours', keywords: 'opening closing office timing working hours attendance late' },
+    { id: 'holiday', cat: 'time', title: 'Holidays', keywords: 'holiday calendar festival leave' },
+    { id: 'review', cat: 'performance', title: 'Review meeting', keywords: 'period weightage colour score limits' },
+    { id: 'perf', cat: 'performance', title: 'Performance engine', keywords: 'points score rewards' },
+    { id: 'badges', cat: 'performance', title: 'Achievements', keywords: 'badge medal award workshop' },
+    { id: 'access', cat: 'access', title: 'Roles and access', keywords: 'role permission admin attendance leave payroll custom' }
+  ];
+  const [settingsCat, setSettingsCat] = useState('company');
+  const [settingsQuery, setSettingsQuery] = useState('');
+  const queryWords = settingsQuery.toLowerCase().split(/\s+/).filter(Boolean);
+  const searching = queryWords.length > 0;
+  const showSection = (id) => {
+    const s = SETTINGS_SECTIONS.find((x) => x.id === id);
+    if (!searching) return s.cat === settingsCat;
+    const hay = (s.title + ' ' + s.keywords).toLowerCase();
+    return queryWords.every((w) => hay.includes(w));
+  };
+  const anySectionShown = SETTINGS_SECTIONS.some((s) => showSection(s.id));
+
   if (loading && holidayList.length === 0) return (
     <div className="flex flex-col items-center justify-center h-[400px] gap-6 bg-transparent">
       <div className="relative">
@@ -379,9 +405,24 @@ const Settings = ({ tenantId }) => {
         </div>
       </div>
 
+      <div className="mb-4 space-y-4">
+        <input aria-label="Search settings" type="search" placeholder="Search settings (for example holiday, logo, roles)" value={settingsQuery} onChange={(e) => setSettingsQuery(e.target.value)} className="w-full bg-card border border-border text-foreground px-6 py-4 rounded-2xl text-sm font-bold outline-none focus:border-primary" />
+        {!searching && (
+          <div role="tablist" aria-label="Settings categories" className="flex flex-wrap gap-2">
+            {SETTINGS_CATS.map(([id, text]) => (
+              <button key={id} type="button" role="tab" aria-selected={settingsCat === id} onClick={() => setSettingsCat(id)} className={'px-5 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest border ' + (settingsCat === id ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border')}>
+                {text} <span className="opacity-60">({SETTINGS_SECTIONS.filter((s) => s.cat === id).length})</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {searching && <p role="status" className="text-xs font-bold text-muted-foreground">{anySectionShown ? 'Showing settings that match "' + settingsQuery.trim() + '". Clear the search to go back to the categories.' : 'No settings match "' + settingsQuery.trim() + '". Try another word.'}</p>}
+      </div>
+
       <div className="space-y-4">
         
         {/* SECTION 0: FACTORY IDENTITY */}
+        <div data-settings-section="identity" hidden={!showSection('identity')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group">
            <Building2 size={160} className="absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
            <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 relative z-10 uppercase tracking-tight">
@@ -410,8 +451,10 @@ const Settings = ({ tenantId }) => {
               </button>
            </div>
         </section>
+        </div>
 
         {/* --- SECTION: WEEKEND CONFIGURATION --- */}
+        <div data-settings-section="weekend" hidden={!showSection('weekend')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Coffee size={22} className="text-primary" /> Weekend Configuration
@@ -436,8 +479,10 @@ const Settings = ({ tenantId }) => {
             ))}
           </div>
         </section>
+        </div>
 
         {/* SECTION: SECTORS / DEPARTMENTS & LOCATIONS (masters used by Add Employee) */}
+        <div data-settings-section="masters" hidden={!showSection('masters')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Building2 size={22} className="text-primary" /> Sectors / Departments &amp; Locations
@@ -476,8 +521,10 @@ const Settings = ({ tenantId }) => {
           </div>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-8 ml-1">Removing a name here does not change employees who already have it.</p>
         </section>
+        </div>
 
         {/* SECTION: REVIEW MEETING (period, weightage, colour limits) */}
+        <div data-settings-section="review" hidden={!showSection('review')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Target size={22} className="text-primary" /> Review Meeting
@@ -583,8 +630,10 @@ const Settings = ({ tenantId }) => {
             </div>
           </div>
         </section>
+        </div>
 
         {/* SECTION 1: WORKING HOURS */}
+        <div data-settings-section="hours" hidden={!showSection('hours')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Clock size={22} className="text-primary" /> Operational Hours
@@ -600,8 +649,10 @@ const Settings = ({ tenantId }) => {
             </div>
           </div>
         </section>
+        </div>
 
         {/* SECTION 4: HOLIDAY CALENDAR */}
+        <div data-settings-section="holiday" hidden={!showSection('holiday')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight">
             <Calendar size={22} className="text-primary" /> Holiday
@@ -626,8 +677,10 @@ const Settings = ({ tenantId }) => {
             ))}
           </div>
         </section>
+        </div>
 
         {/* SECTION 2: PERFORMANCE ENGINE */}
+        <div data-settings-section="perf" hidden={!showSection('perf')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative group/points">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <h3 className="text-foreground text-lg md:text-xl font-black flex items-center gap-3 uppercase tracking-tight">
@@ -674,8 +727,10 @@ const Settings = ({ tenantId }) => {
             <button onClick={addBracket} className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-slate-400 hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-3 text-xs font-black uppercase tracking-[0.3em] active:scale-[0.99]"><Plus size={18} /> Append Point Bracket</button>
           </div>
         </section>
+        </div>
 
         {/* --- SECTION 3: BADGE WORKSHOP --- */}
+        <div data-settings-section="badges" hidden={!showSection('badges')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group/badges">
           <Award size={160} className="absolute -right-16 -top-16 text-amber-500 opacity-[0.03] group-hover/badges:scale-110 transition-transform duration-1000 pointer-events-none" />
           <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 uppercase tracking-tight relative z-10">
@@ -737,9 +792,10 @@ const Settings = ({ tenantId }) => {
             </button>
           </div>
         </section>
+        </div>
       </div>
 
-      <AccessRolesPanel />
+      <div data-settings-section="access" hidden={!showSection('access')} className="mt-8"><AccessRolesPanel /></div>
 
       {/* STICKY EXECUTION FOOTER */}
       <div className="mt-6 sticky bottom-4 z-[100] px-2">
