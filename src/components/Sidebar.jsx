@@ -38,6 +38,7 @@ import {
   PanelLeftOpen,
   CalendarDays,
   Clock,
+  Wallet,
 } from 'lucide-react';
 
 /**
@@ -113,6 +114,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Attendance',       icon: <Clock />,           roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'attendance' },
         { name: 'Leave',            icon: <CalendarDays />,    roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
+        { name: 'Payroll',          icon: <Wallet />,          roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'payroll' },
         { name: 'My Checklist',     icon: <ListTodo />,        roles: [] },
       ],
     },
