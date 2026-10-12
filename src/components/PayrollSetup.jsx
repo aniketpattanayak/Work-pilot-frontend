@@ -72,7 +72,7 @@ const PayrollSetup = ({ can }) => {
     setBusy(true);
     try {
       const body = {
-        dayBasis: cfg.dayBasis, roundNet: !!cfg.roundNet, allowSelfApproval: !!cfg.allowSelfApproval,
+        dayBasis: cfg.dayBasis, roundNet: !!cfg.roundNet, allowSelfApproval: !!cfg.allowSelfApproval, requireReview: !!cfg.requireReview,
         employerName: cfg.employerName || '', employerAddress: cfg.employerAddress || '',
         components: cfg.components.map((c) => ({ key: c.key, name: c.name, type: c.type, calc: c.calc, value: Number(c.value), prorate: !!c.prorate, active: c.active !== false, pf: c.type === 'earning' && !!c.pf })),
         statutory: {
@@ -101,6 +101,7 @@ const PayrollSetup = ({ can }) => {
             <p className="text-[10px] font-bold text-muted-foreground mt-1">Each unpaid day takes away one day's share of the month's pay. Present days, weekly offs, holidays and paid leave are paid; absent days and unpaid leave are not.</p>
           </div>
           <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Round net pay" checked={!!cfg.roundNet} onChange={(e) => set('roundNet', e.target.checked)} />Round net pay to the whole rupee</label>
+          <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Require review" checked={!!cfg.requireReview} onChange={(e) => set('requireReview', e.target.checked)} />A reviewer (for example HR head or your CA) must mark each payroll as reviewed before it can be approved</label>
           <label className="flex items-center gap-2 text-sm font-bold text-foreground cursor-pointer"><input type="checkbox" aria-label="Allow self approval" checked={!!cfg.allowSelfApproval} onChange={(e) => set('allowSelfApproval', e.target.checked)} />The person who prepared a payroll may also approve it (not recommended)</label>
         </fieldset>
       </div>

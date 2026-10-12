@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trash2, X, Download, AlertTriangle } from 'lucide-reac
 import { dialog } from './Dialog';
 import PayslipModal from './PayslipModal';
 import { inr, monthLabel, downloadCsv } from '../utils/payrollFormat';
+import PayrollReview from './PayrollReview';
 
 /** Payroll runs: prepare a month, check every person's pay, add bonuses or recoveries, approve, release and download. */
 const card = 'bg-card rounded-[2rem] border border-border p-5 md:p-8 shadow-xl';
@@ -105,6 +106,7 @@ const RunDetail = ({ runId, can, onBack }) => {
   const [data, setData] = useState(null);
   const [edit, setEdit] = useState(null);
   const [slip, setSlip] = useState(null);
+  const [reviewing, setReviewing] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -157,6 +159,7 @@ const RunDetail = ({ runId, can, onBack }) => {
             {draft && can('payroll.approve') && <button type="button" className={primary} disabled={busy} onClick={approve}>Approve</button>}
             {run.status === 'Approved' && can('payroll.approve') && <button type="button" className={ghost} disabled={busy} onClick={sendBack}>Send back</button>}
             {run.status === 'Approved' && can('payroll.release') && <button type="button" className={primary} disabled={busy} onClick={release}>Release payslips</button>}
+            {can('payroll.viewSalary', 'company') && <button type="button" className={ghost} disabled={busy} onClick={() => setReviewing(true)}>Review and checks</button>}
             {can('payroll.export') && <button type="button" className={ghost} disabled={busy} onClick={() => file('register')}><Download size={12} className="inline mr-1" />Payroll register</button>}
             {can('payroll.export') && run.status !== 'Draft' && <button type="button" className={ghost} disabled={busy} onClick={() => file('bank')}><Download size={12} className="inline mr-1" />Bank file</button>}
             {can('payroll.export') && run.status !== 'Draft' && [['pf', 'pf', 'PF return file'], ['esi', 'esi', 'ESI file'], ['pt', 'pt', 'Professional tax'], ['tds', 'tds', 'TDS summary']].filter(([, key]) => run.statutory && run.statutory[key] && run.statutory[key].enabled).map(([kind, , name]) => (
@@ -202,6 +205,7 @@ const RunDetail = ({ runId, can, onBack }) => {
           </ul>
         </div>
       )}
+      {reviewing && <PayrollReview run={run} can={can} onClose={() => setReviewing(false)} onChanged={load} />}
       {edit && <LineEditor run={run} line={edit} editable={draft && can('payroll.prepare', 'company')} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); load(); }} />}
       {slip && <PayslipModal runId={run._id} employeeId={String(slip.employeeId)} onClose={() => setSlip(null)} />}
     </div>
