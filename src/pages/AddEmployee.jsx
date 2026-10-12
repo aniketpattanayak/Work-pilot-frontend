@@ -169,6 +169,7 @@ const AddEmployee = ({
         location: "",
     whatsappNumber: "",
     email: "",
+    joiningDate: "",
     roles: ["Doer"],
     password: "Password@123",
     managedDoers: [],
@@ -237,6 +238,7 @@ const AddEmployee = ({
         department: selectedEmployee.department || "",
         location: selectedEmployee.location || "",
         email: selectedEmployee.email || "",
+        joiningDate: selectedEmployee.joiningDate ? String(selectedEmployee.joiningDate).slice(0, 10) : "",
         whatsappNumber: tenDigits(selectedEmployee.whatsappNumber),
         roles: Array.isArray(selectedEmployee.roles)
           ? selectedEmployee.roles.length > 0
@@ -267,6 +269,7 @@ const AddEmployee = ({
         location: "",
         whatsappNumber: "",
         email: "",
+        joiningDate: "",
         roles: ["Doer"],
         password: "Password@123",
         managedDoers: [],
@@ -317,6 +320,10 @@ const AddEmployee = ({
     }
     if (!/^\d{10}$/.test(String(formData.whatsappNumber || ""))) {
       await dialog.alert("Please enter a 10-digit WhatsApp number (digits only, without 91 or +91).", { tone: "error", title: "Check the WhatsApp number" });
+      return;
+    }
+    if (formData.joiningDate && formData.joiningDate > new Date().toISOString().slice(0, 10)) {
+      await dialog.alert("Joining date cannot be in the future.", { tone: "error", title: "Check the joining date" });
       return;
     }
     setLoading(true);
@@ -434,13 +441,13 @@ const AddEmployee = ({
                 inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
               />
             ) : (
-              <input
-              type="text"
-              placeholder="e.g. Operations Control"
-              value={formData.department || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              <input
+              type="text"
+              placeholder="e.g. Operations Control"
+              value={formData.department || ""} // Safe Fallback
+              required
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             />
             )}
           </div>
@@ -465,6 +472,21 @@ const AddEmployee = ({
             </div>
           </div>
         )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <div className="flex flex-col">
+            <InputLabel icon={CalendarDays} label="Joining date" />
+            <input
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              value={formData.joiningDate ? String(formData.joiningDate).slice(0, 10) : ""}
+              title="The real date this person started, used for leave accrual and payroll pro-ration. Cannot be in the future."
+              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+              onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+            />
+            <span className="text-[10px] text-slate-400 mt-1 ml-1">Used for leave accrual and payroll pro-ration. Leave blank to default to today.</span>
+          </div>
+        </div>
 
         {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 ">
