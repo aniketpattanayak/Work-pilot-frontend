@@ -16,6 +16,7 @@ import FmsDashboard from './FmsDashboard';
 import FlowManagement  from './FlowManagement';
 import ChatPage        from './ChatPage';
 import FloatingChat from '../components/FloatingChat';
+import AiAssistantPanel from '../components/AiAssistantPanel';
 import { isViewerOnly } from '../utils/viewerMode';
 import { DialogHost } from '../components/Dialog';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -576,6 +577,7 @@ useEffect(() => {
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
       {!isViewerOnly() && <FloatingChat currentUser={user} />}
+      {!isViewerOnly() && <AiAssistantPanel currentUser={user} />}
       <DialogHost />
     </div>
   );
