@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, Mic, MicOff, Check, X as XIcon } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Sparkles, X, Send, Mic, MicOff, Check, X as XIcon, MessageSquarePlus, History, ArrowLeft } from 'lucide-react';
 import API from '../api/axiosConfig';
 
 // Phase 4: floating AI assistant chat panel. Talks to POST /api/ai-assistant/chat
@@ -40,6 +40,65 @@ function ConfirmCard({ summary, onConfirm, onCancel, busy }) {
   );
 }
 
+// Part 6 (UI): choice chips for an ambiguous name match. The backend now
+// answers an ambiguous find_colleague lookup with a structured `choices`
+// array instead of plain text - tapping a chip sends that name as the next
+// message, exactly as if the user had typed it, so the same resolve path
+// runs either way.
+function ChoiceChips({ choices, onPick, disabled }) {
+  if (!choices?.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {choices.map((c, i) => (
+        <button
+          key={i}
+          onClick={() => onPick(c.value)}
+          disabled={disabled}
+          className="px-3 py-1.5 rounded-full border border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-xs font-medium hover:bg-violet-100 dark:hover:bg-violet-900/60 disabled:opacity-50"
+        >
+          {c.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Part 6 (UI): the chat-history list - past sessions for this user, newest
+// first (GET /ai-assistant/sessions is already scoped server-side to the
+// caller's own tenantId+userId, so this can never show anyone else's chats).
+function SessionList({ sessions, activeSessionId, onOpen, onClose, loading }) {
+  return (
+    <div className="absolute inset-0 bg-background flex flex-col" style={{ zIndex: 2 }}>
+      <div className="flex items-center gap-2 px-3 py-3 border-b border-border">
+        <button onClick={onClose} aria-label="Back to chat" className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft size={18} />
+        </button>
+        <span className="font-bold text-sm text-foreground">Your conversations</span>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {loading && <div className="text-xs text-muted-foreground text-center mt-8">Loading…</div>}
+        {!loading && sessions.length === 0 && (
+          <div className="text-xs text-muted-foreground text-center mt-8 px-4">No past conversations yet.</div>
+        )}
+        {sessions.map((s) => (
+          <button
+            key={s.sessionId}
+            onClick={() => onOpen(s.sessionId)}
+            className={`w-full text-left px-4 py-3 border-b border-border/60 hover:bg-slate-50 dark:hover:bg-slate-900 ${
+              s.sessionId === activeSessionId ? 'bg-slate-100 dark:bg-slate-800' : ''
+            }`}
+          >
+            <div className="text-sm font-medium text-foreground truncate">{s.title || 'New chat'}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {s.updatedAt ? new Date(s.updatedAt).toLocaleString() : ''}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Bubble({ role, children }) {
   const isUser = role === 'user';
   return (
@@ -59,7 +118,7 @@ function Bubble({ role, children }) {
 
 export default function AiAssistantPanel({ currentUser }) {
   const [open, setOpen] = useState(false);
-  const [history, setHistory] = useState([]); // { role: 'user'|'assistant', text, pending?: {summary, confirmId} }
+  const [history, setHistory] = useState([]); // { role: 'user'|'assistant', text, pending?: {summary, confirmId}, choices? }
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [listening, setListening] = useState(false);
@@ -67,6 +126,45 @@ export default function AiAssistantPanel({ currentUser }) {
   const [disabledReason, setDisabledReason] = useState(null);
   const recognitionRef = useRef(null);
   const endRef = useRef(null);
+
+  // Part 6 (UI): session list, new chat, resuming a past conversation.
+  const [sessionId, setSessionId] = useState(null);
+  const [showSessions, setShowSessions] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const res = await API.get('/ai-assistant/sessions');
+      setSessions(res.data?.sessions || []);
+    } catch { /* the list is a convenience - a failed fetch just shows empty, never blocks chat */ }
+    setSessionsLoading(false);
+  }, []);
+
+  const startNewChat = useCallback(async () => {
+    setHistory([]);
+    setDisabledReason(null);
+    try {
+      const res = await API.post('/ai-assistant/sessions', {});
+      setSessionId(res.data?.sessionId || null);
+    } catch {
+      setSessionId(null); // the backend creates one lazily on the first /chat call anyway
+    }
+    setShowSessions(false);
+  }, []);
+
+  const openSession = useCallback(async (id) => {
+    try {
+      const res = await API.get(`/ai-assistant/sessions/${id}`);
+      const msgs = res.data?.messages || [];
+      setHistory(msgs.map((m) => ({ role: m.role, text: m.text })));
+      setSessionId(id);
+    } catch {
+      setHistory([{ role: 'assistant', text: "I couldn't open that conversation." }]);
+    }
+    setShowSessions(false);
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -104,10 +202,17 @@ export default function AiAssistantPanel({ currentUser }) {
   async function send(body) {
     setSending(true);
     try {
-      const res = await API.post('/ai-assistant/chat', body);
+      const res = await API.post('/ai-assistant/chat', { ...body, sessionId: body.sessionId || sessionId || undefined });
       const data = res.data;
+      // The backend creates/echoes a sessionId on every reply (Part 2) - keep
+      // following it so the next message in this chat stays on the same
+      // conversation, including the very first message before we had one.
+      if (data.sessionId && data.sessionId !== sessionId) setSessionId(data.sessionId);
       if (data.needsConfirmation) {
         setHistory((h) => [...h, { role: 'assistant', text: data.reply, pending: { summary: data.summary, confirmId: data.confirmId } }]);
+      } else if (Array.isArray(data.choices) && data.choices.length) {
+        // Part 6: an ambiguous name match - render as choice chips.
+        setHistory((h) => [...h, { role: 'assistant', text: data.reply, choices: data.choices }]);
       } else {
         setHistory((h) => [...h, { role: 'assistant', text: data.reply || 'Done.' }]);
       }
@@ -132,6 +237,15 @@ export default function AiAssistantPanel({ currentUser }) {
     setHistory((h) => [...h, { role: 'user', text: t }]);
     setText('');
     send({ message: t });
+  };
+
+  const handlePickChoice = (value, idx) => {
+    // Tapping a chip sends the name as the next message, exactly as if the
+    // user had typed it - the same name-resolution path runs either way,
+    // nothing here talks to a tool directly.
+    setHistory((h) => h.map((m, i) => (i === idx ? { ...m, choices: null } : m)));
+    setHistory((h) => [...h, { role: 'user', text: value }]);
+    send({ message: value });
   };
 
   const handleConfirm = (confirmId, idx) => {
@@ -162,11 +276,11 @@ export default function AiAssistantPanel({ currentUser }) {
       style={{ zIndex: 1001 }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-slate-50 dark:bg-slate-900">
-        <div className="flex items-center gap-2">
-          <Sparkles size={18} className="text-violet-600 dark:text-violet-400" />
-          <span className="font-bold text-sm text-foreground">WorkPilot Assistant</span>
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles size={18} className="text-violet-600 dark:text-violet-400 shrink-0" />
+          <span className="font-bold text-sm text-foreground truncate">WorkPilot Assistant</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <select
             value={lang}
             onChange={(e) => setLang(e.target.value)}
@@ -176,11 +290,37 @@ export default function AiAssistantPanel({ currentUser }) {
             <option value="en-IN">EN</option>
             <option value="hi-IN">HI</option>
           </select>
-          <button onClick={() => setOpen(false)} aria-label="Close assistant" className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={startNewChat}
+            aria-label="Start a new chat"
+            title="New chat"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
+          >
+            <MessageSquarePlus size={16} />
+          </button>
+          <button
+            onClick={() => { setShowSessions(true); loadSessions(); }}
+            aria-label="View past conversations"
+            title="History"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
+          >
+            <History size={16} />
+          </button>
+          <button onClick={() => setOpen(false)} aria-label="Close assistant" className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground">
             <X size={18} />
           </button>
         </div>
       </div>
+
+      {showSessions && (
+        <SessionList
+          sessions={sessions}
+          activeSessionId={sessionId}
+          onOpen={openSession}
+          onClose={() => setShowSessions(false)}
+          loading={sessionsLoading}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {history.length === 0 && !disabledReason && (
@@ -207,6 +347,9 @@ export default function AiAssistantPanel({ currentUser }) {
                   onCancel={() => handleCancel(i)}
                 />
               </div>
+            )}
+            {m.choices && (
+              <ChoiceChips choices={m.choices} disabled={sending} onPick={(v) => handlePickChoice(v, i)} />
             )}
           </div>
         ))}
