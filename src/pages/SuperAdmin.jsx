@@ -9,7 +9,7 @@ import {
   Star, ClipboardList, Wifi, X, Eye, EyeOff, Save, Trash2,
   Globe, Mail, Calendar, Clock, User, ArrowUpRight, Filter,
   Bell, Package, ToggleLeft, ToggleRight, CreditCard, StickyNote,
-  ChevronDown, ChevronUp, LayoutGrid, List
+  ChevronDown, ChevronUp, LayoutGrid, List, Sparkles
 } from 'lucide-react';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
@@ -199,6 +199,8 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const [showPwd, setShowPwd]     = useState(false);
   const [features, setFeatures]   = useState({});
   const [hrModules, setHrModules] = useState({ attendance: false, leave: false, payroll: false });
+  const [aiEnabled, setAiEnabled]       = useState(false);
+  const [aiMonthlyLimit, setAiMonthlyLimit] = useState(500);
   const [customMongoUri, setCustomMongoUri]     = useState('');
   const [customWhatsappKey, setCustomWhatsappKey] = useState('');
   const [pauseReason, setPauseReason] = useState('');
@@ -220,6 +222,8 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       setHrModules({ attendance: false, leave: false, payroll: false, ...(r.data.tenant?.hrModules || {}) });
       setCustomMongoUri(sa.customMongoUri || '');
       setCustomWhatsappKey(sa.customWhatsappKey || '');
+      setAiEnabled(!!sa.aiAssistant?.enabled);
+      setAiMonthlyLimit(sa.aiAssistant?.monthlyLimit ?? 500);
     }).catch(()=>{});
   }, [tenantId]);
 
@@ -760,6 +764,30 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 <button onClick={()=>api(()=>SA.put(`/tasks/access/modules/${tenantId}`,{modules:hrModules}))}
                   disabled={saving} style={primaryBtn}>
                   <Save size={14}/>{saving?'Saving…':'Save HR modules'}
+                </button>
+              </Section>
+
+              {/* AI Assistant kill switch (Phase 4) — off by default for every company */}
+              <Section icon={Sparkles} title="AI Assistant" color={C.purple} accent={C.purpleL}>
+                <p style={{ fontSize:12, color:C.muted, margin:'0 0 12px' }}>
+                  Off by default for every company. When on, employees see a floating assistant panel that can look things up and, after they confirm, create tasks and apply leave on their behalf.
+                </p>
+                <label onClick={()=>setAiEnabled(v=>!v)}
+                  style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                    padding:'10px 14px', border:`1px solid ${aiEnabled?C.blue:C.border}`,
+                    borderRadius:8, cursor:'pointer', background: aiEnabled?C.blueL:C.card, transition:'all .12s',
+                    marginBottom:14 }}>
+                  <span style={{ fontSize:13, fontWeight:500, color:aiEnabled?C.text:C.muted2 }}>AI Assistant enabled</span>
+                  {aiEnabled ? <ToggleRight size={20} color={C.blue}/> : <ToggleLeft size={20} color={C.muted2}/>}
+                </label>
+                <div style={{ marginBottom:14 }}>
+                  <label style={labelStyle}>Monthly message limit</label>
+                  <input type="number" min="1" value={aiMonthlyLimit} onChange={e=>setAiMonthlyLimit(e.target.value)} style={inputStyle}/>
+                </div>
+                {msg && <MsgBanner msg={msg}/>}
+                <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/ai-assistant`,{enabled:aiEnabled, monthlyLimit:Number(aiMonthlyLimit)}))}
+                  disabled={saving} style={primaryBtn}>
+                  <Save size={14}/>{saving?'Saving…':'Save AI Assistant settings'}
                 </button>
               </Section>
 
