@@ -4,6 +4,7 @@ import RevisionPanel from '../components/RevisionPanel';
 import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import { useChat } from '../components/useChat';
+import ImageLightbox from '../components/ImageLightbox';
 import {
   CheckCircle,
   Clock,
@@ -56,6 +57,15 @@ const DoerChecklist = ({ doerId }) => {
   // ManageTasks.jsx so the doer can see every uploaded photo and the full
   // audit trail (including rejection remarks) for a delegation task.
   const [detailsModalTask, setDetailsModalTask] = useState(null);
+  // Full-screen zoomable photo viewer - shared by the History & Files
+  // modal and the row-level "has photos" thumbnail, same as ManageTasks.jsx.
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const photoCaption = (f, task) => {
+    const who = f.uploadedBy?.name || task?.assignerId?.name || 'Someone';
+    const stage = f.stage || 'Task Created';
+    const when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : '';
+    return `${stage} — ${who}${when ? ` · ${when}` : ''}`;
+  };
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -445,6 +455,22 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">
                     Type: {item.dataType}
                   </span>
+                  {(item.files || []).length > 0 && (() => {
+                    const latest = item.files[item.files.length - 1];
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxPhoto({ ...latest, caption: photoCaption(latest, item) })}
+                        className="mt-1.5 flex items-center gap-1.5 group/thumb w-fit"
+                        title="View uploaded photo"
+                      >
+                        <img src={latest.fileUrl} alt="" className="w-7 h-7 rounded-md object-cover border border-border group-hover/thumb:border-primary transition-all" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
+                          {item.files.length > 1 ? `+${item.files.length} photos` : '1 photo'}
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
                   {item.assignerName || '-'}
@@ -517,6 +543,22 @@ const DoerChecklist = ({ doerId }) => {
                   <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
                     {task.title}
                   </span>
+                  {(task.files || []).length > 0 && (() => {
+                    const latest = task.files[task.files.length - 1];
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setLightboxPhoto({ ...latest, caption: photoCaption(latest, task) })}
+                        className="mt-1.5 flex items-center gap-1.5 group/thumb w-fit"
+                        title="View uploaded photo"
+                      >
+                        <img src={latest.fileUrl} alt="" className="w-7 h-7 rounded-md object-cover border border-border group-hover/thumb:border-primary transition-all" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
+                          {task.files.length > 1 ? `+${task.files.length} photos` : '1 photo'}
+                        </span>
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
                   {task.assignerId?.name || 'Registry Admin'}
@@ -821,45 +863,65 @@ const DoerChecklist = ({ doerId }) => {
               <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
               <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {detailsModalTask.remarks && (
                 <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold">
                   Latest remarks: {detailsModalTask.remarks}
                 </div>
               )}
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Uploaded photos ({(detailsModalTask.files || []).length})</p>
-                {(detailsModalTask.files || []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No photos uploaded yet.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {detailsModalTask.files.map((f, i) => (
-                      <a key={i} href={f.fileUrl} target="_blank" rel="noopener noreferrer" title={f.fileName}>
-                        <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-20 h-20 object-cover rounded-xl border border-border hover:border-primary transition-all" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Activity history</p>
-                <div className="space-y-3">
-                  {(detailsModalTask.history || []).slice().reverse().map((h, i) => (
-                    <div key={i} className="text-xs border-l-2 border-border pl-3">
+              {/* Each history entry shows its OWN photos inline, right next to who
+                  did it and when, so it's never a guess which side sent which
+                  photo. Falls back to matching the flat files list by
+                  stage/uploader for tasks created before this change. */}
+              {(() => {
+                const history = (detailsModalTask.history || []).slice().reverse();
+                const legacyFiles = detailsModalTask.files || [];
+                const usedLegacy = new Set();
+                return history.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No history yet.</p>
+                ) : history.map((h, i) => {
+                  let photosForEntry = h.files;
+                  if (!photosForEntry || photosForEntry.length === 0) {
+                    photosForEntry = legacyFiles.filter((f, fi) =>
+                      !usedLegacy.has(fi) && f.stage === h.action && String(f.uploadedBy?._id || f.uploadedBy || '') === String(h.performedBy?._id || h.performedBy || '')
+                    );
+                    photosForEntry.forEach((f) => usedLegacy.add(legacyFiles.indexOf(f)));
+                  }
+                  return (
+                    <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
                       <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
                       {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
                       <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                      {photosForEntry.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {photosForEntry.map((f, fi) => (
+                            <button
+                              key={fi}
+                              type="button"
+                              onClick={() => setLightboxPhoto({
+                                ...f,
+                                uploadedBy: f.uploadedBy || h.performedBy,
+                                stage: f.stage || h.action,
+                                uploadedAt: f.uploadedAt || h.timestamp,
+                                caption: photoCaption({ ...f, uploadedBy: f.uploadedBy || h.performedBy, stage: f.stage || h.action, uploadedAt: f.uploadedAt || h.timestamp }, detailsModalTask),
+                              })}
+                              title={f.fileName}
+                            >
+                              <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-16 h-16 object-cover rounded-xl border border-border hover:border-primary transition-all" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {(!detailsModalTask.history || detailsModalTask.history.length === 0) && (
-                    <p className="text-xs text-muted-foreground italic">No history yet.</p>
-                  )}
-                </div>
-              </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
       )}
+
+      <ImageLightbox photo={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
 
       {showRevisionModal && selectedTask && (
         <div className="fixed inset-0 z-[9999] bg-black/60 flex justify-center items-center p-6">

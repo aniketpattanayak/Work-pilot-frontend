@@ -35,6 +35,7 @@ import CreateTask from './CreateTask';
 import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
 import { dialog } from '../components/Dialog';
+import ImageLightbox from '../components/ImageLightbox';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -63,6 +64,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   // (TaskCard.jsx below has its own copy) so either side can see every
   // uploaded photo and the full audit trail of who did what, when.
   const [detailsModalTask, setDetailsModalTask] = useState(null);
+  // Full-screen zoomable photo viewer - shared by the History & Files
+  // modal and the row-level "has photos" thumbnail, so every photo opens
+  // the same popup with who/when/stage in its caption.
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const photoCaption = (f, task) => {
+    const who = f.uploadedBy?.name || task?.assignerId?.name || 'Someone';
+    const stage = f.stage || 'Task Created';
+    const when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : '';
+    return `${stage} — ${who}${when ? ` · ${when}` : ''}`;
+  };
 
   // Edit task state
   const [editingTask, setEditingTask] = useState(null);
@@ -388,6 +399,26 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                       </div>
                       <div className="min-w-0 pr-2">
                         <span className="font-black text-sm whitespace-normal break-words block">{task.title}</span>
+                        {(task.files || []).length > 0 && (() => {
+                          // So anyone looking at the list — not just whoever opens
+                          // History & files — can see at a glance that a photo was
+                          // sent, by whom and at which stage. Click opens the same
+                          // zoomable popup, pre-filled with the most recent photo.
+                          const latest = task.files[task.files.length - 1];
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setLightboxPhoto({ ...latest, caption: photoCaption(latest, task) }); }}
+                              className="mt-1.5 flex items-center gap-1.5 group/thumb"
+                              title="View uploaded photo"
+                            >
+                              <img src={latest.fileUrl} alt="" className="w-7 h-7 rounded-md object-cover border border-border group-hover/thumb:border-primary transition-all" />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
+                                {task.files.length > 1 ? `+${task.files.length} photos` : '1 photo'}
+                              </span>
+                            </button>
+                          );
+                        })()}
                       </div>
                       <div className="text-xs font-bold min-w-0 pr-2">
                         <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
@@ -419,24 +450,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>
                       </div>
                       <div className="flex gap-1.5 justify-end items-center min-w-0">
-                        {!isViewer && !passedOnOnly(task) && (() => {
+                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
                           // Once the doer has marked the task done (Completed) or it's been
-                          // Verified, the assigner can no longer edit or delete it - only
-                          // verify/reject (handled by its own buttons below) or comment.
-                          const locked = ['Completed', 'Verified'].includes(task.status);
-                          return (
-<button onClick={(e) => { e.stopPropagation(); if (!locked) handleOpenEdit(task); }}
-                          disabled={locked}
-                          title={locked ? "Can't edit — the doer has already marked this task done" : "Edit Task"}
-                          className={`p-2 rounded-xl border transition-all active:scale-90 ${
-                            locked
-                              ? 'bg-background border-border text-slate-300 dark:text-slate-700 cursor-not-allowed'
-                              : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
-                          }`}>
+                          // Verified, the assigner can no longer edit it - the button is
+                          // removed entirely rather than shown disabled.
+<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
+                          title="Edit Task"
+                          className="p-2 rounded-xl border transition-all active:scale-90 bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white">
                           <Edit3 size={14} />
                         </button>
-                          );
-                        })()}
+                        )}
                         {!isViewer && task.status === 'Revision Requested' && (
                           <button onClick={(e) => { e.stopPropagation(); setRevisionModalTask(task); }}
                             className="p-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all active:scale-90" title="Revision Control">
@@ -475,21 +498,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                           className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-xl transition-all active:scale-90" title="History & files">
                           <History size={14} />
                         </button>
-                        {!isViewer && !passedOnOnly(task) && (() => {
-                          const locked = ['Completed', 'Verified'].includes(task.status);
-                          return (
-<button onClick={(e) => { e.stopPropagation(); if (!locked) handleCancelTask(task._id, task.title); }}
-                          disabled={locked}
-                          title={locked ? "Can't delete — the doer has already marked this task done" : "Delete Task"}
-                          className={`p-2 rounded-xl border transition-all active:scale-90 ${
-                            locked
-                              ? 'bg-background border-border text-slate-300 dark:text-slate-700 cursor-not-allowed'
-                              : 'bg-background border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500'
-                          }`}>
+                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
+                          // Same rule as Edit above: once the doer has marked it done, the
+                          // Delete button is removed entirely, not shown disabled.
+<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id, task.title); }}
+                          title="Delete Task"
+                          className="p-2 rounded-xl border transition-all active:scale-90 bg-background border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500">
                           <Trash2 size={14} />
                         </button>
-                          );
-                        })()}
+                        )}
                       </div>
                     </div>
                   </div>
@@ -589,40 +606,62 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
               <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Uploaded photos ({(detailsModalTask.files || []).length})</p>
-                {(detailsModalTask.files || []).length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No photos uploaded yet.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {detailsModalTask.files.map((f, i) => (
-                      <a key={i} href={f.fileUrl} target="_blank" rel="noopener noreferrer" title={f.fileName}>
-                        <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-20 h-20 object-cover rounded-xl border border-border hover:border-primary transition-all" />
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Activity history</p>
-                <div className="space-y-3">
-                  {(detailsModalTask.history || []).slice().reverse().map((h, i) => (
-                    <div key={i} className="text-xs border-l-2 border-border pl-3">
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Each history entry shows its OWN photos inline, right next to who
+                  did it and when - instead of a disconnected gallery the viewer
+                  had to match up by eye. Falls back to the flat task.files list
+                  (grouped by stage/uploadedBy) for tasks created before this
+                  change, when a history entry has no files[] of its own. */}
+              {(() => {
+                const history = (detailsModalTask.history || []).slice().reverse();
+                const legacyFiles = detailsModalTask.files || [];
+                const usedLegacy = new Set();
+                return history.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No history yet.</p>
+                ) : history.map((h, i) => {
+                  let photosForEntry = h.files;
+                  if (!photosForEntry || photosForEntry.length === 0) {
+                    // Legacy fallback: match by stage + uploader on the flat list.
+                    photosForEntry = legacyFiles.filter((f, fi) =>
+                      !usedLegacy.has(fi) && f.stage === h.action && String(f.uploadedBy?._id || f.uploadedBy || '') === String(h.performedBy?._id || h.performedBy || '')
+                    );
+                    photosForEntry.forEach((f) => usedLegacy.add(legacyFiles.indexOf(f)));
+                  }
+                  return (
+                    <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
                       <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
                       {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
                       <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                      {photosForEntry.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {photosForEntry.map((f, fi) => (
+                            <button
+                              key={fi}
+                              type="button"
+                              onClick={() => setLightboxPhoto({
+                                ...f,
+                                uploadedBy: f.uploadedBy || h.performedBy,
+                                stage: f.stage || h.action,
+                                uploadedAt: f.uploadedAt || h.timestamp,
+                                caption: photoCaption({ ...f, uploadedBy: f.uploadedBy || h.performedBy, stage: f.stage || h.action, uploadedAt: f.uploadedAt || h.timestamp }, detailsModalTask),
+                              })}
+                              title={f.fileName}
+                            >
+                              <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-16 h-16 object-cover rounded-xl border border-border hover:border-primary transition-all" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {(!detailsModalTask.history || detailsModalTask.history.length === 0) && (
-                    <p className="text-xs text-muted-foreground italic">No history yet.</p>
-                  )}
-                </div>
-              </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
       )}
+
+      <ImageLightbox photo={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
 
       {revisionModalTask && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
