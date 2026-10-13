@@ -36,6 +36,8 @@ import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
 import { dialog } from '../components/Dialog';
 import ImageLightbox from '../components/ImageLightbox';
+import TaskPhotoThumb from '../components/TaskPhotoThumb';
+import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -64,16 +66,12 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   // (TaskCard.jsx below has its own copy) so either side can see every
   // uploaded photo and the full audit trail of who did what, when.
   const [detailsModalTask, setDetailsModalTask] = useState(null);
-  // Full-screen zoomable photo viewer - shared by the History & Files
+  // Full-screen zoomable photo GALLERY - shared by the History & Files
   // modal and the row-level "has photos" thumbnail, so every photo opens
-  // the same popup with who/when/stage in its caption.
-  const [lightboxPhoto, setLightboxPhoto] = useState(null);
-  const photoCaption = (f, task) => {
-    const who = f.uploadedBy?.name || task?.assignerId?.name || 'Someone';
-    const stage = f.stage || 'Task Created';
-    const when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : '';
-    return `${stage} — ${who}${when ? ` · ${when}` : ''}`;
-  };
+  // the same popup, pre-loaded with ALL of that set's photos (not just the
+  // one that was clicked) plus prev/next, a counter, and who/when/stage.
+  const [gallery, setGallery] = useState(null); // { photos, startIndex, task } | null
+  const openGallery = (photos, startIndex, task) => setGallery({ photos, startIndex, task });
 
   // Edit task state
   const [editingTask, setEditingTask] = useState(null);
@@ -402,19 +400,21 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         {(task.files || []).length > 0 && (() => {
                           // So anyone looking at the list — not just whoever opens
                           // History & files — can see at a glance that a photo was
-                          // sent, by whom and at which stage. Click opens the same
-                          // zoomable popup, pre-filled with the most recent photo.
-                          const latest = task.files[task.files.length - 1];
+                          // sent, by whom and at which stage. Click opens the FULL
+                          // gallery of every photo on this task (not just this one),
+                          // starting on the most recent, with prev/next + zoom.
+                          const photos = allTaskPhotos(task);
+                          const latest = photos[photos.length - 1];
                           return (
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setLightboxPhoto({ ...latest, caption: photoCaption(latest, task) }); }}
+                              onClick={(e) => { e.stopPropagation(); openGallery(photos, photos.length - 1, task); }}
                               className="mt-1.5 flex items-center gap-1.5 group/thumb"
-                              title="View uploaded photo"
+                              title="View uploaded photos"
                             >
-                              <img src={latest.fileUrl} alt="" className="w-7 h-7 rounded-md object-cover border border-border group-hover/thumb:border-primary transition-all" />
+                              <TaskPhotoThumb file={latest} className="w-7 h-7" />
                               <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
-                                {task.files.length > 1 ? `+${task.files.length} photos` : '1 photo'}
+                                {photos.length > 1 ? `+${photos.length} photos` : '1 photo'}
                               </span>
                             </button>
                           );
@@ -609,59 +609,82 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {/* Each history entry shows its OWN photos inline, right next to who
                   did it and when - instead of a disconnected gallery the viewer
-                  had to match up by eye. Falls back to the flat task.files list
-                  (grouped by stage/uploadedBy) for tasks created before this
-                  change, when a history entry has no files[] of its own. */}
+                  had to match up by eye. groupPhotosByHistory (src/utils/taskPhotos.js)
+                  handles every photo shape this app has ever stored: entries with
+                  their own files[], older flat files tagged with stage/uploadedBy,
+                  and fully legacy files with neither (matched to the nearest
+                  history timestamp). Nothing is ever dropped - anything that
+                  can't be confidently placed shows up in "Other photos" below. */}
               {(() => {
-                const history = (detailsModalTask.history || []).slice().reverse();
-                const legacyFiles = detailsModalTask.files || [];
-                const usedLegacy = new Set();
-                return history.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No history yet.</p>
-                ) : history.map((h, i) => {
-                  let photosForEntry = h.files;
-                  if (!photosForEntry || photosForEntry.length === 0) {
-                    // Legacy fallback: match by stage + uploader on the flat list.
-                    photosForEntry = legacyFiles.filter((f, fi) =>
-                      !usedLegacy.has(fi) && f.stage === h.action && String(f.uploadedBy?._id || f.uploadedBy || '') === String(h.performedBy?._id || h.performedBy || '')
-                    );
-                    photosForEntry.forEach((f) => usedLegacy.add(legacyFiles.indexOf(f)));
-                  }
-                  return (
-                    <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
-                      <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
-                      {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
-                      <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
-                      {photosForEntry.length > 0 && (
+                const { entries, otherPhotos } = groupPhotosByHistory(detailsModalTask);
+                const reversed = entries.slice().reverse();
+                const MAX_THUMBS = 3;
+                return (
+                  <>
+                    {reversed.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">No history yet.</p>
+                    ) : reversed.map((h, i) => (
+                      <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
+                        <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
+                        {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
+                        <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                        {h.photos.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {h.photos.slice(0, MAX_THUMBS).map((f, fi) => (
+                              <TaskPhotoThumb
+                                key={fi}
+                                file={f}
+                                className="w-16 h-16"
+                                onClick={() => openGallery(h.photos, fi, detailsModalTask)}
+                              />
+                            ))}
+                            {h.photos.length > MAX_THUMBS && (
+                              <button
+                                type="button"
+                                onClick={() => openGallery(h.photos, MAX_THUMBS, detailsModalTask)}
+                                className="w-16 h-16 rounded-xl border border-border bg-background hover:border-primary text-muted-foreground hover:text-primary flex items-center justify-center text-[10px] font-black uppercase tracking-tight transition-all"
+                              >
+                                +{h.photos.length - MAX_THUMBS} more
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {otherPhotos.length > 0 && (
+                      <div className="text-xs border-l-2 border-dashed border-amber-400/50 pl-3 pb-1">
+                        <div className="font-bold text-amber-600 dark:text-amber-400">Other photos</div>
+                        <div className="text-muted-foreground mt-0.5">Couldn't confidently match these to a specific step, so they're still shown here rather than hidden.</div>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {photosForEntry.map((f, fi) => (
-                            <button
+                          {otherPhotos.slice(0, MAX_THUMBS).map((f, fi) => (
+                            <TaskPhotoThumb
                               key={fi}
-                              type="button"
-                              onClick={() => setLightboxPhoto({
-                                ...f,
-                                uploadedBy: f.uploadedBy || h.performedBy,
-                                stage: f.stage || h.action,
-                                uploadedAt: f.uploadedAt || h.timestamp,
-                                caption: photoCaption({ ...f, uploadedBy: f.uploadedBy || h.performedBy, stage: f.stage || h.action, uploadedAt: f.uploadedAt || h.timestamp }, detailsModalTask),
-                              })}
-                              title={f.fileName}
-                            >
-                              <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-16 h-16 object-cover rounded-xl border border-border hover:border-primary transition-all" />
-                            </button>
+                              file={f}
+                              className="w-16 h-16"
+                              onClick={() => openGallery(otherPhotos, fi, detailsModalTask)}
+                            />
                           ))}
+                          {otherPhotos.length > MAX_THUMBS && (
+                            <button
+                              type="button"
+                              onClick={() => openGallery(otherPhotos, MAX_THUMBS, detailsModalTask)}
+                              className="w-16 h-16 rounded-xl border border-border bg-background hover:border-primary text-muted-foreground hover:text-primary flex items-center justify-center text-[10px] font-black uppercase tracking-tight transition-all"
+                            >
+                              +{otherPhotos.length - MAX_THUMBS} more
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                });
+                      </div>
+                    )}
+                  </>
+                );
               })()}
             </div>
           </div>
         </div>
       )}
 
-      <ImageLightbox photo={lightboxPhoto} onClose={() => setLightboxPhoto(null)} />
+      <ImageLightbox photos={gallery?.photos} startIndex={gallery?.startIndex} task={gallery?.task} onClose={() => setGallery(null)} />
 
       {revisionModalTask && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
