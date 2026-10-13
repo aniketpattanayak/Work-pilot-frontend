@@ -2,12 +2,14 @@ import React, { useState, useEffect, useCallback } from "react";
 import BulkUpload from '../components/BulkUpload';
 import API from "../api/axiosConfig"; // Centralized API instance
 import { dialog } from "../components/Dialog";
-
-// WhatsApp numbers are typed as 10 digits (the +91 is added automatically when messages are sent).
-const tenDigits = (v) => {
-  const d = String(v || "").replace(/\D/g, "");
-  return d.length === 12 && d.startsWith("91") ? d.slice(2) : d;
-};
+import {
+  COUNTRIES,
+  INDIA_DIAL_CODE,
+  buildStoredNumber,
+  parseStoredNumber,
+  validateNationalNumber,
+  maxNationalLength,
+} from "../utils/phoneNumber";
 import {
   ShieldCheck,
   UserPlus,
@@ -177,6 +179,10 @@ const AddEmployee = ({
     workOnSunday: false, // Initialized as boolean
   });
 
+  // Dial code for the WhatsApp number field (null only in the rare case an
+  // existing stored number couldn't be matched to any known country).
+  const [whatsappDialCode, setWhatsappDialCode] = useState(INDIA_DIAL_CODE);
+
   const [allEmployees, setAllEmployees] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -232,6 +238,10 @@ const AddEmployee = ({
    */
   useEffect(() => {
     if (selectedEmployee) {
+      const parsedPhone = parseStoredNumber(selectedEmployee.whatsappNumber);
+      // Null dialCode means the stored number didn't match any known
+      // country - don't guess, let the user explicitly pick one.
+      setWhatsappDialCode(parsedPhone.dialCode);
       setFormData({
         ...selectedEmployee,
         name: selectedEmployee.name || "",
@@ -239,7 +249,7 @@ const AddEmployee = ({
         location: selectedEmployee.location || "",
         email: selectedEmployee.email || "",
         joiningDate: selectedEmployee.joiningDate ? String(selectedEmployee.joiningDate).slice(0, 10) : "",
-        whatsappNumber: tenDigits(selectedEmployee.whatsappNumber),
+        whatsappNumber: parsedPhone.nationalNumber,
         roles: Array.isArray(selectedEmployee.roles)
           ? selectedEmployee.roles.length > 0
             ? selectedEmployee.roles
@@ -276,6 +286,7 @@ const AddEmployee = ({
         managedAssigners: [],
         workOnSunday: false, // Explicit reset
       });
+      setWhatsappDialCode(INDIA_DIAL_CODE);
       setIsEditing(false);
     }
   }, [selectedEmployee]);
@@ -318,8 +329,13 @@ const AddEmployee = ({
       await dialog.alert("Please select a Sector / Department.", { tone: "error", title: "Department needed" });
       return;
     }
-    if (!/^\d{10}$/.test(String(formData.whatsappNumber || ""))) {
-      await dialog.alert("Please enter a 10-digit WhatsApp number (digits only, without 91 or +91).", { tone: "error", title: "Check the WhatsApp number" });
+    if (!whatsappDialCode) {
+      await dialog.alert("Please select a country code for the WhatsApp number.", { tone: "error", title: "Check the WhatsApp number" });
+      return;
+    }
+    const phoneCheck = validateNationalNumber(whatsappDialCode, formData.whatsappNumber);
+    if (!phoneCheck.valid) {
+      await dialog.alert(phoneCheck.message, { tone: "error", title: "Check the WhatsApp number" });
       return;
     }
     if (formData.joiningDate && formData.joiningDate > new Date().toISOString().slice(0, 10)) {
@@ -329,7 +345,12 @@ const AddEmployee = ({
     setLoading(true);
     try {
       const finalRoles = formData.roles.length > 0 ? formData.roles : ["Doer"];
-      const submissionData = { ...formData, roles: finalRoles, tenantId };
+      const submissionData = {
+        ...formData,
+        whatsappNumber: buildStoredNumber(whatsappDialCode, formData.whatsappNumber),
+        roles: finalRoles,
+        tenantId,
+      };
 
       if (isEditing && !formData.password) {
         delete submissionData.password;
@@ -358,6 +379,7 @@ const AddEmployee = ({
         managedAssigners: [],
         workOnSunday: false,
       });
+      setWhatsappDialCode(INDIA_DIAL_CODE);
       setIsEditing(false);
       if (onSuccess) onSuccess();
     } catch (err) {
@@ -503,18 +525,51 @@ const AddEmployee = ({
           </div>
           <div className="flex flex-col">
             <InputLabel icon={Phone} label="WhatsApp number" />
-            <input
-              type="tel"
-              inputMode="numeric"
-              maxLength={10}
-              pattern="[0-9]{10}"
-              title="Enter the 10-digit mobile number"
-              placeholder="10-digit mobile number"
-              value={formData.whatsappNumber || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-            />
+            <div className="flex gap-2">
+              <select
+                value={whatsappDialCode || ""}
+                aria-label="Country code"
+                title="Country code"
+                className="px-2 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner shrink-0 max-w-[9.5rem]"
+                onChange={(e) => setWhatsappDialCode(e.target.value)}
+              >
+                {!whatsappDialCode && (
+                  <option value="" disabled>
+                    Select code
+                  </option>
+                )}
+                {COUNTRIES.map((c) => (
+                  <option key={`${c.dialCode}-${c.name}`} value={c.dialCode}>
+                    {c.flag} {c.name} (+{c.dialCode})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={whatsappDialCode === INDIA_DIAL_CODE ? 10 : maxNationalLength(whatsappDialCode || "")}
+                pattern={whatsappDialCode === INDIA_DIAL_CODE ? "[0-9]{10}" : undefined}
+                title={
+                  whatsappDialCode === INDIA_DIAL_CODE
+                    ? "Enter the 10-digit mobile number"
+                    : "Enter the national mobile number, without the country code or a leading 0"
+                }
+                placeholder={whatsappDialCode === INDIA_DIAL_CODE ? "10-digit mobile number" : "National mobile number"}
+                value={formData.whatsappNumber || ""} // Safe Fallback
+                required
+                className="w-full min-w-0 px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+                onChange={(e) => {
+                  let digits = e.target.value.replace(/\D/g, "");
+                  if (whatsappDialCode === INDIA_DIAL_CODE) {
+                    digits = digits.slice(0, 10);
+                  } else {
+                    digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
+                    digits = digits.slice(0, maxNationalLength(whatsappDialCode || ""));
+                  }
+                  setFormData({ ...formData, whatsappNumber: digits });
+                }}
+              />
+            </div>
           </div>
 
           {/* SUNDAY WORK PREFERENCE TOGGLE */}
