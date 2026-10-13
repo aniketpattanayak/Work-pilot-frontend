@@ -61,9 +61,14 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
   const sessionUser = JSON.parse(localStorage.getItem("user") || "{}");
   const currentAssignerId = assignerId || sessionUser?._id || sessionUser?.id;
 
-  // Working hours — loaded from settings
+  // Working hours — loaded from settings (used only for the optional
+  // "set to office closing time" quick-pick below; the deadline's own
+  // default time is 11:59 PM, not this).
   const [closeHour, setCloseHour] = useState(18); // default 6:00 PM
   const [holidayList, setHolidayList] = useState([]);
+  // Deadline time: defaults to 11:59 PM of whatever date is picked; the
+  // assigner can change it, and it's shown wherever the deadline is shown.
+  const [deadlineTime, setDeadlineTime] = useState('23:59');
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -109,16 +114,33 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
   const isDisabledDate = (date) =>
     holidayDates.some(h => h.toDateString() === date.toDateString());
 
-  // When a date is selected, auto-set time to office closing hour
+  // When a date is picked, apply the current deadline time (11:59 PM by
+  // default, or whatever the assigner has set it to).
+  const applyDeadlineTime = (date, timeStr) => {
+    const [h, m] = (timeStr || '23:59').split(':').map(Number);
+    const d = new Date(date);
+    d.setHours(Number.isFinite(h) ? h : 23, Number.isFinite(m) ? m : 59, 0, 0);
+    return d;
+  };
+
   const handleDateChange = (date) => {
     if (!date) {
       setTask({ ...task, deadline: null });
       return;
     }
-    // Set time to closing hour of the office, 0 minutes
-    const deadlineWithTime = new Date(date);
-    deadlineWithTime.setHours(closeHour, 0, 0, 0);
-    setTask({ ...task, deadline: deadlineWithTime });
+    setTask({ ...task, deadline: applyDeadlineTime(date, deadlineTime) });
+  };
+
+  const handleTimeChange = (timeStr) => {
+    setDeadlineTime(timeStr);
+    if (task.deadline) {
+      setTask({ ...task, deadline: applyDeadlineTime(task.deadline, timeStr) });
+    }
+  };
+
+  const applyOfficeClosingTime = () => {
+    const t = `${String(closeHour).padStart(2, '0')}:00`;
+    handleTimeChange(t);
   };
 
   const fetchMyTeam = useCallback(async () => {
@@ -310,48 +332,64 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                   )}
                 </div>
 
-                {/* DEADLINE — date only, time auto-set to office closing hour */}
+                {/* DEADLINE — date + time; defaults to 11:59 PM of the picked date */}
                 <div>
                   <label className="text-sm font-medium text-slate-600">
                     Deadline
                     <span className="ml-2 text-xs text-muted-foreground font-normal">
-                      (time auto-set to {closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`})
+                      (defaults to 11:59 PM — change the time below if needed)
                     </span>
                   </label>
 
-                  <DatePicker
-                    selected={task.deadline}
-                    onChange={handleDateChange}
-                    dateFormat="dd MMM yyyy"
-                    placeholderText="Select deadline date"
-                    minDate={new Date()}
-                    isClearable
-                    showYearDropdown
-                    showMonthDropdown
-                    dropdownMode="select"
-                    scrollableYearDropdown
-                    yearDropdownItemNumber={10}
-                    filterDate={(date) => !isDisabledDate(date)}
-                    dayClassName={(date) => {
-                      const key = date.toDateString();
-                      return holidayMap[key] ? "holiday-day" : "";
-                    }}
-                    renderDayContents={(day, date) => {
-                      const key = date.toDateString();
-                      const holidayName = holidayMap[key];
-                      return <span title={holidayName || ""}>{day}</span>;
-                    }}
-                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
-                  />
+                  <div className="flex gap-2 items-start mt-1">
+                    <DatePicker
+                      selected={task.deadline}
+                      onChange={handleDateChange}
+                      dateFormat="dd MMM yyyy"
+                      placeholderText="Select deadline date"
+                      minDate={new Date()}
+                      isClearable
+                      showYearDropdown
+                      showMonthDropdown
+                      dropdownMode="select"
+                      scrollableYearDropdown
+                      yearDropdownItemNumber={10}
+                      filterDate={(date) => !isDisabledDate(date)}
+                      dayClassName={(date) => {
+                        const key = date.toDateString();
+                        return holidayMap[key] ? "holiday-day" : "";
+                      }}
+                      renderDayContents={(day, date) => {
+                        const key = date.toDateString();
+                        const holidayName = holidayMap[key];
+                        return <span title={holidayName || ""}>{day}</span>;
+                      }}
+                      className="flex-1 w-full px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={deadlineTime}
+                      onChange={(e) => handleTimeChange(e.target.value)}
+                      aria-label="Deadline time"
+                      className="w-32 px-3 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applyOfficeClosingTime}
+                    className="mt-1.5 text-[11px] text-primary hover:underline"
+                  >
+                    Use office closing time ({closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`}) instead
+                  </button>
 
-                  {/* Show selected date + auto time clearly */}
+                  {/* Show the full selected date + time clearly */}
                   {task.deadline && (
                     <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                       <CalendarDays size={11} />
                       Deadline set to:{" "}
                       <span className="font-semibold text-foreground">
                         {task.deadline.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}{" "}
-                        at {closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`}
+                        at {task.deadline.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </p>
                   )}

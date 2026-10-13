@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import RevisionPanel from '../components/RevisionPanel';
 import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
+import { useChat } from '../components/useChat';
 import {
   CheckCircle,
   Clock,
@@ -15,6 +16,8 @@ import {
   Lock,
   X,
   Upload,
+  Camera,
+  MessageSquare,
   Send,
   RefreshCcw,
   FileText,
@@ -48,6 +51,11 @@ const fmsDescription = (m) => {
 };
 
 const DoerChecklist = ({ doerId }) => {
+  const { openTaskThread } = useChat();
+  // History/files details modal: mirrors the assigner-side one in
+  // ManageTasks.jsx so the doer can see every uploaded photo and the full
+  // audit trail (including rejection remarks) for a delegation task.
+  const [detailsModalTask, setDetailsModalTask] = useState(null);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [employees, setEmployees] = useState([]);
@@ -68,6 +76,10 @@ const DoerChecklist = ({ doerId }) => {
   const [modalType, setModalType] = useState("");
   const [remarks, setRemarks] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  // Multiple evidence photos for marking a Delegation task done - picked
+  // from device storage or captured live from the camera (requirement: the
+  // doer must be able to choose either source, and attach more than one).
+  const [delegationFiles, setDelegationFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -260,13 +272,17 @@ const DoerChecklist = ({ doerId }) => {
         formData.append("taskId", activeTask._id);
         formData.append("status", "Completed");
         formData.append("doerId", currentDoerId);
-        if (selectedFile) formData.append("evidence", selectedFile);
+        // Multiple files (storage picks and/or live camera captures) all go
+        // up as separate "evidence" fields - the backend's /respond route
+        // now accepts an array (routes/taskRoutes.js: useUpload(_upload.array('evidence', 6))).
+        delegationFiles.forEach((f) => formData.append("evidence", f));
         await API.put(`/tasks/respond`, formData);
       }
 
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
+      setDelegationFiles([]);
       fetchAllTasks();
 
     } catch (err) {
@@ -435,11 +451,16 @@ const DoerChecklist = ({ doerId }) => {
                 </div>
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
                   {item.description || "No description provided."}
+                  {item.dataType === 'Delegation' && item.remarks && (
+                    <div className="mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-black normal-case tracking-tight not-italic">
+                      {item.status === 'Accepted' ? 'Sent back — ' : 'Note — '}{item.remarks}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
                   <p className="uppercase tracking-tighter text-slate-500 truncate">
-                    {item.deadlineDate ? new Date(item.deadlineDate).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                    {item.deadlineDate ? `${new Date(item.deadlineDate).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} ${new Date(item.deadlineDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A'}
                   </p>
                 </div>
                 <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
@@ -454,7 +475,22 @@ const DoerChecklist = ({ doerId }) => {
                     <button onClick={() => openOnward(item)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
                   {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && !isPassedOn(item) && (
-                    <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                    <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                  )}
+                  {item.dataType === 'Delegation' && !isPassedOn(item) && (
+                    <>
+                      <button onClick={() => openTaskThread({
+                        taskId: item._id,
+                        taskType: 'delegation',
+                        taskTitle: item.title,
+                        participants: [idOf(item.doerId) || currentDoerId, idOf(item.assignerId)].filter(Boolean),
+                      })} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message">
+                        <MessageSquare size={12} />
+                      </button>
+                      <button onClick={() => setDetailsModalTask(item)} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90" title="History & files">
+                        <History size={12} />
+                      </button>
+                    </>
                   )}
                   {item.dataType === 'Checklist' && !item.isDone && (
                     <button onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }} className="px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white bg-emerald-600">Submit</button>
@@ -487,11 +523,17 @@ const DoerChecklist = ({ doerId }) => {
                 </div>
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
                   {task.description || "No description provided."}
+                  {task.remarks && (
+                    <div className="mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-black normal-case tracking-tight not-italic">
+                      {task.status === 'Accepted' ? 'Sent back — ' : 'Note — '}{task.remarks}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
                   <p className={`uppercase tracking-tighter truncate ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
-                    {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
+                    {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   {task.originalDeadline && (
                     <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was revised">
@@ -515,7 +557,22 @@ const DoerChecklist = ({ doerId }) => {
                       {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
-                      <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                      <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                    </>
+                  )}
+                  {!isPassedOn(task) && (
+                    <>
+                      <button onClick={() => openTaskThread({
+                        taskId: task._id,
+                        taskType: 'delegation',
+                        taskTitle: task.title,
+                        participants: [idOf(task.doerId) || currentDoerId, idOf(task.assignerId)].filter(Boolean),
+                      })} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message">
+                        <MessageSquare size={12} />
+                      </button>
+                      <button onClick={() => setDetailsModalTask(task)} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90" title="History & files">
+                        <History size={12} />
+                      </button>
                     </>
                   )}
                 </div>
@@ -648,11 +705,57 @@ const DoerChecklist = ({ doerId }) => {
                 </p>
               </div>
               <textarea required placeholder="Mission remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-32 bg-background border border-border text-foreground p-4 rounded-2xl outline-none font-bold text-[10px] uppercase shadow-inner" />
-              <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
-                <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                <Upload size={20} className="mx-auto text-slate-400 mb-2" />
-                <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
-              </div>
+              {modalType === "Delegation" ? (
+                // Delegation completion: the doer must be able to choose
+                // storage or a live camera photo, and attach more than one.
+                <div>
+                  <div className="flex gap-2">
+                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                      <Upload size={16} /> From storage
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => setDelegationFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                      />
+                    </label>
+                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                      <Camera size={16} /> Take photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => setDelegationFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                      />
+                    </label>
+                  </div>
+                  {delegationFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {delegationFiles.map((f, i) => (
+                        <div key={i} className="relative">
+                          <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                          <button
+                            type="button"
+                            onClick={() => setDelegationFiles((prev) => prev.filter((_, j) => j !== i))}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]"
+                            aria-label={`Remove ${f.name}`}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
+                  <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                  <Upload size={20} className="mx-auto text-slate-400 mb-2" />
+                  <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
+                </div>
+              )}
 
                 <button
                   disabled={uploading}
@@ -703,6 +806,56 @@ const DoerChecklist = ({ doerId }) => {
             <div className="flex justify-end gap-2">
               <button onClick={() => setOnwardTask(null)} className="px-4 py-2 rounded-xl border border-border text-xs font-bold">Cancel</button>
               <button onClick={submitOnward} disabled={onwardBusy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50">{onwardBusy ? 'Assigning…' : 'Assign Onward'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HISTORY & FILES MODAL — same data/shape as the assigner-side one in
+          ManageTasks.jsx, so the doer can see every uploaded photo plus the
+          full audit trail, including any rejection/send-back remarks. */}
+      {detailsModalTask && (
+        <div className="fixed inset-0 z-[9994] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border flex-shrink-0">
+              <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
+              <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {detailsModalTask.remarks && (
+                <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold">
+                  Latest remarks: {detailsModalTask.remarks}
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Uploaded photos ({(detailsModalTask.files || []).length})</p>
+                {(detailsModalTask.files || []).length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No photos uploaded yet.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {detailsModalTask.files.map((f, i) => (
+                      <a key={i} href={f.fileUrl} target="_blank" rel="noopener noreferrer" title={f.fileName}>
+                        <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-20 h-20 object-cover rounded-xl border border-border hover:border-primary transition-all" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Activity history</p>
+                <div className="space-y-3">
+                  {(detailsModalTask.history || []).slice().reverse().map((h, i) => (
+                    <div key={i} className="text-xs border-l-2 border-border pl-3">
+                      <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
+                      {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
+                      <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                    </div>
+                  ))}
+                  {(!detailsModalTask.history || detailsModalTask.history.length === 0) && (
+                    <p className="text-xs text-muted-foreground italic">No history yet.</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

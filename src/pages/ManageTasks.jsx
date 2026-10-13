@@ -25,7 +25,10 @@ import {
   Calendar,
   Plus,
   Edit3,
-  ChevronDown
+  ChevronDown,
+  Camera,
+  Upload,
+  Lock
 } from 'lucide-react';
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
@@ -46,6 +49,20 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [revisionModalTask, setRevisionModalTask] = useState(null);
+
+  // Reject-with-evidence modal state: rejecting (sending back for
+  // correction) can now carry remarks AND photo(s) from storage or the
+  // live camera, same as the doer's own "mark done" flow, instead of a
+  // text-only prompt.
+  const [rejectModalTask, setRejectModalTask] = useState(null);
+  const [rejectRemarks, setRejectRemarks] = useState('');
+  const [rejectFiles, setRejectFiles] = useState([]);
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+
+  // History/files details modal: shared by the assigner and the doer side
+  // (TaskCard.jsx below has its own copy) so either side can see every
+  // uploaded photo and the full audit trail of who did what, when.
+  const [detailsModalTask, setDetailsModalTask] = useState(null);
 
   // Edit task state
   const [editingTask, setEditingTask] = useState(null);
@@ -158,21 +175,45 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   }, [timeFilter, statusFilter, nameFilter, applyFilters]);
 
   const handleVerifyTask = async (taskId, isSatisfied) => {
-    const status = isSatisfied ? 'Verified' : 'Accepted';
-    let remarks = 'Directive evidence verified.';
     if (isSatisfied) {
       const yes = await dialog.confirm('Mark this task as verified? This confirms the work was done to your satisfaction.', { title: 'Verify task', confirmText: 'Verify' });
       if (!yes) return;
-    } else {
-      const text = await dialog.prompt('What needs to be corrected? The doer will see this.', { title: 'Send back for correction', required: true, placeholder: 'Describe the corrections needed...', confirmText: 'Send back', danger: true });
-      if (!text) return;
-      remarks = text;
+      try {
+        await API.put('/tasks/respond', { taskId, status: 'Verified', remarks: 'Directive evidence verified.', doerId: currentAssignerId });
+        fetchData();
+        dialog.alert('The task is verified.', { tone: 'success' });
+      } catch (err) { dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' }); }
+      return;
     }
+    // Rejecting ("send back for correction") now opens a modal instead of a
+    // text-only prompt, so the assigner can also attach photo(s) - from
+    // storage or the live camera - explaining what's wrong, same as the
+    // doer's own evidence on completion.
+    setRejectModalTask({ _id: taskId });
+    setRejectRemarks('');
+    setRejectFiles([]);
+  };
+
+  const handleSubmitReject = async (e) => {
+    e.preventDefault();
+    if (!rejectModalTask || !rejectRemarks.trim()) return;
+    setRejectSubmitting(true);
     try {
-      await API.put('/tasks/respond', { taskId, status, remarks, doerId: currentAssignerId });
+      const formData = new FormData();
+      formData.append('taskId', rejectModalTask._id);
+      formData.append('status', 'Accepted'); // this app's existing "sent back for correction" status
+      formData.append('remarks', rejectRemarks.trim());
+      formData.append('doerId', currentAssignerId);
+      rejectFiles.forEach((f) => formData.append('evidence', f));
+      await API.put('/tasks/respond', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setRejectModalTask(null);
       fetchData();
-      dialog.alert(isSatisfied ? 'The task is verified.' : 'The task was sent back to the doer.', { tone: 'success' });
-    } catch (err) { dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' }); }
+      dialog.alert('The task was sent back to the doer.', { tone: 'success' });
+    } catch (err) {
+      dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' });
+    } finally {
+      setRejectSubmitting(false);
+    }
   };
 
   const handleCancelTask = async (taskId, title) => {
@@ -182,13 +223,25 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     catch (err) { dialog.alert(err.response?.data?.message || 'The task could not be deleted.', { tone: 'error' }); }
   };
 
+  // Converts an ISO deadline to the local "YYYY-MM-DDTHH:mm" the
+  // datetime-local input needs, preserving whatever time is already
+  // stored (a brand-new task defaults to 23:59 at creation; editing an
+  // older task just shows its real stored time, whatever that is).
+  const toDatetimeLocal = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
   const handleOpenEdit = (task) => {
     setEditingTask(task);
     setEditFormData({
       title: task.title || '',
       description: task.description || '',
       doerId: task.doerId?._id || task.doerId || '',
-      deadline: task.deadline ? task.deadline.split('T')[0] : '',
+      deadline: toDatetimeLocal(task.deadline),
       priority: task.priority || 'Medium'
     });
     setIsEditOpen(true);
@@ -348,7 +401,14 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         </p>
                       </div>
                       <div className="text-xs font-bold min-w-0">
-                        {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'AWAITING'}
+                        {task.deadline ? (
+                          <>
+                            {new Date(task.deadline).toLocaleDateString()}{' '}
+                            <span className="text-muted-foreground font-semibold">
+                              {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </>
+                        ) : 'AWAITING'}
                         {task.originalDeadline && (
                           <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The doer revised the deadline within the allowed days">
                             Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString()} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
@@ -359,12 +419,24 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>
                       </div>
                       <div className="flex gap-1.5 justify-end items-center min-w-0">
-                        {!isViewer && !passedOnOnly(task) && (
-<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
-                          className="p-2 bg-primary/10 text-primary rounded-xl border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90" title="Edit Task">
+                        {!isViewer && !passedOnOnly(task) && (() => {
+                          // Once the doer has marked the task done (Completed) or it's been
+                          // Verified, the assigner can no longer edit or delete it - only
+                          // verify/reject (handled by its own buttons below) or comment.
+                          const locked = ['Completed', 'Verified'].includes(task.status);
+                          return (
+<button onClick={(e) => { e.stopPropagation(); if (!locked) handleOpenEdit(task); }}
+                          disabled={locked}
+                          title={locked ? "Can't edit — the doer has already marked this task done" : "Edit Task"}
+                          className={`p-2 rounded-xl border transition-all active:scale-90 ${
+                            locked
+                              ? 'bg-background border-border text-slate-300 dark:text-slate-700 cursor-not-allowed'
+                              : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white'
+                          }`}>
                           <Edit3 size={14} />
                         </button>
-)}
+                          );
+                        })()}
                         {!isViewer && task.status === 'Revision Requested' && (
                           <button onClick={(e) => { e.stopPropagation(); setRevisionModalTask(task); }}
                             className="p-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all active:scale-90" title="Revision Control">
@@ -388,19 +460,36 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             taskId: task._id,
                             taskType: 'delegation',
                             taskTitle: task.title || task.taskTitle || 'Task',
-                            participants: [task.doerId?._id, task.assignerId].filter(Boolean),
+                            // Bug fix: task.assignerId is a populated object here
+                            // ({_id, name, ...}), not a plain id - pushing it
+                            // straight into participants silently corrupted the
+                            // thread's participant list. Always resolve to the id.
+                            participants: [task.doerId?._id || task.doerId, task.assignerId?._id || task.assignerId].filter(Boolean),
                           });
                         }}
                           className="flex items-center gap-1 text-[11px] px-2 py-2 rounded-xl border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all font-bold" title="Comments">
                           💬
                         </button>
 )}
-                        {!isViewer && !passedOnOnly(task) && (
-<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id, task.title); }}
-                          className="p-2 bg-background border border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-xl transition-all active:scale-90" title="Delete Task">
+                        <button onClick={(e) => { e.stopPropagation(); setDetailsModalTask(task); }}
+                          className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-xl transition-all active:scale-90" title="History & files">
+                          <History size={14} />
+                        </button>
+                        {!isViewer && !passedOnOnly(task) && (() => {
+                          const locked = ['Completed', 'Verified'].includes(task.status);
+                          return (
+<button onClick={(e) => { e.stopPropagation(); if (!locked) handleCancelTask(task._id, task.title); }}
+                          disabled={locked}
+                          title={locked ? "Can't delete — the doer has already marked this task done" : "Delete Task"}
+                          className={`p-2 rounded-xl border transition-all active:scale-90 ${
+                            locked
+                              ? 'bg-background border-border text-slate-300 dark:text-slate-700 cursor-not-allowed'
+                              : 'bg-background border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500'
+                          }`}>
                           <Trash2 size={14} />
                         </button>
-)}
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -410,6 +499,130 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           </div>
         </div>
       </div>
+
+      {/* REJECT (SEND BACK) MODAL — remarks + photo evidence, from storage or live camera */}
+      {rejectModalTask && (
+        <div className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={handleSubmitReject} className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border flex-shrink-0">
+              <h3 className="font-black text-sm uppercase tracking-widest text-red-600">Send Back For Correction</h3>
+              <button type="button" onClick={() => setRejectModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">What needs to be corrected? *</label>
+                <textarea
+                  required
+                  rows={4}
+                  autoFocus
+                  value={rejectRemarks}
+                  onChange={(e) => setRejectRemarks(e.target.value)}
+                  placeholder="Describe the corrections needed — the doer will see this."
+                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+                  Photo evidence (optional)
+                </label>
+                <div className="flex gap-2">
+                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                    <Upload size={14} /> From storage
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => setRejectFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                    />
+                  </label>
+                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                    <Camera size={14} /> Take photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={(e) => setRejectFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                    />
+                  </label>
+                </div>
+                {rejectFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {rejectFiles.map((f, i) => (
+                      <div key={i} className="relative">
+                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
+                        <button
+                          type="button"
+                          onClick={() => setRejectFiles((prev) => prev.filter((_, j) => j !== i))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]"
+                          aria-label={`Remove ${f.name}`}
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-6 pt-0 flex-shrink-0">
+              <button
+                type="submit"
+                disabled={rejectSubmitting || !rejectRemarks.trim()}
+                className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest disabled:opacity-50 transition-all"
+              >
+                {rejectSubmitting ? 'Sending…' : 'Send back to doer'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* HISTORY & FILES MODAL — every uploaded photo and the full audit
+          trail, visible to both the assigner and the doer (same data, same
+          component used from TaskCard.jsx on the doer's side). */}
+      {detailsModalTask && (
+        <div className="fixed inset-0 z-[9994] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border flex-shrink-0">
+              <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
+              <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Uploaded photos ({(detailsModalTask.files || []).length})</p>
+                {(detailsModalTask.files || []).length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No photos uploaded yet.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {detailsModalTask.files.map((f, i) => (
+                      <a key={i} href={f.fileUrl} target="_blank" rel="noopener noreferrer" title={f.fileName}>
+                        <img src={f.fileUrl} alt={f.fileName || 'evidence'} className="w-20 h-20 object-cover rounded-xl border border-border hover:border-primary transition-all" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2">Activity history</p>
+                <div className="space-y-3">
+                  {(detailsModalTask.history || []).slice().reverse().map((h, i) => (
+                    <div key={i} className="text-xs border-l-2 border-border pl-3">
+                      <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
+                      {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
+                      <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                    </div>
+                  ))}
+                  {(!detailsModalTask.history || detailsModalTask.history.length === 0) && (
+                    <p className="text-xs text-muted-foreground italic">No history yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {revisionModalTask && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -486,7 +699,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Deadline</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={editFormData.deadline}
                     onChange={e => setEditFormData({ ...editFormData, deadline: e.target.value })}
                     className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
