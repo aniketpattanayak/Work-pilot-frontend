@@ -9,6 +9,8 @@ import {
   parseStoredNumber,
   validateNationalNumber,
   maxNationalLength,
+  findCountryById,
+  findCountryByDialCode,
 } from "../utils/phoneNumber";
 import {
   ShieldCheck,
@@ -179,9 +181,14 @@ const AddEmployee = ({
     workOnSunday: false, // Initialized as boolean
   });
 
-  // Dial code for the WhatsApp number field (null only in the rare case an
-  // existing stored number couldn't be matched to any known country).
-  const [whatsappDialCode, setWhatsappDialCode] = useState(INDIA_DIAL_CODE);
+  // Selected country for the WhatsApp number field. Tracked by `id` (not by
+  // `dialCode`) because several countries share a dial code (US/Canada both
+  // use "1") - using dialCode as the <select>'s value would make choosing
+  // Canada collapse back to whichever same-dial-code country is listed
+  // first. Empty string only in the rare case an existing stored number
+  // couldn't be matched to any known country.
+  const [whatsappCountryId, setWhatsappCountryId] = useState("IN");
+  const whatsappDialCode = findCountryById(whatsappCountryId)?.dialCode || "";
 
   const [allEmployees, setAllEmployees] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -240,8 +247,12 @@ const AddEmployee = ({
     if (selectedEmployee) {
       const parsedPhone = parseStoredNumber(selectedEmployee.whatsappNumber);
       // Null dialCode means the stored number didn't match any known
-      // country - don't guess, let the user explicitly pick one.
-      setWhatsappDialCode(parsedPhone.dialCode);
+      // country - don't guess, let the user explicitly pick one. Otherwise
+      // take the first country in the list sharing that dial code (e.g. a
+      // parsed "1" defaults to United States; the user can switch to
+      // Canada explicitly if that's what it actually is).
+      const parsedCountry = parsedPhone.dialCode ? findCountryByDialCode(parsedPhone.dialCode) : null;
+      setWhatsappCountryId(parsedCountry?.id || "");
       setFormData({
         ...selectedEmployee,
         name: selectedEmployee.name || "",
@@ -286,7 +297,7 @@ const AddEmployee = ({
         managedAssigners: [],
         workOnSunday: false, // Explicit reset
       });
-      setWhatsappDialCode(INDIA_DIAL_CODE);
+      setWhatsappCountryId("IN");
       setIsEditing(false);
     }
   }, [selectedEmployee]);
@@ -379,7 +390,7 @@ const AddEmployee = ({
         managedAssigners: [],
         workOnSunday: false,
       });
-      setWhatsappDialCode(INDIA_DIAL_CODE);
+      setWhatsappCountryId("IN");
       setIsEditing(false);
       if (onSuccess) onSuccess();
     } catch (err) {
@@ -527,19 +538,19 @@ const AddEmployee = ({
             <InputLabel icon={Phone} label="WhatsApp number" />
             <div className="flex gap-2">
               <select
-                value={whatsappDialCode || ""}
+                value={whatsappCountryId || ""}
                 aria-label="Country code"
                 title="Country code"
                 className="px-2 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner shrink-0 max-w-[9.5rem]"
-                onChange={(e) => setWhatsappDialCode(e.target.value)}
+                onChange={(e) => setWhatsappCountryId(e.target.value)}
               >
-                {!whatsappDialCode && (
+                {!whatsappCountryId && (
                   <option value="" disabled>
                     Select code
                   </option>
                 )}
                 {COUNTRIES.map((c) => (
-                  <option key={`${c.dialCode}-${c.name}`} value={c.dialCode}>
+                  <option key={c.id} value={c.id}>
                     {c.flag} {c.name} (+{c.dialCode})
                   </option>
                 ))}

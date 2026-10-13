@@ -6,6 +6,9 @@ import {
   validateNationalNumber,
   maxNationalLength,
   INDIA_DIAL_CODE,
+  COUNTRIES,
+  findCountryById,
+  findCountryByDialCode,
 } from "./phoneNumber.js";
 
 let passed = 0;
@@ -83,6 +86,58 @@ test("maxNationalLength caps at 15 total and at 14 national digits", () => {
 
 test("National number below 6 digits is invalid (non-India)", () => {
   assert.equal(validateNationalNumber("971", "12345").valid, false);
+});
+
+// --- 10-total-digit ambiguity (WhatsApp sender would mistake it for India) ---
+
+test("Singapore 8-digit national (10 total) is rejected as ambiguous with India", () => {
+  const r = validateNationalNumber("65", "12345678");
+  assert.equal(r.valid, false);
+  assert.equal(
+    r.message,
+    "This country's number would be mistaken for an Indian number by the WhatsApp sender, so it can't be saved yet. Please contact support."
+  );
+});
+
+test("UAE 9-digit national (12 total) is still valid, not ambiguous", () => {
+  assert.equal(validateNationalNumber("971", "501234567").valid, true);
+});
+
+test("USA 10-digit national (11 total) is still valid, not ambiguous", () => {
+  assert.equal(validateNationalNumber("1", "2025551234").valid, true);
+});
+
+test("India is unaffected by the 10-total-digit ambiguity rule", () => {
+  // India's own 10-digit numbers must keep passing - the rule only applies
+  // to non-India dial codes.
+  assert.equal(validateNationalNumber("91", "9876543210").valid, true);
+});
+
+test("Ambiguity check uses the stored (leading-zero-stripped) length", () => {
+  // Raw input "012345678" (9 digits) strips to 8 digits -> 65 + 8 = 10,
+  // still ambiguous even though the typed input was 9 digits.
+  const r = validateNationalNumber("65", "012345678");
+  assert.equal(r.valid, false);
+});
+
+// --- country list: US/Canada share a dial code but must stay distinct ---
+
+test("US and Canada are separate entries sharing dial code '1'", () => {
+  const us = findCountryById("US");
+  const ca = findCountryById("CA");
+  assert.equal(us.dialCode, "1");
+  assert.equal(ca.dialCode, "1");
+  assert.notEqual(us.id, ca.id);
+});
+
+test("Every country in the list has a unique id", () => {
+  const ids = COUNTRIES.map((c) => c.id);
+  assert.equal(new Set(ids).size, ids.length);
+});
+
+test("findCountryByDialCode('1') resolves to an entry whose dialCode is '1'", () => {
+  const c = findCountryByDialCode("1");
+  assert.equal(c.dialCode, "1");
 });
 
 // --- parse (edit round-trip) ---

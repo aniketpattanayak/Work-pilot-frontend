@@ -13,30 +13,43 @@ export const INDIA_DIAL_CODE = "91";
 // A sensible list of common countries. Order doesn't matter for lookups
 // (longest-prefix match handles ambiguity), but India is first since it's
 // the default selection.
+// Each country has a unique `id` (distinct from `dialCode`, since several
+// countries share a dial code, e.g. US and Canada both use "1"). UI selects
+// must use `id` as the option value - using `dialCode` as the value would
+// make the <select> collapse Canada back to whichever same-dial-code
+// country appears first (United States) as soon as it re-renders.
 export const COUNTRIES = [
-  { name: "India", flag: "🇮🇳", dialCode: "91" },
-  { name: "United States", flag: "🇺🇸", dialCode: "1" },
-  { name: "Canada", flag: "🇨🇦", dialCode: "1" },
-  { name: "United Kingdom", flag: "🇬🇧", dialCode: "44" },
-  { name: "United Arab Emirates", flag: "🇦🇪", dialCode: "971" },
-  { name: "Saudi Arabia", flag: "🇸🇦", dialCode: "966" },
-  { name: "Australia", flag: "🇦🇺", dialCode: "61" },
-  { name: "Singapore", flag: "🇸🇬", dialCode: "65" },
-  { name: "Germany", flag: "🇩🇪", dialCode: "49" },
-  { name: "France", flag: "🇫🇷", dialCode: "33" },
-  { name: "Nepal", flag: "🇳🇵", dialCode: "977" },
-  { name: "Bangladesh", flag: "🇧🇩", dialCode: "880" },
-  { name: "Sri Lanka", flag: "🇱🇰", dialCode: "94" },
-  { name: "Pakistan", flag: "🇵🇰", dialCode: "92" },
-  { name: "Qatar", flag: "🇶🇦", dialCode: "974" },
-  { name: "Oman", flag: "🇴🇲", dialCode: "968" },
-  { name: "Kuwait", flag: "🇰🇼", dialCode: "965" },
-  { name: "Bahrain", flag: "🇧🇭", dialCode: "973" },
-  { name: "South Africa", flag: "🇿🇦", dialCode: "27" },
-  { name: "Nigeria", flag: "🇳🇬", dialCode: "234" },
+  { id: "IN", name: "India", flag: "🇮🇳", dialCode: "91" },
+  { id: "US", name: "United States", flag: "🇺🇸", dialCode: "1" },
+  { id: "CA", name: "Canada", flag: "🇨🇦", dialCode: "1" },
+  { id: "GB", name: "United Kingdom", flag: "🇬🇧", dialCode: "44" },
+  { id: "AE", name: "United Arab Emirates", flag: "🇦🇪", dialCode: "971" },
+  { id: "SA", name: "Saudi Arabia", flag: "🇸🇦", dialCode: "966" },
+  { id: "AU", name: "Australia", flag: "🇦🇺", dialCode: "61" },
+  { id: "SG", name: "Singapore", flag: "🇸🇬", dialCode: "65" },
+  { id: "DE", name: "Germany", flag: "🇩🇪", dialCode: "49" },
+  { id: "FR", name: "France", flag: "🇫🇷", dialCode: "33" },
+  { id: "NP", name: "Nepal", flag: "🇳🇵", dialCode: "977" },
+  { id: "BD", name: "Bangladesh", flag: "🇧🇩", dialCode: "880" },
+  { id: "LK", name: "Sri Lanka", flag: "🇱🇰", dialCode: "94" },
+  { id: "PK", name: "Pakistan", flag: "🇵🇰", dialCode: "92" },
+  { id: "QA", name: "Qatar", flag: "🇶🇦", dialCode: "974" },
+  { id: "OM", name: "Oman", flag: "🇴🇲", dialCode: "968" },
+  { id: "KW", name: "Kuwait", flag: "🇰🇼", dialCode: "965" },
+  { id: "BH", name: "Bahrain", flag: "🇧🇭", dialCode: "973" },
+  { id: "ZA", name: "South Africa", flag: "🇿🇦", dialCode: "27" },
+  { id: "NG", name: "Nigeria", flag: "🇳🇬", dialCode: "234" },
 ];
 
 export const isIndia = (dialCode) => dialCode === INDIA_DIAL_CODE;
+
+export const findCountryById = (id) => COUNTRIES.find((c) => c.id === id) || null;
+
+// First country in the list matching a given dial code (used when parsing a
+// stored number, which only recovers a dial code, not which same-dial-code
+// country it belongs to).
+export const findCountryByDialCode = (dialCode) =>
+  COUNTRIES.find((c) => c.dialCode === dialCode) || null;
 
 const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
 
@@ -69,6 +82,20 @@ export const validateNationalNumber = (dialCode, nationalNumber) => {
     return {
       valid: false,
       message: `Please enter a valid WhatsApp number (6-14 digits, ${dialCode.length + 6}-${dialCode.length + max} digits total with the country code).`,
+    };
+  }
+  // The WhatsApp sender's cleanPhone() prefixes "91" to ANY 10-digit stored
+  // number, treating it as a bare Indian number. A non-India number whose
+  // dialCode+national total is exactly 10 digits (e.g. Singapore 65 + an
+  // 8-digit number) would therefore be sent to the wrong person. Reject it
+  // here rather than let it reach the sender. Use the stripped national
+  // number, since that's what actually gets stored/concatenated.
+  const storedNational = stripLeadingZero(digits);
+  if (dialCode.length + storedNational.length === 10) {
+    return {
+      valid: false,
+      message:
+        "This country's number would be mistaken for an Indian number by the WhatsApp sender, so it can't be saved yet. Please contact support.",
     };
   }
   return { valid: true };
