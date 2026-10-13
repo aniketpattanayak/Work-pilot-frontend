@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone, Trash2, Calendar, User as UserIcon, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone, Trash2, Calendar, User as UserIcon, AlertTriangle } from 'lucide-react';
 import { useChat } from '../components/useChat';
 import { dialog } from '../components/Dialog';
 import API from '../api/axiosConfig';
@@ -168,7 +168,7 @@ function InputBar({ onSend, onTyping, uploadFile }) {
 
 // ─── TASK DETAILS CARD ────────────────────────────────────────────────────────
 // Shown at the top of an open task thread: title, deadline (+ "revised" if
-// it was), status, assigned by -> assigned to, and a "View task" link.
+// it was), status, and assigned by -> assigned to.
 // Loaded via GET /tasks/:taskId. On ANY failure (404, 403, network, the
 // route not existing on an older backend) this falls back to showing just
 // the thread's title - never an error screen - per the "never an error
@@ -239,10 +239,12 @@ function TaskDetailsCard({ taskId, fallbackTitle }) {
             {task.assignerId?.name || '—'} <ChevronLeft size={10} style={{ transform: 'rotate(180deg)' }} /> {task.doerId?.name || '—'}
           </span>
         )}
-        <a href={`/dashboard/manage-tasks?task=${task._id}`} target="_blank" rel="noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#185FA5', fontWeight: 600, textDecoration: 'none' }}>
-          <ExternalLink size={11} /> View task
-        </a>
+        {/* No "View task" link here: neither Manage Tasks nor My Tasks has
+            a way to deep-link to one task by id (no ?task= handling exists
+            on either page), so a link to one would silently go nowhere
+            useful. Removed rather than pointing at a page that doesn't
+            actually handle the id - see fix/chat-task-thread-and-composer's
+            follow-up commit for why. */}
       </div>
     </div>
   );

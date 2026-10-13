@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import { useChat } from '../components/useChat';
 import { CheckCircle2, AlertCircle, Clock, RefreshCcw, ChevronDown } from 'lucide-react';
@@ -252,6 +253,14 @@ export function TaskCard({ task, onComplete, openThread }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function FlowMyTasks({ employeeId }) {
   const { openTaskThread } = useChat();
+  const navigate = useNavigate();
+  // Same fix as ManageTasks.jsx/DoerChecklist.jsx: openTaskThread only
+  // creates/opens the conversation in-memory now, it doesn't navigate - the
+  // caller does the react-router navigation to the chat page.
+  const openTaskChat = useCallback(async (opts) => {
+    const conv = await openTaskThread(opts);
+    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+  }, [openTaskThread, navigate]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState('all');
@@ -325,13 +334,13 @@ export default function FlowMyTasks({ employeeId }) {
             <>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-red-500 mb-1 mt-2">Overdue</div>
               {overdue.map(task => (
-                <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskThread} />
+                <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskChat} />
               ))}
               {pending.length > 0 && <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1 mt-4">On track</div>}
             </>
           )}
           {(tab === 'all' ? pending : displayed).map(task => (
-            <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskThread} />
+            <TaskCard key={task.instanceId} task={task} onComplete={fetchTasks} openThread={openTaskChat} />
           ))}
         </div>
       )}
