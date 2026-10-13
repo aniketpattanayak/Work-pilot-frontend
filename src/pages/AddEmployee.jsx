@@ -185,10 +185,15 @@ const AddEmployee = ({
   // `dialCode`) because several countries share a dial code (US/Canada both
   // use "1") - using dialCode as the <select>'s value would make choosing
   // Canada collapse back to whichever same-dial-code country is listed
-  // first. Empty string only in the rare case an existing stored number
-  // couldn't be matched to any known country.
+  // first. "OTHER" means the user is typing their own country code into
+  // whatsappManualCode; empty string only in the rare case nothing is
+  // selected at all.
   const [whatsappCountryId, setWhatsappCountryId] = useState("IN");
-  const whatsappDialCode = findCountryById(whatsappCountryId)?.dialCode || "";
+  const [whatsappManualCode, setWhatsappManualCode] = useState("");
+  const whatsappDialCode =
+    whatsappCountryId === "OTHER"
+      ? whatsappManualCode
+      : findCountryById(whatsappCountryId)?.dialCode || "";
 
   const [allEmployees, setAllEmployees] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -252,7 +257,17 @@ const AddEmployee = ({
       // parsed "1" defaults to United States; the user can switch to
       // Canada explicitly if that's what it actually is).
       const parsedCountry = parsedPhone.dialCode ? findCountryByDialCode(parsedPhone.dialCode) : null;
-      setWhatsappCountryId(parsedCountry?.id || "");
+      if (parsedCountry) {
+        setWhatsappCountryId(parsedCountry.id);
+        setWhatsappManualCode("");
+      } else {
+        // No country matched the stored number (or it has no dial code at
+        // all) - preselect "Other" with an empty code box and the raw
+        // stored digits in the number box, so the user splits it
+        // themselves rather than Claude/the app guessing wrong.
+        setWhatsappCountryId("OTHER");
+        setWhatsappManualCode("");
+      }
       setFormData({
         ...selectedEmployee,
         name: selectedEmployee.name || "",
@@ -298,6 +313,7 @@ const AddEmployee = ({
         workOnSunday: false, // Explicit reset
       });
       setWhatsappCountryId("IN");
+      setWhatsappManualCode("");
       setIsEditing(false);
     }
   }, [selectedEmployee]);
@@ -340,10 +356,14 @@ const AddEmployee = ({
       await dialog.alert("Please select a Sector / Department.", { tone: "error", title: "Department needed" });
       return;
     }
-    if (!whatsappDialCode) {
+    if (!whatsappCountryId) {
       await dialog.alert("Please select a country code for the WhatsApp number.", { tone: "error", title: "Check the WhatsApp number" });
       return;
     }
+    // An empty manual code (whatsappCountryId === "OTHER" with nothing
+    // typed yet) is NOT caught above - it falls through to
+    // validateNationalNumber, which returns its own "Please type the
+    // country code." message for that case.
     const phoneCheck = validateNationalNumber(whatsappDialCode, formData.whatsappNumber);
     if (!phoneCheck.valid) {
       await dialog.alert(phoneCheck.message, { tone: "error", title: "Check the WhatsApp number" });
@@ -391,6 +411,7 @@ const AddEmployee = ({
         workOnSunday: false,
       });
       setWhatsappCountryId("IN");
+      setWhatsappManualCode("");
       setIsEditing(false);
       if (onSuccess) onSuccess();
     } catch (err) {
@@ -554,7 +575,30 @@ const AddEmployee = ({
                     {c.flag} {c.name} (+{c.dialCode})
                   </option>
                 ))}
+                <option value="OTHER">🌐 Other (type country code)</option>
               </select>
+              {whatsappCountryId === "OTHER" && (
+                <div className="flex items-center shrink-0 w-20 bg-background border border-border rounded-2xl shadow-inner focus-within:ring-4 focus-within:ring-primary/10">
+                  <span className="pl-3 text-xs font-bold text-slate-400">+</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="Code"
+                    aria-label="Manual country code"
+                    title="Country code, 1-4 digits, no leading 0"
+                    value={whatsappManualCode}
+                    required
+                    className="w-full min-w-0 pl-1 pr-3 py-2.5 bg-transparent text-foreground rounded-2xl text-xs font-bold outline-none placeholder:text-slate-400 dark:placeholder:text-slate-700"
+                    onChange={(e) => {
+                      let digits = e.target.value.replace(/\D/g, "");
+                      digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
+                      digits = digits.slice(0, 4);
+                      setWhatsappManualCode(digits);
+                    }}
+                  />
+                </div>
+              )}
               <input
                 type="tel"
                 inputMode="numeric"

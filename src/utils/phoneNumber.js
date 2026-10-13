@@ -77,6 +77,19 @@ export const validateNationalNumber = (dialCode, nationalNumber) => {
     }
     return { valid: true };
   }
+  // Manual "Other" country code entry: dialCode may be empty (not typed
+  // yet) or malformed. Validate it before falling through to the generic
+  // length rules below, which assume a well-formed digit string.
+  const code = String(dialCode || "");
+  if (!code) {
+    return { valid: false, message: "Please type the country code." };
+  }
+  if (!/^[1-9]\d{0,3}$/.test(code)) {
+    return {
+      valid: false,
+      message: "Country code must be 1-4 digits, with no \"+\" or leading 0.",
+    };
+  }
   const max = maxNationalLength(dialCode);
   if (digits.length < 6 || digits.length > max || digits.length > 14) {
     return {

@@ -140,6 +140,70 @@ test("findCountryByDialCode('1') resolves to an entry whose dialCode is '1'", ()
   assert.equal(c.dialCode, "1");
 });
 
+// --- manual "Other" country code entry ---
+
+test("Manual code 255 + 9-digit national is valid and builds correctly", () => {
+  const r = validateNationalNumber("255", "712345678");
+  assert.equal(r.valid, true);
+  assert.equal(buildStoredNumber("255", "712345678"), "255712345678");
+});
+
+test("Manual code '91' behaves exactly as India", () => {
+  const r = validateNationalNumber("91", "9876543210");
+  assert.equal(r.valid, true);
+  assert.equal(buildStoredNumber("91", "9876543210"), "9876543210");
+  // And still rejects a non-10-digit "India" number with India's own message.
+  const bad = validateNationalNumber("91", "12345");
+  assert.equal(bad.valid, false);
+  assert.equal(
+    bad.message,
+    "Please enter a 10-digit WhatsApp number (digits only, without 91 or +91)."
+  );
+});
+
+test("Manual code 65 + 8-digit national (10 total) is rejected as ambiguous", () => {
+  const r = validateNationalNumber("65", "12345678");
+  assert.equal(r.valid, false);
+  assert.equal(
+    r.message,
+    "This country's number would be mistaken for an Indian number by the WhatsApp sender, so it can't be saved yet. Please contact support."
+  );
+});
+
+test("Manual code that is too long (5 digits) is rejected", () => {
+  const r = validateNationalNumber("12345", "712345678");
+  assert.equal(r.valid, false);
+  assert.equal(r.message, "Country code must be 1-4 digits, with no \"+\" or leading 0.");
+});
+
+test("Manual code + national totalling over 15 digits is rejected", () => {
+  // code "255" (3) + 13-digit national = 16 total, over the limit.
+  const r = validateNationalNumber("255", "7123456789012");
+  assert.equal(r.valid, false);
+});
+
+test("Empty manual code is rejected with its own message", () => {
+  const r = validateNationalNumber("", "712345678");
+  assert.equal(r.valid, false);
+  assert.equal(r.message, "Please type the country code.");
+});
+
+test("Manual code leading zero on the national number is stripped", () => {
+  assert.equal(buildStoredNumber("255", "0712345678"), "255712345678");
+});
+
+test("Edit mode: an unmatched stored number parses to no country (UI preselects Other)", () => {
+  // This mirrors what AddEmployee.jsx does: when parseStoredNumber can't
+  // match any known dial code, it returns dialCode: null, nationalNumber:
+  // the raw stored digits untouched - the UI then preselects "OTHER" with
+  // an empty code box and those raw digits in the number box, rather than
+  // guessing a country.
+  const stored = "5551234"; // doesn't start with any known dial code
+  const { dialCode, nationalNumber } = parseStoredNumber(stored);
+  assert.equal(dialCode, null);
+  assert.equal(nationalNumber, stored);
+});
+
 // --- parse (edit round-trip) ---
 
 test("Edit round-trip: stored 10-digit number -> India", () => {
