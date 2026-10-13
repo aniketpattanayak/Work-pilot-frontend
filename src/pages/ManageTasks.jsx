@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import {
   Trash2,
@@ -41,6 +42,11 @@ import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
+  const navigate = useNavigate();
+  const openTaskChat = useCallback(async (opts) => {
+    const conv = await openTaskThread(opts);
+    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+  }, [openTaskThread, navigate]);
   const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
@@ -479,7 +485,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         {!isViewer && (
 <button onClick={(e) => {
                           e.stopPropagation();
-                          openTaskThread({
+                          openTaskChat({
                             taskId: task._id,
                             taskType: 'delegation',
                             taskTitle: task.title || task.taskTitle || 'Task',

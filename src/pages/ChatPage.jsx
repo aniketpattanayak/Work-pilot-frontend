@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Megaphone, Trash2, Calendar, User as UserIcon, ExternalLink, AlertTriangle } from 'lucide-react';
 import { useChat } from '../components/useChat';
 import { dialog } from '../components/Dialog';
+import API from '../api/axiosConfig';
 
 // ─── TINY HELPERS ─────────────────────────────────────────────────────────────
 function timeStr(date) {
@@ -164,24 +166,147 @@ function InputBar({ onSend, onTyping, uploadFile }) {
   );
 }
 
+// ─── TASK DETAILS CARD ────────────────────────────────────────────────────────
+// Shown at the top of an open task thread: title, deadline (+ "revised" if
+// it was), status, assigned by -> assigned to, and a "View task" link.
+// Loaded via GET /tasks/:taskId. On ANY failure (404, 403, network, the
+// route not existing on an older backend) this falls back to showing just
+// the thread's title - never an error screen - per the "never an error
+// screen" requirement.
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function TaskDetailsCard({ taskId, fallbackTitle }) {
+  const [task, setTask] = useState(null);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTask(null); setFailed(false); setLoading(true);
+    if (!taskId) { setLoading(false); setFailed(true); return; }
+    API.get(`/tasks/${taskId}`)
+      .then(r => { if (!cancelled) { setTask(r.data); setLoading(false); } })
+      .catch(() => { if (!cancelled) { setFailed(true); setLoading(false); } });
+    return () => { cancelled = true; };
+  }, [taskId]);
+
+  const statusColors = {
+    Pending: '#94a3b8', Accepted: '#185FA5', 'Revision Requested': '#d97706',
+    Completed: '#16a34a', Verified: '#0f6e56', Rejected: '#dc2626',
+  };
+
+  // Fallback: title only, no error text, no icon of doom - just a quieter card.
+  if (failed || (!loading && !task)) {
+    return (
+      <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>{fallbackTitle || 'Task'}</div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0, fontSize: 12, color: 'var(--color-muted-foreground)' }}>
+        Loading task details…
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '10px 20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 700 }}>{task.title || fallbackTitle}</div>
+        {task.status && (
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', padding: '2px 8px', borderRadius: 8, color: 'white', background: statusColors[task.status] || '#64748b', flexShrink: 0 }}>
+            {task.status}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 6, fontSize: 11, color: 'var(--color-muted-foreground)' }}>
+        {task.deadline && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Calendar size={11} />
+            {fmtDate(task.deadline)}
+            {task.wasRevised && <span style={{ color: '#d97706', fontWeight: 700, marginLeft: 2 }}>(revised)</span>}
+          </span>
+        )}
+        {(task.assignerId?.name || task.doerId?.name) && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <UserIcon size={11} />
+            {task.assignerId?.name || '—'} <ChevronLeft size={10} style={{ transform: 'rotate(180deg)' }} /> {task.doerId?.name || '—'}
+          </span>
+        )}
+        <a href={`/dashboard/manage-tasks?task=${task._id}`} target="_blank" rel="noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#185FA5', fontWeight: 600, textDecoration: 'none' }}>
+          <ExternalLink size={11} /> View task
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function ChatPage({ currentUser }) {
   const {
     conversations, activeConvId, activeConversation,
     messages, typingUsers, loadingMsgs, employees,
-    openConversation, closeConversation,
+    loadConversations, openConversation, closeConversation,
     sendMessage, startDM, deleteConversation, uploadFile, sendTyping,
   } = useChat();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch]       = useState('');
   const [showNewDM, setShowNewDM] = useState(false);
   const [filter, setFilter]       = useState('all');
+  const [isMobile, setIsMobile]   = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   const bottomRef                 = useRef();
   const myId = currentUser?._id || currentUser?.id || '';
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior:'smooth' });
   }, [messages]);
+
+  // Narrow-screen detection for the mobile back-to-list behaviour below.
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Deep-link support: /dashboard/chat?conv=<id> opens that conversation
+  // directly, INCLUDING on a hard refresh (when useChat's in-memory
+  // conversation list is empty and has to be loaded first) - this is what
+  // replaces the old window.location.href reload-based approach in
+  // useChat.js's openTaskThread, which always landed on "Select a
+  // conversation" because a full reload wiped the singleton's _activeConvId.
+  const convParam = searchParams.get('conv');
+  useEffect(() => {
+    if (!convParam) return;
+    if (convParam === activeConvId) return;
+    (async () => {
+      if (conversations.length === 0) {
+        await loadConversations();
+      }
+      openConversation(convParam);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convParam]);
+
+  // Keep the URL in sync so a manual conversation-list click is just as
+  // refreshable/shareable as a task-thread deep link, and so the mobile
+  // back button (clearing ?conv=) actually returns to the list.
+  const selectConversation = useCallback((id) => {
+    openConversation(id);
+    setSearchParams(id ? { conv: id } : {}, { replace: true });
+  }, [openConversation, setSearchParams]);
+
+  const goBackToList = useCallback(() => {
+    closeConversation();
+    setSearchParams({}, { replace: true });
+  }, [closeConversation, setSearchParams]);
 
   const handleSend = useCallback(async (data) => {
     if (!activeConvId) return;
@@ -217,14 +342,20 @@ export default function ChatPage({ currentUser }) {
   // People for the "+ New" list (shown instead of the conversation list)
   const people = (Array.isArray(employees) ? employees : []).filter(e => !search || (e.name || '').toLowerCase().includes(search.toLowerCase()));
 
+  // Narrow screens show either the conversation list OR the open thread,
+  // never both side by side - this is the "back action" to the list.
+  const showList = !isMobile || !activeConvId;
+  const showThread = !isMobile || !!activeConvId;
+
   return (
     <div style={{
-      position:'fixed', top:80, left:260, right:0, bottom:0,
+      flex:1, minHeight:0, width:'100%',
       display:'flex', background:'var(--color-background)', overflow:'hidden',
     }}>
 
       {/* ── LEFT PANEL ── */}
-      <div style={{ width:300, borderRight:'1px solid var(--color-border)', display:'flex', flexDirection:'column', background:'var(--color-card)', flexShrink:0 }}>
+      {showList && (
+      <div style={{ width: isMobile ? '100%' : 300, borderRight:'1px solid var(--color-border)', display:'flex', flexDirection:'column', background:'var(--color-card)', flexShrink:0 }}>
 
         {/* Header */}
         <div style={{ padding:'16px 16px 10px', flexShrink:0 }}>
@@ -262,7 +393,7 @@ export default function ChatPage({ currentUser }) {
             </div>
             {people.map(emp=>(
               <div key={emp._id}
-                onClick={async()=>{ await startDM(emp._id); setShowNewDM(false); setSearch(''); setFilter('all'); }}
+                onClick={async()=>{ const c = await startDM(emp._id); if (c?._id) setSearchParams({ conv: c._id }, { replace: true }); setShowNewDM(false); setSearch(''); setFilter('all'); }}
                 style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', cursor:'pointer', borderRadius:10, margin:'2px 6px' }}
                 onMouseEnter={e=>e.currentTarget.style.background='var(--color-muted)'}
                 onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
@@ -286,25 +417,26 @@ export default function ChatPage({ currentUser }) {
               </div>
             )}
             {filtered.map(c=>(
-              <ConvItem key={c._id} conv={c} active={c._id===activeConvId} onClick={()=>openConversation(c._id)}/>
+              <ConvItem key={c._id} conv={c} active={c._id===activeConvId} onClick={()=>selectConversation(c._id)}/>
             ))}
           </div>
         )}
       </div>
+      )}
 
       {/* ── RIGHT PANEL ── */}
-      {!activeConvId ? (
+      {showThread && (!activeConvId ? (
         <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'var(--color-muted-foreground)' }}>
           <MessageSquare size={56} style={{ opacity:.1, marginBottom:16 }}/>
           <div style={{ fontSize:18, fontWeight:600, marginBottom:6 }}>Select a conversation</div>
           <div style={{ fontSize:13 }}>or click "+ New" to start a direct message</div>
         </div>
       ) : (
-        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
 
           {/* Conversation header */}
           <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--color-border)', background:'var(--color-card)', display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
-            <button onClick={closeConversation}
+            <button onClick={goBackToList} title={isMobile ? 'Back to conversations' : 'Close'}
               style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--color-muted-foreground)', borderRadius:6 }}>
               <ChevronLeft size={20}/>
             </button>
@@ -329,6 +461,10 @@ export default function ChatPage({ currentUser }) {
               </button>
             )}
           </div>
+
+          {conv?.type === 'task' && conv?.taskId && (
+            <TaskDetailsCard taskId={conv.taskId} fallbackTitle={convName} />
+          )}
 
           {/* Messages */}
           <div style={{ flex:1, overflowY:'auto', padding:'20px', display:'flex', flexDirection:'column', gap:2, minHeight:0 }}>
@@ -377,7 +513,7 @@ export default function ChatPage({ currentUser }) {
               </div>
           }
         </div>
-      )}
+      ))}
     </div>
   );
 }

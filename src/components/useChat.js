@@ -254,20 +254,31 @@ export function useChat() {
     return conv;
   }, [openConversation]);
 
+  // Creates/finds the task's conversation and opens it in-memory. Does NOT
+  // navigate anywhere - a full page reload (the old window.location.href
+  // approach) destroys this module's singleton state (_activeConvId and
+  // friends), which is exactly why the chat page used to land on "Select a
+  // conversation" instead of the right thread. Callers that want to land on
+  // the chat page do their own react-router navigation (see ManageTasks.jsx/
+  // DoerChecklist.jsx's "Message" button) using the conversation id this
+  // returns, e.g. navigate(`/dashboard/chat?conv=${conv._id}`).
   const openTaskThread = useCallback(async ({ taskId, taskType, taskTitle, participants }) => {
     try {
       const res = await API.post('/chat/task-thread', { taskId, taskType, taskTitle, participants });
       const conv = { ...res.data, displayName: taskTitle || 'Task Thread' };
       if (!_conversations.some(c => c._id === conv._id)) {
         _conversations = [conv, ..._conversations];
+      } else {
+        // The thread already existed (e.g. created by the other side first) -
+        // make sure its title/taskTitle from THIS click is reflected too.
+        _conversations = _conversations.map(c => c._id === conv._id ? { ...c, ...conv } : c);
       }
+      notify();
       await openConversation(conv._id);
-      // Navigate to chat page
-      const base = window.location.pathname.split('/').slice(0,-1).join('/');
-      window.location.href = base + '/chat';
       return conv;
     } catch(err) {
       console.error('[Chat] openTaskThread:', err.message);
+      return null;
     }
   }, [openConversation]);
 

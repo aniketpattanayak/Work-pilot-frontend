@@ -86,7 +86,13 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false); 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // The chat page needs the full remaining height between the header and the
+  // sticky footer, with its OWN internal scrolling (conversation list,
+  // message list) instead of the whole dashboard column scrolling - so it
+  // gets a different (non-padded, non-scrolling) wrapper below. See
+  // ChatPage.jsx for why this replaced its old position:fixed layout.
+  const isChatRoute = location.pathname.replace(/\/+$/, '').endsWith('/chat');
 
 const [isModalOpen, setIsModalOpen] = useState(false);
   const handleEditInitiated = (emp) => {
@@ -367,7 +373,7 @@ useEffect(() => {
         <Sidebar roles={userRoles} activeTab={activeTab} onNavigate={handleNavigate} onLogout={onLogout} />
       </div>
 
-      <div className="flex-1 flex flex-col relative overflow-y-auto custom-scrollbar transition-all duration-500">
+      <div className={`flex-1 flex flex-col relative custom-scrollbar transition-all duration-500 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {/* EXECUTIVE HEADER */}
         <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-xl border-b border-border px-4 md:px-10 py-4 flex justify-between items-center min-h-[80px]">
           <div className="flex items-center gap-4">
@@ -452,7 +458,10 @@ useEffect(() => {
         </header>
 
         {/* MAIN ROUTE HUB */}
-        <main className="p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700">
+        <main className={isChatRoute
+          ? 'flex-1 min-h-0 w-full flex flex-col overflow-hidden animate-in fade-in duration-700'
+          : 'p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700'
+        }>
           <ErrorBoundary resetKey={location.pathname}>
           {isViewerOnly() ? (
           <Routes>
@@ -577,7 +586,11 @@ useEffect(() => {
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
       {!isViewerOnly() && <FloatingChat currentUser={user} />}
-      {!isViewerOnly() && <AiAssistantPanel currentUser={user} />}
+      {/* Hidden on the chat page itself: its floating button (bottom-right)
+          sat on top of the message composer's Send button, which also lives
+          bottom-right. The chat page already has its own full messaging UI,
+          so there's nothing lost by not floating a second one over it. */}
+      {!isViewerOnly() && !isChatRoute && <AiAssistantPanel currentUser={user} />}
       <DialogHost />
     </div>
   );

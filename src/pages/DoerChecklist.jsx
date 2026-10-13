@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import RevisionPanel from '../components/RevisionPanel';
 import { dialog } from '../components/Dialog';
@@ -55,6 +56,11 @@ const fmsDescription = (m) => {
 
 const DoerChecklist = ({ doerId }) => {
   const { openTaskThread } = useChat();
+  const navigate = useNavigate();
+  const openTaskChat = useCallback(async (opts) => {
+    const conv = await openTaskThread(opts);
+    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+  }, [openTaskThread, navigate]);
   // History/files details modal: mirrors the assigner-side one in
   // ManageTasks.jsx so the doer can see every uploaded photo and the full
   // audit trail (including rejection remarks) for a delegation task.
@@ -503,7 +509,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {item.dataType === 'Delegation' && !isPassedOn(item) && (
                     <>
-                      <button onClick={() => openTaskThread({
+                      <button onClick={() => openTaskChat({
                         taskId: item._id,
                         taskType: 'delegation',
                         taskTitle: item.title,
@@ -603,7 +609,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {!isPassedOn(task) && (
                     <>
-                      <button onClick={() => openTaskThread({
+                      <button onClick={() => openTaskChat({
                         taskId: task._id,
                         taskType: 'delegation',
                         taskTitle: task.title,
