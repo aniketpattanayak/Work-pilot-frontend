@@ -237,6 +237,93 @@
   }
 }
 
+/* A handful of tables/grids are wrapped in an inner `min-w-[Npx]
+   lg:min-w-full` div for their desktop-grid appearance - once the
+   table/grid itself switches to phone-card mode, that wrapper's own
+   fixed min-width still forces it (and anything inside it) wider than
+   the viewport. Opt such a wrapper out of its own min-width below the
+   tablet breakpoint with this class. */
+@media (max-width: 768px) {
+  .mobile-full-width {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ── MOBILE CARD GRID ─────────────────────────────────────────────────
+   Same card treatment as .mobile-card-table, for the custom CSS-Grid
+   "Excel-style" rows that a couple of pages build out of plain <div>s
+   instead of a real <table> (ManageTasks' task list, ChecklistMonitor's
+   grid) - see components/ResponsiveGrid.jsx, which applies these
+   classes/data-label attributes at runtime. */
+@media (max-width: 768px) {
+  .mobile-grid-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .mobile-grid-head {
+    display: none !important;
+  }
+  .mobile-grid-row {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    gap: 0 !important;
+    border: 1px solid hsl(var(--border));
+    border-left: 1px solid hsl(var(--border)) !important;
+    border-radius: 1rem;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 0.75rem;
+    background: hsl(var(--card));
+  }
+  .mobile-grid-row > * {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.375rem 0 !important;
+    text-align: right;
+    white-space: normal !important;
+    min-width: 0;
+  }
+  .mobile-grid-row > *[data-label]::before {
+    content: attr(data-label);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+    flex-shrink: 0;
+  }
+  .mobile-grid-row > .mobile-grid-title {
+    order: -2;
+    justify-content: flex-start;
+    font-weight: 900;
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid hsl(var(--border));
+    margin-bottom: 0.25rem;
+  }
+  .mobile-grid-row > .mobile-grid-title::before {
+    content: none;
+  }
+  .mobile-grid-row > .mobile-grid-actions {
+    order: 99;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .mobile-grid-row > .mobile-grid-actions::before {
+    content: none;
+  }
+}
+
 /* FloatingChat's bubble sits bottom:24/right:24 by inline style (already
    safe-area aware); only the opened panel needs to become a full sheet on
    phones instead of a fixed 340x480 box that would overflow a 360px

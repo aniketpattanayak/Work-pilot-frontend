@@ -501,7 +501,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           onClear={() => { setCategoryFilter('All'); setDateFrom(''); setDateTo(''); }}
           className="flex flex-wrap items-center gap-2"
           alwaysVisible={
-            <div className="relative flex-1 min-w-[220px] max-w-md">
+            <div className="relative flex-1 min-w-0 sm:min-w-[220px] max-w-md">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input type="text" placeholder="Search person, dept or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-card border border-border pl-9 pr-9 py-2 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
@@ -564,7 +564,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       {/* TASK TABLE */}
       <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden h-[calc(100vh-16rem)] min-h-[320px] flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
-          <div className="min-w-[700px] lg:min-w-full">
+          <div className="mobile-full-width min-w-[700px] lg:min-w-full">
             {/* Coordinator Sheet Column Config Panel */}
             {showCoordColConfig && (() => {
               const fmsTasks = tasks.filter(t => t.taskType === 'FMS');

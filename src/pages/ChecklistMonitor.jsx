@@ -2,7 +2,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import API from '../api/axiosConfig'; 
+import API from '../api/axiosConfig';
+import ResponsiveGrid from '../components/ResponsiveGrid';
 import { 
   CheckCircle, 
   Clock, 
@@ -322,13 +323,13 @@ const ChecklistMonitor = ({ tenantId }) => {
            <div className="h-[550px] flex flex-col overflow-hidden rounded-xl border border-border ">
 
 <div className="w-full overflow-x-auto">
-      <div className="min-w-[700px]">
+      <ResponsiveGrid className="min-w-[700px]">
 
          {/* GRID HEADER */}
-        <div className="grid grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]
-            px-6 lg:px-10 py-5 bg-card backdrop-blur-xl border border-border 
+        <div className="mobile-grid-head grid grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]
+            px-6 lg:px-10 py-5 bg-card backdrop-blur-xl border border-border
             font-black text-slate-400 text-[10px] lg:text-[11px]
-           uppercase tracking-[0.2em] items-center 
+           uppercase tracking-[0.2em] items-center
           shadow-lg sticky top-0 z-20">
             <div>Task Name</div><div>Assigned to</div><div>Cycle</div><div>Monthly<br></br>Activity</div><div>Last Log</div><div>Registry State</div><div className="text-right">Action</div>
         </div>
@@ -341,7 +342,7 @@ const ChecklistMonitor = ({ tenantId }) => {
 
           return (
             <div key={task._id} className={`flex flex-col border-b border-border last:border-0 transition-all ${status.isDone ? 'opacity-40 grayscale' : ''}`}>
-              <div onClick={() => setExpandedId(isExpanded ? null : task._id)} className={`grid grid-cols-1 grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-8 lg:px-10 cursor-pointer hover:bg-primary/[0.02]`}>
+              <div onClick={() => setExpandedId(isExpanded ? null : task._id)} className={`mobile-grid-row grid grid-cols-1 grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr] items-center px-6 py-8 lg:px-10 cursor-pointer hover:bg-primary/[0.02]`}>
                 <div className={`font-black text-sm text-base tracking-tight pr-4 text-foreground uppercase ${isExpanded ? 'whitespace-normal' : 'truncate'}`}>{task.taskName}</div>
                 <div className=" text-slate-500 text-xs font-black uppercase tracking-tight">{task.doerId?.name || 'Staff'}</div>
                 <div className=" text-slate-400 text-[10px] font-black uppercase tracking-widest">{task.frequency}</div>
@@ -550,7 +551,7 @@ const ChecklistMonitor = ({ tenantId }) => {
             </div>
           );
         })}
-        </div>
+        </ResponsiveGrid>
       </div>
       </div>
 

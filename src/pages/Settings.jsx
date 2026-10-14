@@ -425,7 +425,7 @@ const Settings = ({ tenantId }) => {
         {/* SECTION 0: FACTORY IDENTITY */}
         <div data-settings-section="identity" hidden={!showSection('identity')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group">
-           <Building2 size={160} className="absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
+           <Building2 size={160} className="hidden md:block absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
            <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 relative z-10 uppercase tracking-tight">
              <ImageIcon size={22} className="text-primary" /> Update company name & logo
            </h3>

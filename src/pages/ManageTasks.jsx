@@ -40,6 +40,7 @@ import ImageLightbox from '../components/ImageLightbox';
 import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 import MobileFilters from '../components/MobileFilters';
+import ResponsiveGrid from '../components/ResponsiveGrid';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -378,9 +379,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* TASK TABLE */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin">
-          <div className="w-[1050px] sm:w-full">
+          <ResponsiveGrid className="w-[1050px] sm:w-full">
             {/* HEADER */}
-            <div className="grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
+            <div className="mobile-grid-head grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
               <div>S no.</div>
               <div>Task Name</div>
               <div>Assigned To</div>
@@ -403,7 +404,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 return (
                   <div key={task._id} className="border-b border-border/50 last:border-0">
                     <div
-                      className={`grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
+                      className={`mobile-grid-row grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >
                       <div className="text-xs font-black text-slate-400">
@@ -527,7 +528,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 );
               })
             )}
-          </div>
+          </ResponsiveGrid>
         </div>
       </div>
 
