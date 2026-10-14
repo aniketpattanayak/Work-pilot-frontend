@@ -18,6 +18,7 @@ import FlowManagement  from './FlowManagement';
 import ChatPage        from './ChatPage';
 import FloatingChat from '../components/FloatingChat';
 import AiAssistantPanel from '../components/AiAssistantPanel';
+import MobileDualLauncher from '../components/MobileDualLauncher';
 import { isViewerOnly } from '../utils/viewerMode';
 import { DialogHost } from '../components/Dialog';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -94,6 +95,10 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   // gets a different (non-padded, non-scrolling) wrapper below. See
   // ChatPage.jsx for why this replaced its old position:fixed layout.
   const isChatRoute = location.pathname.replace(/\/+$/, '').endsWith('/chat');
+  // Bumped by MobileDualLauncher (phones only) to tell FloatingChat /
+  // AiAssistantPanel to open themselves - see each component's openTrigger effect.
+  const [chatOpenTrigger, setChatOpenTrigger] = useState(0);
+  const [aiOpenTrigger, setAiOpenTrigger] = useState(0);
 
 const [isModalOpen, setIsModalOpen] = useState(false);
   const handleEditInitiated = (emp) => {
@@ -589,12 +594,23 @@ useEffect(() => {
         }
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
-      {!isViewerOnly() && <FloatingChat currentUser={user} />}
+      {!isViewerOnly() && <FloatingChat currentUser={user} openTrigger={chatOpenTrigger} />}
       {/* Hidden on the chat page itself: its floating button (bottom-right)
           sat on top of the message composer's Send button, which also lives
           bottom-right. The chat page already has its own full messaging UI,
           so there's nothing lost by not floating a second one over it. */}
-      {!isViewerOnly() && !isChatRoute && <AiAssistantPanel currentUser={user} />}
+      {!isViewerOnly() && !isChatRoute && <AiAssistantPanel currentUser={user} openTrigger={aiOpenTrigger} />}
+      {/* Phones/tablets only: a single combined FAB replacing the two above
+          (see .launcher-btn-desktop-only / .mobile-dual-launcher in index.css).
+          Selecting an option bumps a counter prop that each panel's own
+          effect watches to open itself - see openTrigger above. */}
+      {!isViewerOnly() && (
+        <MobileDualLauncher
+          onOpenChat={() => setChatOpenTrigger((t) => t + 1)}
+          onOpenAi={() => setAiOpenTrigger((t) => t + 1)}
+          hideAi={isChatRoute}
+        />
+      )}
       <BottomNav roles={userRoles} viewerOnly={isViewerOnly()} onOpenMore={() => setSidebarOpen(true)} />
       <DialogHost />
     </div>
