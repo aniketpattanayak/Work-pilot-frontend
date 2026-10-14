@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
 import AccessRolesPanel from '../components/AccessRolesPanel';
 import { dialog } from '../components/Dialog';
-import { COUNTRIES as DEFAULT_PHONE_COUNTRIES } from '../utils/phoneNumber';
 import { 
   FiUser, FiShield, FiPlus, FiX, FiSave, FiTrash2, FiSettings, FiCheckCircle, FiRefreshCw 
 } from "react-icons/fi";
+import ResponsiveTable from '../components/ResponsiveTable';
 import { 
   Clock, 
   Calendar, 
@@ -31,8 +31,7 @@ import {
   ShieldCheck,
   Award,
   ChevronRight,
-  Coffee, // Icon for Weekends
-  Phone
+  Coffee // Icon for Weekends
 } from 'lucide-react';
 
 /**
@@ -67,16 +66,6 @@ const Settings = ({ tenantId }) => {
   const [newSector, setNewSector] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [mastersLoaded, setMastersLoaded] = useState(false); // only save the lists once they were read
-
-  // Company-managed WhatsApp country-code list (Add Employee's country dropdown).
-  // phoneCountriesIsDefault tracks whether the company is currently just using
-  // the built-in default list (nothing customized yet, or explicitly reset) -
-  // in that case we save an empty list, so future updates to the platform's
-  // default list keep applying automatically for this company.
-  const [phoneCountryList, setPhoneCountryList] = useState(DEFAULT_PHONE_COUNTRIES);
-  const [phoneCountriesIsDefault, setPhoneCountriesIsDefault] = useState(true);
-  const [phoneCountriesLoaded, setPhoneCountriesLoaded] = useState(false);
-  const [newPhoneCountry, setNewPhoneCountry] = useState({ name: '', dialCode: '' });
 
   // Review Meeting settings (period, weightage, colour limits). Everything here is optional.
   const [reviewCfg, setReviewCfg] = useState({
@@ -142,14 +131,6 @@ const Settings = ({ tenantId }) => {
         setSectorList(Array.isArray(data.sectors) ? data.sectors : []);
         setLocationList(Array.isArray(data.locations) ? data.locations : []);
         setMastersLoaded(true);
-        if (Array.isArray(data.phoneCountries) && data.phoneCountries.length > 0) {
-          setPhoneCountryList(data.phoneCountries);
-          setPhoneCountriesIsDefault(false);
-        } else {
-          setPhoneCountryList(DEFAULT_PHONE_COUNTRIES);
-          setPhoneCountriesIsDefault(true);
-        }
-        setPhoneCountriesLoaded(true);
         {
           const rc = data.reviewConfig || {};
           const w = rc.weights || {};
@@ -303,49 +284,6 @@ const Settings = ({ tenantId }) => {
     (kind === 'sector' ? setSectorList : setLocationList)((prev) => prev.filter((x) => x !== name));
   };
 
-  // Company-managed WhatsApp country codes (Add Employee's country dropdown).
-  const slugifyCountryId = (name, existing) => {
-    const base = (name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 8) || 'CODE';
-    let id = base;
-    let n = 2;
-    while (existing.some((c) => c.id === id)) { id = `${base}${n}`; n += 1; }
-    return id;
-  };
-  const addPhoneCountry = () => {
-    const name = (newPhoneCountry.name || '').replace(/\s+/g, ' ').trim();
-    const dialCode = (newPhoneCountry.dialCode || '').replace(/\D/g, '');
-    if (!name) { dialog.alert('Please enter a country name.', { tone: 'error' }); return; }
-    if (name.length > 40) { dialog.alert('Please keep the country name under 40 characters.', { tone: 'error' }); return; }
-    if (!/^[1-9]\d{0,3}$/.test(dialCode)) {
-      dialog.alert('Please enter a country code of 1-4 digits, with no leading 0.', { tone: 'error' });
-      return;
-    }
-    const dupe = phoneCountryList.some(
-      (c) => c.name.toLowerCase() === name.toLowerCase() || c.dialCode === dialCode
-    );
-    if (dupe) {
-      dialog.alert('That country name or code is already in the list.', { tone: 'error' });
-      return;
-    }
-    if (phoneCountryList.length >= 60) {
-      dialog.alert('The country code list is full (max 60).', { tone: 'error' });
-      return;
-    }
-    const id = slugifyCountryId(name, phoneCountryList);
-    setPhoneCountryList((prev) => [...prev, { id, name, flag: '', dialCode }]);
-    setPhoneCountriesIsDefault(false);
-    setNewPhoneCountry({ name: '', dialCode: '' });
-  };
-  const removePhoneCountry = (id) => {
-    if (id === 'IN') return; // India is always present and cannot be removed
-    setPhoneCountryList((prev) => prev.filter((c) => c.id !== id));
-    setPhoneCountriesIsDefault(false);
-  };
-  const resetPhoneCountriesToDefault = () => {
-    setPhoneCountryList(DEFAULT_PHONE_COUNTRIES);
-    setPhoneCountriesIsDefault(true);
-  };
-
   const REVIEW_PERIOD_OPTIONS = [
     ['Daily', 'Daily'], ['Weekly', 'Weekly (Mon - Sun)'], ['TwiceMonthly', 'Twice a month (1st-15th and 16th-end)'],
     ['Monthly', 'Monthly'], ['Quarterly', 'Quarterly']
@@ -404,9 +342,6 @@ const Settings = ({ tenantId }) => {
         pointSettings: pointSettings,
         badgeLibrary: badgeLibrary,
         ...(mastersLoaded ? { sectors: sectorList, locations: locationList } : {}),
-        // Default = send an empty list, so future platform updates to the
-        // built-in default list keep applying for this company automatically.
-        ...(phoneCountriesLoaded ? { phoneCountries: phoneCountriesIsDefault ? [] : phoneCountryList } : {}),
         ...(reviewPayload ? { reviewConfig: reviewPayload } : {})
       });
   
@@ -427,7 +362,6 @@ const Settings = ({ tenantId }) => {
   const SETTINGS_SECTIONS = [
     { id: 'identity', cat: 'company', title: 'Company name and logo', keywords: 'brand logo name organisation identity' },
     { id: 'masters', cat: 'company', title: 'Departments and locations', keywords: 'sector department location branch' },
-    { id: 'phoneCountries', cat: 'company', title: 'Country codes', keywords: 'country code phone whatsapp dial international' },
     { id: 'weekend', cat: 'time', title: 'Weekly off', keywords: 'weekend weekly saturday sunday off days' },
     { id: 'hours', cat: 'time', title: 'Operational hours', keywords: 'opening closing office timing working hours attendance late' },
     { id: 'holiday', cat: 'time', title: 'Holidays', keywords: 'holiday calendar festival leave' },
@@ -491,7 +425,7 @@ const Settings = ({ tenantId }) => {
         {/* SECTION 0: FACTORY IDENTITY */}
         <div data-settings-section="identity" hidden={!showSection('identity')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group">
-           <Building2 size={160} className="absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
+           <Building2 size={160} className="hidden lg:block absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
            <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 relative z-10 uppercase tracking-tight">
              <ImageIcon size={22} className="text-primary" /> Update company name & logo
            </h3>
@@ -590,82 +524,6 @@ const Settings = ({ tenantId }) => {
         </section>
         </div>
 
-        {/* SECTION: COUNTRY CODES (the country dropdown in Add Employee's WhatsApp field) */}
-        <div data-settings-section="phoneCountries" hidden={!showSection('phoneCountries')}>
-        <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-            <h3 className="text-foreground text-base font-black flex items-center gap-2.5 uppercase tracking-tight">
-              <Phone size={22} className="text-primary" /> Country codes
-            </h3>
-            <button
-              type="button"
-              onClick={resetPhoneCountriesToDefault}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-background text-slate-500 text-[10px] font-black uppercase tracking-widest hover:border-primary/40 hover:text-primary transition-all"
-            >
-              <FiRefreshCw size={12} /> Reset to default
-            </button>
-          </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mb-2 ml-1">
-            This becomes the country dropdown on the WhatsApp number field in Add / Edit Employee. India is always included and cannot be removed. Click "Commit Global Updates" below to save.
-          </p>
-          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-widest mb-4 ml-1">
-            A number is rejected if its country code plus the typed number add up to exactly 10 digits - the WhatsApp sender would mistake it for an Indian number.
-          </p>
-
-          <div className="flex flex-wrap items-end gap-3 mb-5">
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Country name</span>
-              <input
-                type="text"
-                value={newPhoneCountry.name}
-                placeholder="e.g. Kenya"
-                maxLength={40}
-                onChange={(e) => setNewPhoneCountry((p) => ({ ...p, name: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPhoneCountry(); } }}
-                className="bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm shadow-inner"
-              />
-            </div>
-            <div>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Code</span>
-              <div className="flex items-center bg-background border border-border rounded-xl shadow-inner focus-within:ring-4 focus-within:ring-primary/10">
-                <span className="pl-3 text-xs font-bold text-slate-400">+</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newPhoneCountry.dialCode}
-                  placeholder="254"
-                  maxLength={4}
-                  onChange={(e) => setNewPhoneCountry((p) => ({ ...p, dialCode: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPhoneCountry(); } }}
-                  className="w-20 bg-transparent px-2 py-2.5 text-foreground outline-none font-bold text-sm"
-                />
-              </div>
-            </div>
-            <button type="button" onClick={addPhoneCountry} className="px-5 py-2.5 rounded-xl bg-primary text-white font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 flex items-center gap-2"><FiPlus size={14} /> Add</button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {phoneCountryList.map((c) => (
-              <span
-                key={c.id}
-                className={`inline-flex items-center gap-2 pl-4 pr-2 py-2 rounded-full border text-xs font-black ${
-                  c.id === 'IN'
-                    ? 'bg-primary/5 border-primary/30 text-primary'
-                    : 'bg-background border-border text-foreground'
-                }`}
-              >
-                {c.flag ? `${c.flag} ` : ''}{c.name} (+{c.dialCode})
-                {c.id === 'IN' ? (
-                  <span className="text-[9px] font-black uppercase tracking-widest opacity-60 ml-1">fixed</span>
-                ) : (
-                  <button type="button" onClick={() => removePhoneCountry(c.id)} className="p-1 rounded-full text-red-500 hover:bg-red-500/10" title={`Remove ${c.name}`}><FiX size={12} /></button>
-                )}
-              </span>
-            ))}
-          </div>
-        </section>
-        </div>
-
         {/* SECTION: REVIEW MEETING (period, weightage, colour limits) */}
         <div data-settings-section="review" hidden={!showSection('review')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm">
@@ -722,7 +580,8 @@ const Settings = ({ tenantId }) => {
               </div>
               {reviewCfg.overrides.length > 0 && (
                 <div className="overflow-x-auto rounded-2xl border border-border">
-                  <table className="w-full text-left text-sm">
+                  <ResponsiveTable>
+                  <table className="mobile-card-table w-full text-left text-sm">
                     <thead className="bg-background"><tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                       <th className="px-4 py-2">Location</th><th className="px-4 py-2">Department</th><th className="px-4 py-2">Delegation</th><th className="px-4 py-2">Checklist</th><th className="px-4 py-2">FMS</th><th className="px-4 py-2" />
                     </tr></thead>
@@ -739,6 +598,7 @@ const Settings = ({ tenantId }) => {
                       ))}
                     </tbody>
                   </table>
+                  </ResponsiveTable>
                 </div>
               )}
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">A person gets the most specific matching rule: location + department, then location only, then department only, then the default above. People with no location only match "All locations" rules.</p>
@@ -941,7 +801,7 @@ const Settings = ({ tenantId }) => {
       <div data-settings-section="access" hidden={!showSection('access')} className="mt-8"><AccessRolesPanel /></div>
 
       {/* STICKY EXECUTION FOOTER */}
-      <div className="mt-6 sticky bottom-4 z-[100] px-2">
+      <div className="mt-6 sticky bottom-4 lg:bottom-4 z-[100] px-2 mobile-sticky-footer">
         <button onClick={saveSettings} disabled={saving} className={`w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${saving ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white dark:text-slate-950 active:scale-95 cursor-pointer shadow-emerald-500/20"}`}>
             {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Zap size={24} fill="currentColor" />} {saving ? 'TRANSMITTING FACTORY TELEMETRY...' : 'COMMIT GLOBAL UPDATES'}
         </button>

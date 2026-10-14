@@ -209,8 +209,9 @@ shadow-lg space-y-5">
   }
 `}>
 
-  {/* GLOW (separate, not wrapping content) */}
-  <div className="absolute -top-20 -right-20 w-60 h-60 
+  {/* GLOW (separate, not wrapping content) - desktop-only decoration;
+      phones get compact chrome, not a giant bleed-off-screen blur circle. */}
+  <div className="hidden lg:block absolute -top-20 -right-20 w-60 h-60
   bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
   {/* CONTENT */}

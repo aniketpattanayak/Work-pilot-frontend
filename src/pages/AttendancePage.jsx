@@ -5,6 +5,7 @@ import { dialog } from '../components/Dialog';
 import usePermissions from '../components/usePermissions';
 import FaceCaptureModal from '../components/FaceCaptureModal';
 import AttendanceSetup from '../components/AttendanceSetup';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 /**
  * ATTENDANCE: punch in/out (with location and face check when the company uses them), your month,
@@ -183,7 +184,8 @@ const Today = () => {
 // ---------------------------------------------------------------- Day table
 const DayTable = ({ days, onFix }) => (
   <div className="overflow-x-auto">
-    <table className="w-full text-left text-sm">
+    <ResponsiveTable>
+    <table className="mobile-card-table w-full text-left text-sm">
       <thead><tr className={label}><th className="py-2 pr-3">Date</th><th className="pr-3">Status</th><th className="pr-3">In</th><th className="pr-3">Out</th><th className="pr-3">Worked</th><th className="pr-3">Notes</th><th /></tr></thead>
       <tbody>
         {days.map((d) => (
@@ -198,6 +200,7 @@ const DayTable = ({ days, onFix }) => (
         ))}
       </tbody>
     </table>
+    </ResponsiveTable>
   </div>
 );
 const Totals = ({ t }) => (
@@ -386,7 +389,8 @@ const Team = ({ can }) => {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <ResponsiveTable>
+          <table className="mobile-card-table w-full text-left text-sm">
             <thead><tr className={label}><th className="py-2 pr-3">Name</th><th className="pr-3">Present</th><th className="pr-3">Absent</th><th className="pr-3">Leave</th><th className="pr-3">Late</th><th className="pr-3">Missing out</th></tr></thead>
             <tbody>
               {rows.map((r) => (
@@ -397,6 +401,7 @@ const Team = ({ can }) => {
               ))}
             </tbody>
           </table>
+          </ResponsiveTable>
         </div>
       </div>
       {detail && (

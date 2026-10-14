@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
+import MobileFilters from '../components/MobileFilters';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 // On leave only while today is inside the saved date range (same rule as the server).
 const isOnLeaveNow = (ls) => {
@@ -236,54 +238,62 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         </div>
 
         {/* ── SEARCH + FILTER ────────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-3 flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name, email, department, or location..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-background border border-border text-foreground pl-9 pr-9 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-sm font-semibold"
-            />
-            {searchTerm && (
-              <button type="button" aria-label="Clear search" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center">
-                <X size={14} className="text-slate-400" />
-              </button>
-            )}
-          </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by status">
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="On Leave">On Leave</option>
-          </select>
-          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by department">
-            <option value="All">All Departments</option>
-            {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
-            <option value={NONE}>No department</option>
-          </select>
-          <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by location">
-            <option value="All">All Locations</option>
-            {locOptions.map(l => <option key={l} value={l}>{l}</option>)}
-            <option value={NONE}>No location</option>
-          </select>
-          <div className="flex flex-wrap gap-1.5 p-1 bg-background border border-border rounded-xl">
-            {rolesList.map(role => (
-              <button
-                key={role}
-                onClick={() => setSelectedRole(role)}
-                className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                  selectedRole === role ? 'bg-primary text-primary-foreground shadow-sm' : 'text-slate-500 hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {role}
-              </button>
-            ))}
-          </div>
+        <div className="bg-card border border-border rounded-2xl px-4 py-3 mb-3">
+          <MobileFilters
+            activeCount={[statusFilter !== 'All', deptFilter !== 'All', locFilter !== 'All', selectedRole !== 'All'].filter(Boolean).length}
+            onClear={() => { setStatusFilter('All'); setDeptFilter('All'); setLocFilter('All'); setSelectedRole('All'); }}
+            className="flex flex-col md:flex-row gap-3"
+            alwaysVisible={
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, department, or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-background border border-border text-foreground pl-9 pr-9 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-sm font-semibold"
+                />
+                {searchTerm && (
+                  <button type="button" aria-label="Clear search" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center">
+                    <X size={14} className="text-slate-400" />
+                  </button>
+                )}
+              </div>
+            }
+          >
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by status">
+              <option value="All">All Status</option>
+              <option value="Active">Active</option>
+              <option value="On Leave">On Leave</option>
+            </select>
+            <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by department">
+              <option value="All">All Departments</option>
+              {deptOptions.map(d => <option key={d} value={d}>{d}</option>)}
+              <option value={NONE}>No department</option>
+            </select>
+            <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border text-foreground px-3 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/15 text-[11px] font-bold" title="Filter by location">
+              <option value="All">All Locations</option>
+              {locOptions.map(l => <option key={l} value={l}>{l}</option>)}
+              <option value={NONE}>No location</option>
+            </select>
+            <div className="flex flex-wrap gap-1.5 p-1 bg-background border border-border rounded-xl">
+              {rolesList.map(role => (
+                <button
+                  key={role}
+                  onClick={() => setSelectedRole(role)}
+                  className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                    selectedRole === role ? 'bg-primary text-primary-foreground shadow-sm' : 'text-slate-500 hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </MobileFilters>
         </div>
 
         {/* ── COLUMN LABELS (desktop) ─────────────────────────────── */}
-        <div className="max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="max-h-[calc(100dvh-26rem)] lg:max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
         <div className="hidden xl:grid grid-cols-[1.8fr_1.3fr_1.3fr_1.5fr_1.1fr_1fr_1fr_160px] gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border">
           {['Employee', 'Location / Dept', 'Roles', 'Email', 'Phone', 'Linkage', 'Status', 'Action'].map((label, i) => (
             <span key={i} className={`text-[9px] font-black text-slate-400 uppercase tracking-widest ${i === 7 ? 'text-center' : ''}`}>
@@ -502,7 +512,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         const title = linkView.kind === 'doers' ? 'Linked Doers' : 'Linked Assigners';
         return (
           <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setLinkView(null)}>
-            <div className="bg-card border border-border w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-sheet bg-card border border-border w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-6 py-5 border-b border-border">
                 <div>
                   <p className="text-sm font-black text-foreground uppercase tracking-tight">{title} ({people.length})</p>
@@ -512,11 +522,12 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                   <X size={15} className="text-slate-400 group-hover:text-red-500" />
                 </button>
               </div>
-              <div className="overflow-auto">
+              <div className="overflow-auto mobile-sheet-body">
                 {people.length === 0 ? (
                   <p className="p-8 text-center text-xs text-slate-400">No one is linked.</p>
                 ) : (
-                  <table className="w-full text-left">
+                  <ResponsiveTable>
+                  <table className="mobile-card-table w-full text-left">
                     <thead className="bg-muted/50 sticky top-0">
                       <tr>
                         {['Name', 'Roles', 'Department', 'Location', 'Phone'].map(h => (
@@ -545,6 +556,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                       })}
                     </tbody>
                   </table>
+                  </ResponsiveTable>
                 )}
               </div>
             </div>
@@ -555,7 +567,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       {/* ── LEAVE MODAL ──────────────────────────────────── */}
       {showLeaveModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
               <div className="flex items-center gap-3">

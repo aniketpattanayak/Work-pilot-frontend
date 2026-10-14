@@ -8,6 +8,8 @@ import {
   ChevronRight, ClipboardList, Target, Calendar, Upload,
   ChevronDown, ChevronUp, Search, UserPlus
 } from "lucide-react";
+import ResponsiveTable from '../components/ResponsiveTable';
+import MobileFilters from '../components/MobileFilters';
 
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const isViewer = isViewerOnly();
@@ -492,57 +494,65 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         </button>
       </div>
 
-      {/* SEARCH + CATEGORY (one row) */}
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input type="text" placeholder="Search person, dept or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-card border border-border pl-9 pr-9 py-2 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
-          {searchTerm && (
-            <button type="button" aria-label="Clear search" onClick={() => setSearchTerm("")} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center text-slate-400 hover:text-red-500"><X size={14} /></button>
-          )}
-        </div>
-        {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
-          <button key={cat} onClick={() => setCategoryFilter(cat)}
-            className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
-                ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
-                  : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
-                    : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
-                      : 'bg-primary text-white border-primary'
-                : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
-              }`}>
-            {cat}
+      {/* SEARCH + CATEGORY + DATE RANGE — collapsed behind Filters on phones */}
+      <div className="mb-2">
+        <MobileFilters
+          activeCount={[categoryFilter !== 'All', !!dateFrom, !!dateTo, showCoordColConfig].filter(Boolean).length}
+          onClear={() => { setCategoryFilter('All'); setDateFrom(''); setDateTo(''); }}
+          className="flex flex-wrap items-center gap-2"
+          alwaysVisible={
+            <div className="relative flex-1 min-w-0 sm:min-w-[220px] max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input type="text" placeholder="Search person, dept or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-card border border-border pl-9 pr-9 py-2 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+              {searchTerm && (
+                <button type="button" aria-label="Clear search" onClick={() => setSearchTerm("")} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center text-slate-400 hover:text-red-500"><X size={14} /></button>
+              )}
+            </div>
+          }
+        >
+          {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
+            <button key={cat} onClick={() => setCategoryFilter(cat)}
+              className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
+                  ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
+                    : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
+                      : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
+                        : 'bg-primary text-white border-primary'
+                  : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
+                }`}>
+              {cat}
+            </button>
+          ))}
+          <button type="button" onClick={() => setShowCoordColConfig(c => !c)} title="Choose extra columns for FMS rows"
+            className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${showCoordColConfig ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'}`}>
+            Columns{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
           </button>
-        ))}
-        <button type="button" onClick={() => setShowCoordColConfig(c => !c)} title="Choose extra columns for FMS rows"
-          className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${showCoordColConfig ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'}`}>
-          Columns{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
-        </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+                className="text-[9px] font-black text-red-400 hover:text-red-600 px-2 py-1.5 rounded-xl border border-red-200 hover:border-red-400 transition-all">
+                ✕ Clear
+              </button>
+            )}
+          </div>
+        </MobileFilters>
       </div>
 
-      {/* TABS + DATE RANGE */}
+      {/* TABS (primary view switch - always visible, not a filter) */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit">
+        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit max-w-full overflow-x-auto">
           {['Pending', 'Upcoming', 'Completed'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
+              className={`px-3 sm:px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all shrink-0 ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
               {tab}
             </button>
           ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">From</span>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-          {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="text-[9px] font-black text-red-400 hover:text-red-600 px-2 py-1.5 rounded-xl border border-red-200 hover:border-red-400 transition-all">
-              ✕ Clear
-            </button>
-          )}
         </div>
         {activeTab === 'Upcoming' && (
           <div className="text-[10px] text-slate-500 font-medium italic">
@@ -554,7 +564,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       {/* TASK TABLE */}
       <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden h-[calc(100vh-16rem)] min-h-[320px] flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
-          <div className="min-w-[700px] lg:min-w-full">
+          <div className="mobile-full-width min-w-[700px] lg:min-w-full">
             {/* Coordinator Sheet Column Config Panel */}
             {showCoordColConfig && (() => {
               const fmsTasks = tasks.filter(t => t.taskType === 'FMS');
@@ -603,7 +613,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 </div>
               );
             })()}
-            <table className="w-full table-fixed border-collapse text-left">
+            <ResponsiveTable>
+            <table className="mobile-card-table w-full table-fixed border-collapse text-left">
               <thead className="sticky top-0 z-20 bg-background">
                 <tr className="bg-background border-b border-border">
                   <th className="w-[100px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
@@ -806,6 +817,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </div>
         </div>
       </div>
@@ -813,7 +825,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       {/* WHATSAPP MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.4)] relative animate-in zoom-in-95">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-lg rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.4)] relative animate-in zoom-in-95">
             <div className="px-8 py-8 border-b border-border flex justify-between items-center bg-background/50">
               <div className="flex items-center gap-4">
                 <div className="p-2.5 bg-primary/10 rounded-xl border border-primary/20"><MessageSquare size={24} className="text-primary" /></div>

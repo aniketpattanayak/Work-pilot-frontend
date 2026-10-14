@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import ActivityLogPanel from '../components/ActivityLogPanel';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import { RefreshCcw, Trophy, Star, Medal, Zap, ShieldCheck, Flame, Target, Rocket, Award, MapPin, Briefcase, Mail, Plane } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 /**
  * PERSONAL DASHBOARD — every login sees their own numbers.
@@ -36,7 +37,8 @@ const MiniTable = ({ cols, rows, empty }) => (
     <p className="px-4 py-6 text-center text-xs font-bold text-slate-400">{empty}</p>
   ) : (
     <div className="overflow-auto max-h-72">
-      <table className="w-full border-collapse text-[11px]">
+      <ResponsiveTable>
+      <table className="mobile-card-table w-full border-collapse text-[11px]">
         <thead className="sticky top-0 bg-background">
           <tr>{cols.map((c) => <th key={c} className="px-3 py-1.5 text-left text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border">{c}</th>)}</tr>
         </thead>
@@ -48,6 +50,7 @@ const MiniTable = ({ cols, rows, empty }) => (
           ))}
         </tbody>
       </table>
+      </ResponsiveTable>
     </div>
   )
 );

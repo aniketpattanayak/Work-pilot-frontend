@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import API from '../api/axiosConfig';
 import { Upload, Download, Users, CheckSquare, ClipboardList, X, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
+import ResponsiveTable from './ResponsiveTable';
 
 // ── Sheet templates for download ─────────────────────────────────────────────
 const EMPLOYEE_HEADERS = ['Full Name', 'Sector / Department', 'Email Address', 'WhatsApp Number', 'Sunday Working', 'System Access', 'Doer', 'Assigner', 'Coordinator', 'Viewer', 'Admin'];
@@ -198,7 +199,8 @@ export default function BulkUpload({ tenantId, assignerId, onClose, onSuccess, m
                 Preview — {rows.length} rows
               </div>
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <ResponsiveTable>
+                <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: 'var(--color-muted)' }}>
                       {Object.keys(rows[0] || {}).slice(0, 5).map(h => (
@@ -225,6 +227,7 @@ export default function BulkUpload({ tenantId, assignerId, onClose, onSuccess, m
                     )}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </div>
             </div>
           )}

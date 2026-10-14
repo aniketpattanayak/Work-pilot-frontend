@@ -148,7 +148,7 @@ export default function AiAssistantPanel({ currentUser }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open AI assistant"
-        className="fixed bottom-24 right-5 md:bottom-6 md:right-24 w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
+        className="ai-launcher-btn fixed bottom-24 right-5 md:bottom-6 md:right-24 w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
         style={{ zIndex: 1001 }}
       >
         <Sparkles size={20} />
@@ -213,7 +213,7 @@ export default function AiAssistantPanel({ currentUser }) {
         <div ref={endRef} />
       </div>
 
-      <div className="border-t border-border p-2.5 flex items-end gap-2">
+      <div className="border-t border-border p-2.5 pb-safe flex items-end gap-2">
         {SpeechRecognitionAPI ? (
           <button
             onClick={toggleListening}

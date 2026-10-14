@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
+import MobileFilters from '../components/MobileFilters';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -303,32 +305,42 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
       </div>
 
       {/* FILTERS + LEGEND */}
-      <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-7 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-64" />
-          {search && (
-            <button type="button" aria-label="Clear search" title="Clear" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
-          )}
-        </div>
-        <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by location">
-          <option value="All">All Locations</option>
-          {locOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-        </select>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by department">
-          <option value="All">All Departments</option>
-          {deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{people.length} people</span>
-        <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 flex-wrap">
-          <span>TOT total</span><span>OT on-time done</span><span>LD late done</span><span>PO pending (not due)</span><span>LP late pending</span>
-          {thresholds && (
-            <>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.red}`}>&ge; {thresholds.red}%</span>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.orange}`}>&ge; {thresholds.orange}%</span>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.green}`}>below</span>
-            </>
-          )}
+      <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">
+        <MobileFilters
+          activeCount={[locFilter !== 'All', deptFilter !== 'All'].filter(Boolean).length}
+          onClear={() => { setLocFilter('All'); setDeptFilter('All'); }}
+          className="flex flex-wrap items-center gap-2"
+          alwaysVisible={
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-7 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-64" />
+              {search && (
+                <button type="button" aria-label="Clear search" title="Clear" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
+              )}
+            </div>
+          }
+        >
+          <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by location">
+            <option value="All">All Locations</option>
+            {locOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by department">
+            <option value="All">All Departments</option>
+            {deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </MobileFilters>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{people.length} people</span>
+          <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 flex-wrap">
+            <span>TOT total</span><span>OT on-time done</span><span>LD late done</span><span>PO pending (not due)</span><span>LP late pending</span>
+            {thresholds && (
+              <>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.red}`}>&ge; {thresholds.red}%</span>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.orange}`}>&ge; {thresholds.orange}%</span>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.green}`}>below</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -340,7 +352,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           <div className="py-24 text-center text-sm font-bold text-red-500">{error}</div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-250px)]">
-            <table className="w-full border-collapse text-[11px] min-w-[1250px]">
+            <ResponsiveTable>
+            <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-black uppercase tracking-wider">
                   <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
@@ -398,6 +411,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 </tfoot>
               )}
             </table>
+            </ResponsiveTable>
           </div>
         )}
       </div>
@@ -451,7 +465,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
               ) : shownRows.length === 0 ? (
                 <div className="py-24 text-center text-slate-400 font-bold text-sm">No tasks in this range</div>
               ) : (
-                <table className="w-full border-collapse text-[11px] min-w-[900px]">
+                <ResponsiveTable>
+                <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[900px]">
                   <thead className="sticky top-0 z-20 bg-background">
                     <tr className="text-[10px] font-black uppercase tracking-wider">
                       {['S.no', 'Type', 'Task', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
@@ -493,7 +508,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                               <td colSpan={canEdit ? 8 : 7} className="border border-border bg-muted/40 px-4 py-2">
                                 {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
                                 {f.steps.length > 0 && (
-                                  <table className="w-full border-collapse text-[11px] mb-2">
+                                  <ResponsiveTable>
+                                  <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
                                     <thead><tr className="text-[9px] font-black uppercase text-slate-500">
                                       {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
                                     </tr></thead>
@@ -509,6 +525,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                                       ))}
                                     </tbody>
                                   </table>
+                </ResponsiveTable>
                                 )}
                                 {f.pendingStep && (
                                   <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
@@ -523,6 +540,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                     })}
                   </tbody>
                 </table>
+                                  </ResponsiveTable>
               )}
             </div>
           </div>

@@ -74,6 +74,15 @@
 }
 
 @layer base {
+  html, body {
+    /* Never let the page itself scroll sideways - any element that would
+       force it (a too-wide grid, an un-wrapped table) gets clipped instead
+       of pushing the viewport out. Internal containers keep their own
+       overflow-x-auto for horizontal scroll where that's the right thing. */
+    overflow-x: clip;
+    max-width: 100vw;
+  }
+
   body {
     @apply bg-background text-foreground transition-colors duration-500;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -83,6 +92,493 @@
   h1 { @apply text-3xl md:text-5xl font-black tracking-tighter uppercase; }
   h2 { @apply text-2xl md:text-4xl font-black tracking-tighter uppercase; }
   h3 { @apply text-xl md:text-2xl font-bold uppercase; }
+
+  /* 44px is the minimum comfortable touch target (Apple HIG / WCAG 2.5.5).
+     Buttons and anchors that render as icon-only controls are usually
+     smaller than that by default - pad them up to size on touch devices
+     without changing their look on desktop (hover-capable pointer). */
+  @media (pointer: coarse) {
+    button, a[role="button"], [role="button"], input, select, textarea {
+      min-height: 44px;
+    }
+    button, a[role="button"], [role="button"] {
+      min-width: 44px;
+    }
+    /* Opt a control out when 44px would break a tight inline layout it was
+       deliberately designed into (e.g. a small badge-like toggle, a
+       checkbox/radio input, or a compact inline date field). */
+    .tap-target-auto,
+    input[type="checkbox"],
+    input[type="radio"] {
+      min-height: 0;
+      min-width: 0;
+    }
+  }
+}
+
+/* Safe-area padding for anything fixed/sticky to the bottom of the screen,
+   so a phone's home-indicator bar never covers the last bit of content or a
+   button sitting above it. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-bottom {
+  bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* iOS Safari zooms the whole page in when a focused input's computed
+   font-size is under 16px. Scoped to phone widths only (desktop keeps
+   whatever size each input was designed with) and !important so it wins
+   over any Tailwind text-sm/text-xs utility on a given input. */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── MOBILE CARD TABLE ─────────────────────────────────────────────────
+   Opt a <table> into this class and on phone/tablet widths every row
+   renders as a stacked card instead of a cramped, horizontally-scrolled
+   grid of tiny cells. The cutoff is 768px, not the usual 640px sm:
+   breakpoint - the product owner's spec explicitly requires 768px
+   (standard tablet width) to also be clean, and a real `<table>` left
+   in grid mode at 641-768px still forces its own horizontal scroll
+   there. True desktop (1024px+) keeps the original table layout
+   untouched. Add `data-label="Column"` to a <td> to show its field name
+   next to the value; without one the value still shows, just unlabeled. */
+@media (max-width: 768px) {
+  .mobile-card-table {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .mobile-card-table thead {
+    display: none;
+  }
+  .mobile-card-table, .mobile-card-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .mobile-card-table tr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .mobile-card-table tbody tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    background: hsl(var(--card));
+  }
+  .mobile-card-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  .mobile-card-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.375rem 0 !important;
+    border: none !important;
+    text-align: right;
+    white-space: normal !important;
+    min-width: 0;
+  }
+  .mobile-card-table tbody td > * {
+    min-width: 0;
+  }
+  .mobile-card-table tbody td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* Primary field (first non-actions cell): the card's title - full
+     width, no "LABEL:" prefix, larger/bolder, shown first. */
+  .mobile-card-table tbody td.mobile-card-title {
+    order: -2;
+    justify-content: flex-start;
+    font-weight: 900;
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+    margin-bottom: 0.25rem;
+  }
+  .mobile-card-table tbody td.mobile-card-title::before {
+    content: none;
+  }
+
+  /* Actions column (auto-detected: a cell whose only children are
+     buttons/links): pinned as a row of buttons at the bottom of the
+     card instead of a label:value line. */
+  .mobile-card-table tbody td.mobile-card-actions {
+    order: 99;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+  }
+  .mobile-card-table tbody td.mobile-card-actions::before {
+    content: none;
+  }
+
+  /* Full-width status row (loading/empty state from a colSpan cell):
+     centered plain text, no label prefix, no right-aligned layout. */
+  .mobile-card-table tbody td.mobile-card-fullrow {
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+/* A handful of tables/grids are wrapped in an inner `min-w-[Npx]
+   lg:min-w-full` div for their desktop-grid appearance - once the
+   table/grid itself switches to phone-card mode, that wrapper's own
+   fixed min-width still forces it (and anything inside it) wider than
+   the viewport. Opt such a wrapper out of its own min-width below the
+   tablet breakpoint with this class. */
+@media (max-width: 768px) {
+  .mobile-full-width {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+
+/* ── MOBILE CARD GRID ─────────────────────────────────────────────────
+   Same card treatment as .mobile-card-table, for the custom CSS-Grid
+   "Excel-style" rows that a couple of pages build out of plain <div>s
+   instead of a real <table> (ManageTasks' task list, ChecklistMonitor's
+   grid) - see components/ResponsiveGrid.jsx, which applies these
+   classes/data-label attributes at runtime. */
+@media (max-width: 768px) {
+  .mobile-grid-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .mobile-grid-head {
+    display: none !important;
+  }
+  .mobile-grid-row {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    width: 100% !important;
+    gap: 0 !important;
+    border: 1px solid hsl(var(--border));
+    border-left: 1px solid hsl(var(--border)) !important;
+    border-radius: 1rem;
+    padding: 0.75rem 1rem !important;
+    margin-bottom: 0.75rem;
+    background: hsl(var(--card));
+  }
+  .mobile-grid-row > * {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.375rem 0 !important;
+    text-align: right;
+    white-space: normal !important;
+    min-width: 0;
+  }
+  .mobile-grid-row > *[data-label]::before {
+    content: attr(data-label);
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: hsl(var(--muted-foreground));
+    text-align: left;
+    flex-shrink: 0;
+  }
+  .mobile-grid-row > .mobile-grid-title {
+    order: -2;
+    justify-content: flex-start;
+    font-weight: 900;
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid hsl(var(--border));
+    margin-bottom: 0.25rem;
+  }
+  .mobile-grid-row > .mobile-grid-title::before {
+    content: none;
+  }
+  .mobile-grid-row > .mobile-grid-actions {
+    order: 99;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .mobile-grid-row > .mobile-grid-actions::before {
+    content: none;
+  }
+}
+
+/* FloatingChat's bubble sits bottom:24/right:24 by inline style (already
+   safe-area aware); only the opened panel needs to become a full sheet on
+   phones instead of a fixed 340x480 box that would overflow a 360px
+   screen. The AI assistant's own closed-state launcher gets nudged up by
+   the safe area too, on top of its existing bottom-24 offset. */
+@media (max-width: 640px) {
+  .floating-chat-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .ai-launcher-btn {
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── MOBILE SHEET MODAL ───────────────────────────────────────────────
+   Opt a modal's outer panel into this class to turn it into a full-height
+   bottom sheet on phones: it fills the screen (minus a small margin),
+   its body scrolls internally, and its action buttons stay pinned in
+   view instead of getting pushed off the bottom by content. Pair with
+   .mobile-sheet-body on the scrolling content and .mobile-sheet-actions
+   on the sticky button bar. */
+@media (max-width: 640px) {
+  /* The overlay wrapping a sheet is styled as a centered, padded modal
+     backdrop (p-3/p-4) for the desktop dialog look. On phones the sheet
+     itself needs to reach every edge of the viewport, so the overlay's
+     own padding has to go - otherwise the sheet's 100dvh height plus the
+     overlay's padding pushes it taller than the viewport (clipped
+     content/buttons) while still leaving a gap at the sides. */
+  div:has(> .mobile-sheet) {
+    padding: 0 !important;
+  }
+  .mobile-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-sheet-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-sheet-actions {
+    position: sticky;
+    bottom: 0;
+    flex-shrink: 0;
+    background: hsl(var(--card));
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /* Generic fallback: this codebase's modals overwhelmingly follow one
+     convention - a `fixed inset-0 ... flex items-center justify-center`
+     overlay wrapping a centered panel as its last child. Rather than
+     rely on every modal being hand-opted into .mobile-sheet (easy to
+     miss one), ANY panel following that convention automatically
+     becomes a full-height sheet on phones too. A panel that already
+     has .mobile-sheet keeps its own (body/actions-aware) treatment
+     from the rule above; a panel marked .no-auto-sheet (small system
+     confirm/alert/prompt dialogs - see components/Dialog.jsx - which
+     are deliberately kept compact, not blown up full-screen) opts out.
+  */
+  .fixed.inset-0.flex.items-center.justify-center:has(> *:last-child:not(.mobile-sheet):not(.no-auto-sheet)) {
+    padding: 0 !important;
+  }
+  .fixed.inset-0.flex.items-center.justify-center > *:last-child:not(.mobile-sheet):not(.no-auto-sheet) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ── SHARED PHONE-ONLY TEXT/TAP RULES ────────────────────────────────
+   Apply these classes instead of repeating the same inline Tailwind
+   combination on every button/chip/badge/tab. */
+
+/* Any uppercase tracking-widest micro-label (badges, stat captions,
+   table footnotes) must stay readable - 11px is the floor on phones,
+   whatever size it renders at on desktop. */
+@media (max-width: 768px) {
+  .micro-label {
+    font-size: 11px !important;
+  }
+
+  /* The app has hundreds of these micro-labels authored as Tailwind
+     arbitrary-value utilities (text-[7px] through text-[10px]) spread
+     across every page - adding .micro-label to each one by hand would
+     mean editing nearly every file in src/pages and src/components, the
+     exact per-screen patching this pass is meant to replace. Matching
+     the utility class names directly applies the same 11px floor
+     everywhere at once; a page can still opt out with the (default
+     desktop-only) class itself unaffected above 767px. */
+  [class*="text-[7px]"],
+  [class*="text-[8px]"],
+  [class*="text-[9px]"],
+  [class*="text-[10px]"] {
+    font-size: 11px !important;
+  }
+}
+
+/* Long text that must never spill out of its own button/chip/card:
+   wraps to the container width, or truncates with an ellipsis when the
+   container is a single line (add truncate-label for the latter). */
+.no-overflow-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+.truncate-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  display: block;
+}
+
+/* A button/chip/tab that must fit its label at any width: shrink the
+   label instead of letting it push the control wider than its
+   container, and fall back to a stacked icon+label when there truly
+   isn't room for one line (pair with a <span class="btn-label-stack">
+   around the icon and text). */
+.btn-fit {
+  min-width: 0;
+  max-width: 100%;
+}
+.btn-fit > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.btn-label-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  line-height: 1.1;
+}
+
+/* ── BOTTOM NAVIGATION (phones only) ─────────────────────────────────
+   A fixed, safe-area-aware bar for the 4-5 most used destinations plus
+   a "More" item that opens the existing drawer. Hidden at md: and up,
+   where the sidebar is already visible. Pages reserve space for it via
+   padding added on <main> (see .has-bottom-nav-space). */
+.bottom-nav {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 160;
+    background: hsl(var(--card) / 0.95);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid hsl(var(--border));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .bottom-nav-item {
+    flex: 1 1 0;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .bottom-nav-item.active {
+    color: hsl(var(--primary));
+  }
+  .bottom-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* A sticky in-page action bar (e.g. a form's "Save"/"Commit" button)
+     must clear the fixed bottom nav, and the floating launcher must get
+     out of its way entirely rather than float on top of it (see the
+     :has() rule further down, which hides the launcher whenever one of
+     these footers is in the DOM). */
+  .mobile-sticky-footer {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .has-bottom-nav-space {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Floating chat / AI launcher buttons must never sit over the bottom
+     nav or its tap targets - and, on phones/tablets, every custom grid
+     and card list in this app puts its own row actions (Submit, Edit,
+     Comments, Leave...) hard against the RIGHT edge, so a right-anchored
+     floating launcher is guaranteed to collide with some row's button on
+     any page with enough rows to fill the screen. Moving the launcher to
+     the bottom-left (still clear of the nav) keeps it out of that same
+     dead reckoning without having to chase every page's row layout. */
+  .ai-launcher-btn,
+  .floating-chat-launcher {
+    bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px)) !important;
+    left: 1rem !important;
+    right: auto !important;
+  }
+}
+
+/* Floating chat / AI launcher buttons must never sit over a modal's own
+   pinned action buttons either - whenever any sheet/modal is open, hide
+   the floating launchers entirely rather than let them float on top of
+   whatever that sheet is showing (a Submit/Apply button, a form). They
+   reappear the instant the sheet closes. Scoped to phone/tablet widths
+   only, same as the bump rule above - desktop has room for both. */
+@media (max-width: 1023px) {
+  body:has(.mobile-sheet) .ai-launcher-btn,
+  body:has(.mobile-sheet) .floating-chat-launcher,
+  body:has(.mobile-sheet) .bottom-nav,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .ai-launcher-btn,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .floating-chat-launcher,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .bottom-nav,
+  body:has(.mobile-sticky-footer) .ai-launcher-btn,
+  body:has(.mobile-sticky-footer) .floating-chat-launcher {
+    display: none !important;
+  }
+}
+
+/* ── MOBILE FILTERS (collapsible filter bar) ─────────────────────────
+   See src/components/MobileFilters.jsx. The trigger button and count
+   badge are plain utility classes so the component stays unopinionated
+   about color; the expanded panel becomes a stacked sheet on phones. */
+@media (max-width: 767px) {
+  .mobile-filters-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .mobile-filters-panel > * {
+    width: 100% !important;
+  }
 }
 
 /* Custom Adaptive Theme for the Calendar */

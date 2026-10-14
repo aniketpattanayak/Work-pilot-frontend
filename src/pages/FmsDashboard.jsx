@@ -26,6 +26,7 @@ import {
   Construction,
   ShieldCheck,
 } from "lucide-react";
+import ResponsiveTable from '../components/ResponsiveTable';
 
 /**
  * FMS DASHBOARD v4.5 - PERMANENT COMING SOON WRAPPER
@@ -1364,7 +1365,8 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
 <div className="w-full overflow-x-auto rounded-2xl border border-border shadow-lg bg-card">
 
-  <table className="min-w-full text-sm">
+  <ResponsiveTable>
+  <table className="mobile-card-table min-w-full text-sm">
 
     {/* HEADER */}
     <thead className="bg-muted/50 backdrop-blur sticky top-0 z-10">
@@ -1486,6 +1488,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
     </tbody>
 
   </table>
+  </ResponsiveTable>
 </div>
             {/*flows.map(flow => (
               <div key={flow._id} className="flex flex-col md:flex-row justify-between gap-4  p-4 rounded-xl bg-card border border-border shadow-sm hover:shadow-md transition">
@@ -1629,7 +1632,8 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
 
               <div className="w-full overflow-x-auto">
-  <table className="min-w-full border text-sm">
+  <ResponsiveTable>
+  <table className="mobile-card-table min-w-full border text-sm">
 
     <thead className="bg-gray-100 sticky top-0">
       <tr>
@@ -1696,13 +1700,15 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       ))}
     </tbody>
   </table>
+  </ResponsiveTable>
 </div>
 
 
 
             })*/}
             <div className="w-full overflow-x-auto">
-  <table className="min-w-full border text-sm">
+  <ResponsiveTable>
+  <table className="mobile-card-table min-w-full border text-sm">
 
     <thead className="bg-gray-100 sticky top-0">
       <tr>
@@ -1770,6 +1776,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
     </tbody>
 
   </table>
+  </ResponsiveTable>
 </div>
 
 
@@ -1817,7 +1824,8 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       </div>
 
       <div className="overflow-auto max-h-[400px]">
-        <table className="w-full border text-sm">
+        <ResponsiveTable>
+        <table className="mobile-card-table w-full border text-sm">
           <thead className="bg-gray-200">
             <tr>
               <th>Time</th>
@@ -1845,6 +1853,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           </tbody>
 
         </table>
+        </ResponsiveTable>
       </div>
 
     </div>
@@ -1873,7 +1882,8 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       {/* TABLE */}
       <div className="overflow-auto max-h-[500px]">
 
-        <table className="w-full text-sm border">
+        <ResponsiveTable>
+        <table className="mobile-card-table w-full text-sm border">
 
           <thead className="bg-gray-200 sticky top-0">
             <tr>
@@ -1927,6 +1937,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           </tbody>
 
         </table>
+        </ResponsiveTable>
 
       </div>
 
@@ -1987,7 +1998,8 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
       <div className="overflow-auto max-h-[500px] border rounded">
 
-  <table className="w-full text-sm border">
+  <ResponsiveTable>
+  <table className="mobile-card-table w-full text-sm border">
     <thead className="bg-gray-200 sticky top-0">
       <tr>
         <th>Time</th>
@@ -2031,6 +2043,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       ))}
     </tbody>
   </table>
+  </ResponsiveTable>
 
 </div>
 

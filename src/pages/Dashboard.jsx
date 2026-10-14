@@ -4,6 +4,7 @@ import API from "../api/axiosConfig";
 
 // Component Imports
 import Sidebar from "../components/Sidebar";
+import BottomNav from "../components/BottomNav";
 import ScoreBadge from "../components/ScoreBadge";
 import AddEmployee from "./AddEmployee";
 import SettingsPage from "./Settings";
@@ -375,7 +376,7 @@ useEffect(() => {
 
       <div className={`flex-1 flex flex-col relative custom-scrollbar transition-all duration-500 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {/* EXECUTIVE HEADER */}
-        <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-xl border-b border-border px-4 md:px-10 py-4 flex justify-between items-center min-h-[80px]">
+        <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-xl border-b border-border px-3 md:px-10 py-2.5 md:py-4 flex justify-between items-center min-h-[60px] md:min-h-[80px]">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -400,7 +401,7 @@ useEffect(() => {
           <div className="flex items-center gap-3 md:gap-8 h-full">
             
             {/* UPDATED DUAL EFFICIENCY INDEX PILL */}
-            <div className="hidden md:flex items-center gap-6 pr-8 border-r border-border">
+            <div className="hidden lg:flex items-center gap-6 pr-8 border-r border-border">
                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] leading-tight text-right">Not Done<br/>Index</span>
                <div className="bg-background border border-border rounded-full p-1.5 flex items-center gap-6 pr-6 shadow-inner">
                   
@@ -459,8 +460,8 @@ useEffect(() => {
 
         {/* MAIN ROUTE HUB */}
         <main className={isChatRoute
-          ? 'flex-1 min-h-0 w-full flex flex-col overflow-hidden animate-in fade-in duration-700'
-          : 'p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700'
+          ? `flex-1 min-h-0 w-full flex flex-col overflow-hidden animate-in fade-in duration-700${isViewerOnly() ? '' : ' has-bottom-nav-space'}`
+          : `p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700${isViewerOnly() ? '' : ' has-bottom-nav-space'}`
         }>
           <ErrorBoundary resetKey={location.pathname}>
           {isViewerOnly() ? (
@@ -503,7 +504,7 @@ useEffect(() => {
         />
         
         {/* Modal Content */}
-        <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="mobile-sheet relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
            {/* Close Button */}
            <button 
               onClick={handleCloseModal}
@@ -565,8 +566,11 @@ useEffect(() => {
           </ErrorBoundary>
         </main>
 
-        {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls */}
-        <footer className="sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 text-center">
+        {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls.
+            Hidden below lg: the bottom nav (role-aware tabs) is the phone/tablet
+            chrome at the bottom of the screen instead - showing both would be
+            two competing bottom bars. */}
+        <footer className="hidden lg:block sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 pb-safe text-center">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
             Powered by{' '}
             <a href="https://lrbc.ai" target="_blank" rel="noopener noreferrer" className="font-black text-primary hover:underline">LRBC</a>
@@ -591,6 +595,7 @@ useEffect(() => {
           bottom-right. The chat page already has its own full messaging UI,
           so there's nothing lost by not floating a second one over it. */}
       {!isViewerOnly() && !isChatRoute && <AiAssistantPanel currentUser={user} />}
+      <BottomNav roles={userRoles} viewerOnly={isViewerOnly()} onOpenMore={() => setSidebarOpen(true)} />
       <DialogHost />
     </div>
   );

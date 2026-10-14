@@ -39,6 +39,8 @@ import { dialog } from '../components/Dialog';
 import ImageLightbox from '../components/ImageLightbox';
 import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
+import MobileFilters from '../components/MobileFilters';
+import ResponsiveGrid from '../components/ResponsiveGrid';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -313,50 +315,57 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       </div>
 
       {/* ── FILTERS ROW — time filters + status dropdown + name search ── */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-3 items-start sm:items-center">
-        <div className="flex flex-wrap gap-2">
-          {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeFilter(range)}
-              className={'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ' + (timeFilter === range ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border hover:border-slate-400')}
+      <div className="mb-3">
+        <MobileFilters
+          activeCount={[timeFilter !== 'All', statusFilter !== 'All'].filter(Boolean).length}
+          onClear={() => { setTimeFilter('All'); setStatusFilter('All'); }}
+          className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
+          alwaysVisible={
+            <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Filter by name or title…"
+                value={nameFilter}
+                onChange={e => setNameFilter(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+              {nameFilter && (
+                <button aria-label="Clear search" onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeFilter(range)}
+                className={'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ' + (timeFilter === range ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border hover:border-slate-400')}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
             >
-              {range}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
-          >
-            <option value="All">Status: All</option>
-            <option value="Pending">Pending</option>
-            <option value="Accepted">Accepted</option>
-            <option value="Revision Requested">Revision</option>
-            <option value="Completed">Completed</option>
-            <option value="Verified">Verified</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-        </div>
-
-        <div className="relative flex-1 min-w-[200px] sm:max-w-xs ml-auto">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Filter by name or title…"
-            value={nameFilter}
-            onChange={e => setNameFilter(e.target.value)}
-            className="w-full pl-9 pr-8 py-1.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-          />
-          {nameFilter && (
-            <button aria-label="Clear search" onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
-              <X size={13} />
-            </button>
-          )}
-        </div>
+              <option value="All">Status: All</option>
+              <option value="Pending">Pending</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Revision Requested">Revision</option>
+              <option value="Completed">Completed</option>
+              <option value="Verified">Verified</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </MobileFilters>
       </div>
 
       {/* Result count */}
@@ -370,9 +379,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* TASK TABLE */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin">
-          <div className="w-[1050px] sm:w-full">
+          <ResponsiveGrid className="w-[1050px] sm:w-full">
             {/* HEADER */}
-            <div className="grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
+            <div className="mobile-grid-head grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
               <div>S no.</div>
               <div>Task Name</div>
               <div>Assigned To</div>
@@ -395,7 +404,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 return (
                   <div key={task._id} className="border-b border-border/50 last:border-0">
                     <div
-                      className={`grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
+                      className={`mobile-grid-row grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >
                       <div className="text-xs font-black text-slate-400">
@@ -519,7 +528,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 );
               })
             )}
-          </div>
+          </ResponsiveGrid>
         </div>
       </div>
 
@@ -694,7 +703,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       {revisionModalTask && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="mobile-sheet w-full max-w-2xl bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center px-6 py-4 border-b border-border">
               <h3 className="font-black text-sm uppercase tracking-widest">Revision Control Panel</h3>
               <button onClick={() => setRevisionModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
@@ -715,7 +724,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* EDIT TASK MODAL */}
       {isEditOpen && (
         <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -817,7 +826,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       {isCreateOpen && (
         <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">

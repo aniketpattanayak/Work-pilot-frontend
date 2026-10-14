@@ -6,6 +6,7 @@ import {
   CheckCircle2, AlertCircle, Clock, Circle, Zap,
   Filter, Eye, Plus
 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function fmt(d) {
@@ -423,7 +424,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
         ) : (
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-auto max-h-[calc(100vh-17rem)] min-h-[260px]">
-              <table className="min-w-full text-sm">
+              <ResponsiveTable>
+              <table className="mobile-card-table min-w-full text-sm">
                 <thead>
                   <tr>
                     {['S. no.', 'Order', 'Flow', ...extraCols, 'Current step', 'Assigned to', 'Deadline', 'Delay', 'Status', 'Action'].map((h, hi) => (
@@ -489,6 +491,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                   })}
                 </tbody>
               </table>
+              </ResponsiveTable>
             </div>
             {(pagination.total || 0) > instances.length && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, padding:'10px 0', borderTop:'1px solid var(--color-border)', fontSize:12, color:'var(--color-muted-foreground)' }}>
@@ -580,7 +583,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
           <div style={{ fontSize:13, fontWeight:700, color:'var(--color-foreground)', marginBottom:12 }}>📦 All Orders — Full History</div>
           <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:12, overflow:'hidden' }}>
             <div style={{ maxHeight:'70vh', overflow:'auto' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+            <ResponsiveTable>
+            <table className="mobile-card-table" style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
               <thead>
                 <tr>
                   {['S. no.','Order ID','Flow','Current Step','Assigned To','Steps Done','Status','Deadline','Action'].map(h => (
@@ -640,6 +644,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
             </div>
             {globalTotal > allInstances.length && (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, padding:'10px 0', fontSize:12, color:'var(--color-muted-foreground)' }}>
