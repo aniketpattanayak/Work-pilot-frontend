@@ -448,8 +448,31 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
 
   const selNode = nodes.find(n => n.id === selected);
 
+  // The flow canvas is a drag/pan/zoom surface built on raw mouse
+  // coordinates (see handleCanvasMouseMove/handleNodeDragStart above) -
+  // there is no touch-friendly way to position, connect or resize nodes
+  // on a phone screen. Rather than ship a broken drag surface, phones
+  // get a clear, read-only summary of the flow and a prompt to use a
+  // larger screen to actually build it. Desktop (the `hidden md:flex`
+  // branch below) is completely unaffected.
   return (
-    <div style={{ position:'fixed', top:80, left:260, right:0, bottom:0, zIndex:50, display:'flex', flexDirection:'column', background:'var(--color-background)' }}>
+    <>
+      <div className="flex md:hidden flex-col items-center text-center gap-4 p-8 min-h-[60vh] justify-center">
+        <GitBranch size={40} className="text-primary opacity-70" />
+        <h3 className="text-lg font-black uppercase tracking-tight">Flow Builder needs a bigger screen</h3>
+        <p className="text-sm text-muted-foreground max-w-xs">
+          Building and wiring up flow steps is a drag-and-drop canvas - it
+          needs a mouse and a wider screen to use safely. Open this page on
+          a tablet or desktop to edit <strong>{nodes.length}</strong> step{nodes.length === 1 ? '' : 's'} in this flow.
+        </p>
+        <button
+          onClick={() => onFlowSaved?.()}
+          className="min-h-[44px] px-6 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest"
+        >
+          Back to Flow Monitor
+        </button>
+      </div>
+      <div className="hidden md:flex" style={{ position:'fixed', top:80, left:260, right:0, bottom:0, zIndex:50, flexDirection:'column', background:'var(--color-background)' }}>
 
       {/* Back to monitor bar */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'0 16px', borderBottom:'1px solid var(--color-border)', background:'var(--color-card)', height:44, flexShrink:0 }}>
@@ -1045,6 +1068,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
         </div>
 
       </div>
-    </div>
+      </div>
+    </>
   );
 }
