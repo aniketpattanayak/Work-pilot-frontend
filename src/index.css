@@ -531,19 +531,38 @@
   .has-bottom-nav-space {
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
   }
-  /* Floating chat / AI launcher buttons must never sit over the bottom
-     nav or its tap targets - and, on phones/tablets, every custom grid
-     and card list in this app puts its own row actions (Submit, Edit,
-     Comments, Leave...) hard against the RIGHT edge, so a right-anchored
-     floating launcher is guaranteed to collide with some row's button on
-     any page with enough rows to fill the screen. Moving the launcher to
-     the bottom-left (still clear of the nav) keeps it out of that same
-     dead reckoning without having to chase every page's row layout. */
-  .ai-launcher-btn,
-  .floating-chat-launcher {
-    bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px)) !important;
-    left: 1rem !important;
-    right: auto !important;
+  /* Each floating launcher's OWN trigger bubble (Chat and AI Assistant)
+     is hidden on phones/tablets - they used to render separately here,
+     stacked on identical coordinates (hiding the chat unread badge under
+     the AI button). Phones instead get a single combined launcher, see
+     MobileDualLauncher.jsx / .mobile-dual-launcher below. Each
+     component's own expanded panel (chat window / AI chat panel) is
+     untouched and still opens exactly as before. */
+  .launcher-btn-desktop-only {
+    display: none !important;
+  }
+}
+
+/* ── Combined mobile launcher (Chat + AI Assistant) ──────────────────
+   Single FAB shown only on phones/tablets, bottom-left, clear of the
+   bottom nav - replaces the two separate trigger bubbles above (see
+   .launcher-btn-desktop-only). See MobileDualLauncher.jsx. */
+.mobile-dual-launcher {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .mobile-dual-launcher {
+    display: block;
+    position: fixed;
+    bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px));
+    left: 1rem;
+    right: auto;
+    z-index: 1002;
+  }
+  body:has(.mobile-sheet) .mobile-dual-launcher,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .mobile-dual-launcher,
+  body:has(.mobile-sticky-footer) .mobile-dual-launcher {
+    display: none !important;
   }
 }
 
