@@ -5,6 +5,7 @@ import { dialog } from '../components/Dialog';
 import { 
   FiUser, FiShield, FiPlus, FiX, FiSave, FiTrash2, FiSettings, FiCheckCircle, FiRefreshCw 
 } from "react-icons/fi";
+import ResponsiveTable from '../components/ResponsiveTable';
 import { 
   Clock, 
   Calendar, 
@@ -579,6 +580,7 @@ const Settings = ({ tenantId }) => {
               </div>
               {reviewCfg.overrides.length > 0 && (
                 <div className="overflow-x-auto rounded-2xl border border-border">
+                  <ResponsiveTable>
                   <table className="mobile-card-table w-full text-left text-sm">
                     <thead className="bg-background"><tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                       <th className="px-4 py-2">Location</th><th className="px-4 py-2">Department</th><th className="px-4 py-2">Delegation</th><th className="px-4 py-2">Checklist</th><th className="px-4 py-2">FMS</th><th className="px-4 py-2" />
@@ -596,6 +598,7 @@ const Settings = ({ tenantId }) => {
                       ))}
                     </tbody>
                   </table>
+                  </ResponsiveTable>
                 </div>
               )}
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">A person gets the most specific matching rule: location + department, then location only, then department only, then the default above. People with no location only match "All locations" rules.</p>

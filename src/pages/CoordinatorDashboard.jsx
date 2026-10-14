@@ -8,6 +8,7 @@ import {
   ChevronRight, ClipboardList, Target, Calendar, Upload,
   ChevronDown, ChevronUp, Search, UserPlus
 } from "lucide-react";
+import ResponsiveTable from '../components/ResponsiveTable';
 
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const isViewer = isViewerOnly();
@@ -603,6 +604,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 </div>
               );
             })()}
+            <ResponsiveTable>
             <table className="mobile-card-table w-full table-fixed border-collapse text-left">
               <thead className="sticky top-0 z-20 bg-background">
                 <tr className="bg-background border-b border-border">
@@ -806,6 +808,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 })}
               </tbody>
             </table>
+            </ResponsiveTable>
           </div>
         </div>
       </div>

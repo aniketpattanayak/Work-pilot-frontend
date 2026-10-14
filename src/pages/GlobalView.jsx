@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -340,6 +341,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           <div className="py-24 text-center text-sm font-bold text-red-500">{error}</div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-250px)]">
+            <ResponsiveTable>
             <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-black uppercase tracking-wider">
@@ -398,6 +400,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 </tfoot>
               )}
             </table>
+            </ResponsiveTable>
           </div>
         )}
       </div>
@@ -451,6 +454,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
               ) : shownRows.length === 0 ? (
                 <div className="py-24 text-center text-slate-400 font-bold text-sm">No tasks in this range</div>
               ) : (
+                <ResponsiveTable>
                 <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[900px]">
                   <thead className="sticky top-0 z-20 bg-background">
                     <tr className="text-[10px] font-black uppercase tracking-wider">
@@ -493,6 +497,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                               <td colSpan={canEdit ? 8 : 7} className="border border-border bg-muted/40 px-4 py-2">
                                 {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
                                 {f.steps.length > 0 && (
+                                  <ResponsiveTable>
                                   <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
                                     <thead><tr className="text-[9px] font-black uppercase text-slate-500">
                                       {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
@@ -509,6 +514,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                                       ))}
                                     </tbody>
                                   </table>
+                </ResponsiveTable>
                                 )}
                                 {f.pendingStep && (
                                   <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
@@ -523,6 +529,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                     })}
                   </tbody>
                 </table>
+                                  </ResponsiveTable>
               )}
             </div>
           </div>

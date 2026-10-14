@@ -7,6 +7,7 @@ import {
   Zap, ChevronDown, ChevronUp, CheckCircle2, X,
   Package, FileText, Settings, Eye
 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 // ─── FIELD TYPES ──────────────────────────────────────────────────────────────
 const FIELD_TYPES = [
@@ -433,6 +434,7 @@ export default function OrderFormsPage({ tenantId }) {
 
       <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-card)', overflow: 'hidden' }}>
         <div style={{ maxHeight: 'calc(100vh - 13rem)', overflowY: 'auto' }}>
+          <ResponsiveTable>
           <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>
@@ -501,6 +503,7 @@ export default function OrderFormsPage({ tenantId }) {
               })}
             </tbody>
           </table>
+          </ResponsiveTable>
         </div>
       </div>
 

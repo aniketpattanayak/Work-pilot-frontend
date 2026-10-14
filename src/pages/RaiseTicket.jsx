@@ -24,6 +24,7 @@ import {
   Pencil,
   Trash2
 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 const EMPTY_FORM = { title: '', description: '', category: 'Technical', priority: 'Medium' };
 const PRIORITY_STYLE = {
@@ -180,6 +181,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
         </div>
 
         <div className="overflow-auto max-h-[calc(100vh-14rem)] custom-scrollbar">
+          <ResponsiveTable>
           <table className="mobile-card-table w-full border-separate border-spacing-0 text-left min-w-[900px]">
             <thead>
               <tr>
@@ -288,6 +290,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
               )}
             </tbody>
           </table>
+          </ResponsiveTable>
         </div>
       </div>
 

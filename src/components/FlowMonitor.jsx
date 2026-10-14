@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig';
 import {
+import ResponsiveTable from './ResponsiveTable';
   Activity, RefreshCcw, Search, ChevronRight, X,
   CheckCircle2, AlertCircle, Clock, Circle, Zap,
   Filter, Eye, Plus
@@ -363,6 +364,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
           ) : (
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
+                <ResponsiveTable>
                 <table className="mobile-card-table min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/40">
@@ -408,6 +410,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                     })}
                   </tbody>
                 </table>
+                </ResponsiveTable>
               </div>
             </div>
           )}

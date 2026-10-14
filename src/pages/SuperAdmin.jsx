@@ -11,6 +11,7 @@ import {
   Bell, Package, ToggleLeft, ToggleRight, CreditCard, StickyNote,
   ChevronDown, ChevronUp, LayoutGrid, List, Sparkles
 } from 'lucide-react';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api');
 const SA  = axios.create({ baseURL: API });
@@ -394,6 +395,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 <Users size={14}/> {employees.length} employees · {employees.filter(e=>e.isActive!==false).length} active
               </div>
               <div style={{ border:`1px solid ${C.border}`, borderRadius:10, overflow:'hidden' }}>
+                <ResponsiveTable>
                 <table className="mobile-card-table" style={{ width:'100%', borderCollapse:'collapse' }}>
                   <thead>
                     <tr style={{ background:C.bg }}>
@@ -426,6 +428,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                     ))}
                   </tbody>
                 </table>
+                </ResponsiveTable>
                 {employees.length===0 && <div style={{ textAlign:'center', padding:32, color:C.muted, fontSize:13 }}>No employees yet</div>}
               </div>
             </div>
@@ -511,6 +514,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 <div style={{ marginTop:24 }}>
                   <div style={{ fontSize:13, fontWeight:600, color:C.text, marginBottom:12 }}>Payment history</div>
                   <div style={{ border:`1px solid ${C.border}`, borderRadius:10, overflow:'hidden' }}>
+                    <ResponsiveTable>
                     <table className="mobile-card-table" style={{ width:'100%', borderCollapse:'collapse' }}>
                       <thead><tr style={{ background:C.bg }}>
                         {['Date','Plan','Amount','Status'].map(h=>(
@@ -528,6 +532,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                         ))}
                       </tbody>
                     </table>
+                    </ResponsiveTable>
                   </div>
                 </div>
               )}
@@ -1490,6 +1495,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
                   {filtered.map(t=><TenantCard key={t._id} t={t} onClick={()=>setSelected(t._id)}/>)}
                 </div>
               : <div style={{ border:`1px solid ${C.border}`, borderRadius:12, overflow:'hidden', background:C.card }}>
+                  <ResponsiveTable>
                   <table className="mobile-card-table" style={{ width:'100%', borderCollapse:'collapse' }}>
                     <thead>
                       <tr style={{ background:C.bg, borderBottom:`1px solid ${C.border}` }}>
@@ -1546,6 +1552,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
                       ))}
                     </tbody>
                   </table>
+                  </ResponsiveTable>
                   {filtered.length===0 && <div style={{ textAlign:'center', padding:32, color:C.muted, fontSize:13 }}>No tenants found</div>}
                 </div>
             }
