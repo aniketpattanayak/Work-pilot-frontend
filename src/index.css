@@ -288,6 +288,30 @@
     background: hsl(var(--card));
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
+
+  /* Generic fallback: this codebase's modals overwhelmingly follow one
+     convention - a `fixed inset-0 ... flex items-center justify-center`
+     overlay wrapping a centered panel as its last child. Rather than
+     rely on every modal being hand-opted into .mobile-sheet (easy to
+     miss one), ANY panel following that convention automatically
+     becomes a full-height sheet on phones too. A panel that already
+     has .mobile-sheet keeps its own (body/actions-aware) treatment
+     from the rule above; a panel marked .no-auto-sheet (small system
+     confirm/alert/prompt dialogs - see components/Dialog.jsx - which
+     are deliberately kept compact, not blown up full-screen) opts out.
+  */
+  .fixed.inset-0.flex.items-center.justify-center:has(> *:last-child:not(.mobile-sheet):not(.no-auto-sheet)) {
+    padding: 0 !important;
+  }
+  .fixed.inset-0.flex.items-center.justify-center > *:last-child:not(.mobile-sheet):not(.no-auto-sheet) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ── SHARED PHONE-ONLY TEXT/TAP RULES ────────────────────────────────

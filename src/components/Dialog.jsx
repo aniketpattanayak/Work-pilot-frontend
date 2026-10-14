@@ -86,7 +86,7 @@ export const DialogHost = () => {
 
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget && current.kind !== 'alert') cancel(); }}>
-      <div role="dialog" aria-modal="true" className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+      <div role="dialog" aria-modal="true" className="no-auto-sheet w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-start gap-3 px-5 pt-5">
           <div className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center ${tone.ring}`}><Icon size={18} /></div>
           <div className="min-w-0 flex-1">
