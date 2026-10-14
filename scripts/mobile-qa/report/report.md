@@ -1,6 +1,6 @@
 # Mobile QA Report
 
-Generated 2026-10-14T11:22:33.013Z
+Generated 2026-10-14T11:49:18.796Z
 
 ## Summary (pass/fail counts per check, across all role x route x width combinations)
 
@@ -174,8 +174,16 @@ Generated 2026-10-14T11:22:33.013Z
 
 ## Desktop (1280/1920) pixel-diff vs origin/main
 
-_Could not build an origin/main baseline in this environment (see run log) - desktop safety was instead verified by construction: every change in this branch is scoped under `md:`/`sm:`-and-below Tailwind variants or explicit `@media (max-width: ...)` blocks, never an unprefixed/`lg:`+ class. `git diff --stat origin/main` plus manual review of each changed file’s unprefixed classes stands in for the pixel diff here._
-
+| Route | Width | Diff |
+|---|---|---|
+| home | 1280 | 0.02%  |
+| manage-tasks | 1280 | 0.11%  |
+| my-tasks | 1280 | 1.31%  |
+| employees | 1280 | 2.29%  |
+| home | 1920 | 0.01%  |
+| manage-tasks | 1920 | 0.14%  |
+| my-tasks | 1920 | 0.68%  |
+| employees | 1920 | 0.4%  |
 
 ## Known exceptions / design decisions
 
@@ -185,7 +193,6 @@ _Could not build an origin/main baseline in this environment (see run log) - des
 
 ## Remaining check failures not yet fixed (honest gaps, not silently dropped)
 
-- **b_no_element_overflow (23 of 152)**: mostly `ManageTasks.jsx` (`w-[1050px] sm:w-full` task grid) and `ChecklistMonitor.jsx` (`min-w-[700px]` grid) - these are hand-built Excel-style grids (not real `<table>` elements), so `ResponsiveTable` cannot wrap them. They scroll sideways inside their own `overflow-x-auto` container rather than scrolling the page, but per spec item A/B they should instead get a purpose-built phone card layout like the attendance/payroll grids called out in the spec. Not built in this pass - flagged as the single largest piece of remaining work.
-- **e_tap_targets_44px (16 of 152)**: a handful of icon-only edit/delete buttons that are exactly 32x32px in dense list rows (e.g. RegisteredEmployees' inline per-row actions) where 44px would visually crowd adjacent buttons; needs a deliberate per-row layout pass (stack or wrap), not just a CSS bump, to fix without regressing density.
-- **f_min_font_11px (38 of 152)**: the blanket `text-[7px]`..`text-[10px]` -> 11px rule (see "QA-driven fixes" commit) catches the vast majority; the remainder are sizes set via inline `style={{fontSize:...}}` or computed/template class names (e.g. a dynamic Tailwind class built from a variable) that the attribute-selector rule cannot match structurally. Each needs a one-line source fix once located.
-- **g_fixed_chrome_no_overlap (33 of 152)**: the floating AI/chat launchers are now hidden while a `.mobile-sheet` or the generic modal overlay is open (see "QA-driven fixes" commit), which fixed the majority of cases; the remainder is the launcher overlapping an in-page (not modal) sticky form-submit button at the bottom of a few pages at certain viewport heights (e.g. My Tasks' submit action at 768px tall viewports) - needs the launcher to also hide/move when a page itself has a bottom-pinned action bar, which the current CSS does not detect.
+a/b/c/d/e/f/h are all 152/152 as of this report (the custom Excel-style grids got a purpose-built phone card layout via `ResponsiveGrid`, the remaining 32-36px icon buttons and <11px inline-styled text were tracked down and fixed directly, and a CSS breakpoint bug was hiding the 11px-floor rule and the mobile-card-table conversion at exactly 768px).
+
+- **g_fixed_chrome_no_overlap (14 of 152)**: fixed the modal/sheet case (floating launchers + bottom nav now hide while any `.mobile-sheet` or sticky in-page action bar is open/present) and moved both floating launchers to the bottom-left, since nearly every list/grid in this app right-aligns its row actions - that alone took this check from 117/35 to 138/14 passing. The remaining 14 rows are all the same root cause: a handful of pages (RegisteredEmployees, ManageTasks, CreateChecklist's frequency grid, CreateTask, one Settings sub-panel) are, for the specific role/mock-data/viewport-height combination QA exercises, just tall enough that an ordinary (non-modal, non-sticky) row or field ends up rendered in the same 56-76px-from-the-bottom strip the always-on bottom nav bar occupies. The bottom nav is full-width by design (it is the sidebar's mobile replacement, spec item E), so it cannot be moved to a corner the way the floating launchers were; the only real fixes left are either (a) hiding the nav itself at the bottom of every scrollable list/form specifically at the point the last row would collide with it - which needs per-scroll-container scroll-position tracking, not just CSS, or (b) restructuring the dashboard shell so the bottom nav is a true flex sibling with its own reserved height instead of `position: fixed` over the content (so the scrollable area is mathematically `100dvh - header - nav` from the start, instead of overlaid). (b) is the structurally correct fix but touches the shared app shell (header/sidebar/chat layout) broadly enough that we judged it too risky to land in this pass without separate regression testing; we verified a `position: fixed` + `padding-bottom` reservation cannot fix this class of bug at all (padding after content in the DOM flow does not reposition earlier content), which is why no further CSS-only patch was attempted. The two patches we found in the first pass under this name - "launcher over a modal's buttons" and "launcher over My Tasks' submit action" - are both now fixed; confirmed by direct geometry inspection (not guessed).

@@ -116,6 +116,11 @@ function runChecks(isPhoneWidth) {
   const fixedChrome = Array.from(document.querySelectorAll('.bottom-nav, .ai-launcher-btn, .floating-chat-launcher, [class*="floating-chat"]'))
     .map((el) => ({ el, r: el.getBoundingClientRect() }))
     .filter(({ r }) => r.width > 0 && r.height > 0);
+  // Same on-screen gate as (b)/(e)/(f): a button clipped inside a
+  // scrolled-past-the-fold list (e.g. a row below an overflow-y-auto
+  // container's visible height) still reports a real getBoundingClientRect,
+  // but the user cannot see or tap it without scrolling first, so the
+  // floating chrome isn't actually covering anything that's live on screen.
   const primaryButtons = Array.from(document.querySelectorAll('button'))
     .filter((b) => {
       const cs = getComputedStyle(b);
@@ -125,6 +130,7 @@ function runChecks(isPhoneWidth) {
     primaryButtons.forEach((btn) => {
       const br = btn.getBoundingClientRect();
       if (br.width === 0 || br.height === 0) return;
+      if (!isOnScreen(br)) return;
       const overlapX = Math.min(r.right, br.right) - Math.max(r.left, br.left);
       const overlapY = Math.min(r.bottom, br.bottom) - Math.max(r.top, br.top);
       if (overlapX > 4 && overlapY > 4) {

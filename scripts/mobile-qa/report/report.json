@@ -7853,51 +7853,51 @@
     {
       "route": "home",
       "width": 1280,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.02,
+      "note": ""
     },
     {
       "route": "manage-tasks",
       "width": 1280,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.11,
+      "note": ""
     },
     {
       "route": "my-tasks",
       "width": 1280,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 1.31,
+      "note": ""
     },
     {
       "route": "employees",
       "width": 1280,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 2.29,
+      "note": ""
     },
     {
       "route": "home",
       "width": 1920,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.01,
+      "note": ""
     },
     {
       "route": "manage-tasks",
       "width": 1920,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.14,
+      "note": ""
     },
     {
       "route": "my-tasks",
       "width": 1920,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.68,
+      "note": ""
     },
     {
       "route": "employees",
       "width": 1920,
-      "diffPct": null,
-      "note": "no origin/main baseline available - see report notes"
+      "diffPct": 0.4,
+      "note": ""
     }
   ],
-  "hadBaseline": false
+  "hadBaseline": true
 }
