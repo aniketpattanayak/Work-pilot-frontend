@@ -131,12 +131,12 @@ const Login = ({ onLoginSuccess }) => {
 
   // --- MAIN LOGIN TERMINAL ---
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6 relative overflow-hidden font-sans transition-colors duration-500 selection:bg-primary/30">
-      
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-sans transition-colors duration-500 selection:bg-primary/30">
+
       {/* Dynamic Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="max-w-[440px] w-full bg-card border border-border rounded-[3rem] p-8 md:p-12 backdrop-blur-2xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-1000">
+      <div className="max-w-[440px] w-full bg-card border border-border rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 md:p-12 backdrop-blur-2xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-1000">
         
         {/* Branding Section (Responsive) */}
         <div className="text-center mb-12">
@@ -166,12 +166,12 @@ const Login = ({ onLoginSuccess }) => {
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Personnel Email</label>
             <div className="relative group">
-              <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+              <Mail className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
               <input 
                 type="email" 
                 placeholder="name@factory.com" 
                 required
-                className="w-full bg-background border border-border text-foreground pl-14 pr-6 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700"
+                className="w-full bg-background border border-border text-foreground pl-12 sm:pl-14 pr-6 py-4 sm:py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700"
                 onChange={(e) => setEmail(e.target.value)} 
               />
             </div>
@@ -180,12 +180,12 @@ const Login = ({ onLoginSuccess }) => {
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Password</label>
             <div className="relative group">
-              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+              <Lock className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
               <input 
                 type={showPassword ? "text" : "password"} // Dynamic Type Toggle
                 placeholder="••••••••" 
                 required
-                className="w-full bg-background border border-border text-foreground pl-14 pr-14 py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700 tracking-widest"
+                className="w-full bg-background border border-border text-foreground pl-12 sm:pl-14 pr-14 py-4 sm:py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700 tracking-widest"
                 onChange={(e) => setPassword(e.target.value)} 
               />
               {/* Visibility Toggle Button */}
