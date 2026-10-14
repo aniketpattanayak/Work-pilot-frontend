@@ -325,13 +325,17 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
             </div>
           }
         >
-          {/* TABS — all visible, no sideways scrolling */}
-          <div className="flex flex-wrap bg-background p-1 rounded-lg border border-border gap-1 flex-1">
+          {/* TABS — all visible, no sideways scrolling. Each chip sizes to
+              its own label (no flex-1): forcing every chip to the same
+              shared width squeezes multi-word labels like "Half-Yearly"
+              below their natural width, which crowds them against their
+              neighbors on the next wrapped line. */}
+          <div className="flex flex-wrap bg-background p-1.5 rounded-lg border border-border gap-1.5">
             {frequencyTabs.map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={'flex-1 px-2 py-1 rounded-md font-black text-[9px] uppercase tracking-wider transition whitespace-nowrap ' + (activeTab === tab ? 'bg-primary text-primary-foreground shadow' : 'text-slate-500 hover:text-foreground')}
+                className={'px-2.5 py-1.5 rounded-md font-black text-[9px] uppercase tracking-wider transition whitespace-nowrap ' + (activeTab === tab ? 'bg-primary text-primary-foreground shadow' : 'text-slate-500 hover:text-foreground')}
               >
                 {tab}
               </button>
