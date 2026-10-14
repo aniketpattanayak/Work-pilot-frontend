@@ -164,10 +164,10 @@
     width: 100%;
   }
   .mobile-card-table tbody tr {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     border: 1px solid hsl(var(--border));
     border-radius: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.875rem;
     background: hsl(var(--card));
   }
   .mobile-card-table tbody tr:last-child {
@@ -178,7 +178,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.375rem 0 !important;
+    padding: 0.25rem 0 !important;
     border: none !important;
     text-align: right;
     white-space: normal !important;
@@ -205,9 +205,9 @@
     justify-content: flex-start;
     font-weight: 900;
     font-size: 0.95rem;
-    padding-bottom: 0.5rem !important;
+    padding-bottom: 0.375rem !important;
     border-bottom: 1px solid hsl(var(--border)) !important;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
   }
   .mobile-card-table tbody td.mobile-card-title::before {
     content: none;
@@ -221,8 +221,8 @@
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding-top: 0.75rem !important;
+    margin-top: 0.375rem;
+    padding-top: 0.5rem !important;
     border-top: 1px solid hsl(var(--border)) !important;
   }
   .mobile-card-table tbody td.mobile-card-actions::before {
@@ -274,8 +274,8 @@
     border: 1px solid hsl(var(--border));
     border-left: 1px solid hsl(var(--border)) !important;
     border-radius: 1rem;
-    padding: 0.75rem 1rem !important;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.875rem !important;
+    margin-bottom: 0.5rem;
     background: hsl(var(--card));
   }
   .mobile-grid-row > * {
@@ -283,7 +283,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.375rem 0 !important;
+    padding: 0.25rem 0 !important;
     text-align: right;
     white-space: normal !important;
     min-width: 0;
@@ -303,9 +303,9 @@
     justify-content: flex-start;
     font-weight: 900;
     font-size: 0.95rem;
-    padding-bottom: 0.5rem !important;
+    padding-bottom: 0.375rem !important;
     border-bottom: 1px solid hsl(var(--border));
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
   }
   .mobile-grid-row > .mobile-grid-title::before {
     content: none;
@@ -315,8 +315,8 @@
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding-top: 0.75rem !important;
+    margin-top: 0.375rem;
+    padding-top: 0.5rem !important;
     border-top: 1px solid hsl(var(--border));
   }
   .mobile-grid-row > .mobile-grid-actions::before {
