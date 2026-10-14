@@ -4,6 +4,7 @@ import API from "../api/axiosConfig";
 
 // Component Imports
 import Sidebar from "../components/Sidebar";
+import BottomNav from "../components/BottomNav";
 import ScoreBadge from "../components/ScoreBadge";
 import AddEmployee from "./AddEmployee";
 import SettingsPage from "./Settings";
@@ -459,8 +460,8 @@ useEffect(() => {
 
         {/* MAIN ROUTE HUB */}
         <main className={isChatRoute
-          ? 'flex-1 min-h-0 w-full flex flex-col overflow-hidden animate-in fade-in duration-700'
-          : 'p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700'
+          ? `flex-1 min-h-0 w-full flex flex-col overflow-hidden animate-in fade-in duration-700${isViewerOnly() ? '' : ' has-bottom-nav-space'}`
+          : `p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700${isViewerOnly() ? '' : ' has-bottom-nav-space'}`
         }>
           <ErrorBoundary resetKey={location.pathname}>
           {isViewerOnly() ? (
@@ -565,8 +566,11 @@ useEffect(() => {
           </ErrorBoundary>
         </main>
 
-        {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls */}
-        <footer className="sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 pb-safe text-center">
+        {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls.
+            Hidden below lg: the bottom nav (role-aware tabs) is the phone/tablet
+            chrome at the bottom of the screen instead - showing both would be
+            two competing bottom bars. */}
+        <footer className="hidden lg:block sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 pb-safe text-center">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
             Powered by{' '}
             <a href="https://lrbc.ai" target="_blank" rel="noopener noreferrer" className="font-black text-primary hover:underline">LRBC</a>
@@ -591,6 +595,7 @@ useEffect(() => {
           bottom-right. The chat page already has its own full messaging UI,
           so there's nothing lost by not floating a second one over it. */}
       {!isViewerOnly() && !isChatRoute && <AiAssistantPanel currentUser={user} />}
+      <BottomNav roles={userRoles} viewerOnly={isViewerOnly()} onOpenMore={() => setSidebarOpen(true)} />
       <DialogHost />
     </div>
   );
