@@ -502,7 +502,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         const title = linkView.kind === 'doers' ? 'Linked Doers' : 'Linked Assigners';
         return (
           <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md" onClick={() => setLinkView(null)}>
-            <div className="bg-card border border-border w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-sheet bg-card border border-border w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-6 py-5 border-b border-border">
                 <div>
                   <p className="text-sm font-black text-foreground uppercase tracking-tight">{title} ({people.length})</p>
@@ -555,7 +555,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       {/* ── LEAVE MODAL ──────────────────────────────────── */}
       {showLeaveModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <div className="flex items-center justify-between px-6 py-5 border-b border-border">
               <div className="flex items-center gap-3">

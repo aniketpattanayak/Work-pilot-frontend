@@ -28,7 +28,7 @@ const PayslipModal = ({ runId, employeeId, onClose }) => {
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Payslip" className="fixed inset-0 z-[300] bg-black/60 flex items-center justify-center p-3">
-      <div className="bg-card rounded-[2rem] border border-border shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
+      <div className="mobile-sheet bg-card rounded-[2rem] border border-border shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 p-4 border-b border-border">
           <h3 className="text-foreground text-sm font-black uppercase tracking-widest">{data ? `Payslip, ${monthLabel(data.payslip.month)}` : 'Payslip'}</h3>
           <div className="flex gap-2">
