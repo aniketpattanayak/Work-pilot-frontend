@@ -183,7 +183,7 @@ const Today = () => {
 // ---------------------------------------------------------------- Day table
 const DayTable = ({ days, onFix }) => (
   <div className="overflow-x-auto">
-    <table className="w-full text-left text-sm">
+    <table className="mobile-card-table w-full text-left text-sm">
       <thead><tr className={label}><th className="py-2 pr-3">Date</th><th className="pr-3">Status</th><th className="pr-3">In</th><th className="pr-3">Out</th><th className="pr-3">Worked</th><th className="pr-3">Notes</th><th /></tr></thead>
       <tbody>
         {days.map((d) => (
@@ -386,7 +386,7 @@ const Team = ({ can }) => {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="mobile-card-table w-full text-left text-sm">
             <thead><tr className={label}><th className="py-2 pr-3">Name</th><th className="pr-3">Present</th><th className="pr-3">Absent</th><th className="pr-3">Leave</th><th className="pr-3">Late</th><th className="pr-3">Missing out</th></tr></thead>
             <tbody>
               {rows.map((r) => (

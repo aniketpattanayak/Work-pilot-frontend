@@ -92,7 +92,7 @@ const ActivityLogPanel = ({ tenantId, showTable = true }) => {
         <>
           {error ? <p className="text-xs font-bold text-red-500 py-4 text-center">{error}</p> : (
             <div className="overflow-auto max-h-[420px] border border-border rounded-lg">
-              <table className="w-full text-[11px] border-collapse min-w-[760px]">
+              <table className="mobile-card-table w-full text-[11px] border-collapse min-w-[760px]">
                 <thead className="sticky top-0 bg-muted z-10">
                   <tr className="text-[10px] font-black uppercase tracking-wider text-left">
                     <th className="px-2 py-1.5">Time (IST)</th><th className="px-2 py-1.5">Employee</th><th className="px-2 py-1.5">Module</th>

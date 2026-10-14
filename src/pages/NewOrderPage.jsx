@@ -228,7 +228,7 @@ export default function NewOrderPage({ tenantId }) {
 
       <div className="border border-border rounded-xl bg-card overflow-hidden">
         <div className="max-h-[calc(100vh-12rem)] overflow-y-auto">
-          <table className="w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+          <table className="mobile-card-table w-full text-sm" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr className="text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <th className="sticky top-0 z-10 bg-muted px-4 py-2.5 border-b border-border w-16">S. no.</th>

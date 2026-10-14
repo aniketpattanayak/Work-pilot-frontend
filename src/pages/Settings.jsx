@@ -579,7 +579,7 @@ const Settings = ({ tenantId }) => {
               </div>
               {reviewCfg.overrides.length > 0 && (
                 <div className="overflow-x-auto rounded-2xl border border-border">
-                  <table className="w-full text-left text-sm">
+                  <table className="mobile-card-table w-full text-left text-sm">
                     <thead className="bg-background"><tr className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                       <th className="px-4 py-2">Location</th><th className="px-4 py-2">Department</th><th className="px-4 py-2">Delegation</th><th className="px-4 py-2">Checklist</th><th className="px-4 py-2">FMS</th><th className="px-4 py-2" />
                     </tr></thead>

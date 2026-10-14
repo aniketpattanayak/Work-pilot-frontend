@@ -220,7 +220,7 @@ const PayrollSalaries = ({ can }) => {
         {missing > 0 && <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">{missing} without a salary</span>}
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="mobile-card-table w-full text-left text-sm">
           <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Department</th><th className="pr-3 text-right">Basic</th><th className="pr-3 text-right">Monthly gross</th><th className="pr-3">From</th><th /></tr></thead>
           <tbody>
             {shown.map((p) => (

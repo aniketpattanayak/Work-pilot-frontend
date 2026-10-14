@@ -198,7 +198,7 @@ export default function BulkUpload({ tenantId, assignerId, onClose, onSuccess, m
                 Preview — {rows.length} rows
               </div>
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, overflow: 'hidden', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: 'var(--color-muted)' }}>
                       {Object.keys(rows[0] || {}).slice(0, 5).map(h => (

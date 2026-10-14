@@ -1364,7 +1364,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
 <div className="w-full overflow-x-auto rounded-2xl border border-border shadow-lg bg-card">
 
-  <table className="min-w-full text-sm">
+  <table className="mobile-card-table min-w-full text-sm">
 
     {/* HEADER */}
     <thead className="bg-muted/50 backdrop-blur sticky top-0 z-10">
@@ -1629,7 +1629,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
 
               <div className="w-full overflow-x-auto">
-  <table className="min-w-full border text-sm">
+  <table className="mobile-card-table min-w-full border text-sm">
 
     <thead className="bg-gray-100 sticky top-0">
       <tr>
@@ -1702,7 +1702,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
             })*/}
             <div className="w-full overflow-x-auto">
-  <table className="min-w-full border text-sm">
+  <table className="mobile-card-table min-w-full border text-sm">
 
     <thead className="bg-gray-100 sticky top-0">
       <tr>
@@ -1817,7 +1817,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       </div>
 
       <div className="overflow-auto max-h-[400px]">
-        <table className="w-full border text-sm">
+        <table className="mobile-card-table w-full border text-sm">
           <thead className="bg-gray-200">
             <tr>
               <th>Time</th>
@@ -1873,7 +1873,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
       {/* TABLE */}
       <div className="overflow-auto max-h-[500px]">
 
-        <table className="w-full text-sm border">
+        <table className="mobile-card-table w-full text-sm border">
 
           <thead className="bg-gray-200 sticky top-0">
             <tr>
@@ -1987,7 +1987,7 @@ focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 
       <div className="overflow-auto max-h-[500px] border rounded">
 
-  <table className="w-full text-sm border">
+  <table className="mobile-card-table w-full text-sm border">
     <thead className="bg-gray-200 sticky top-0">
       <tr>
         <th>Time</th>

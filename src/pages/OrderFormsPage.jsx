@@ -433,7 +433,7 @@ export default function OrderFormsPage({ tenantId }) {
 
       <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, background: 'var(--color-card)', overflow: 'hidden' }}>
         <div style={{ maxHeight: 'calc(100vh - 13rem)', overflowY: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <table className="mobile-card-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
             <thead>
               <tr>
                 <th style={{ ...th, width: 64 }}>S. no.</th>

@@ -180,7 +180,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
         </div>
 
         <div className="overflow-auto max-h-[calc(100vh-14rem)] custom-scrollbar">
-          <table className="w-full border-separate border-spacing-0 text-left min-w-[900px]">
+          <table className="mobile-card-table w-full border-separate border-spacing-0 text-left min-w-[900px]">
             <thead>
               <tr>
                 <th className={`${thCls} w-16`}>S. no.</th>

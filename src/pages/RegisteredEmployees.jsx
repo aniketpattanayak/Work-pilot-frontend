@@ -516,7 +516,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                 {people.length === 0 ? (
                   <p className="p-8 text-center text-xs text-slate-400">No one is linked.</p>
                 ) : (
-                  <table className="w-full text-left">
+                  <table className="mobile-card-table w-full text-left">
                     <thead className="bg-muted/50 sticky top-0">
                       <tr>
                         {['Name', 'Roles', 'Department', 'Location', 'Phone'].map(h => (

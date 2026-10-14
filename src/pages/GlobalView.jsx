@@ -340,7 +340,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           <div className="py-24 text-center text-sm font-bold text-red-500">{error}</div>
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-250px)]">
-            <table className="w-full border-collapse text-[11px] min-w-[1250px]">
+            <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
               <thead className="sticky top-0 z-30">
                 <tr className="text-[10px] font-black uppercase tracking-wider">
                   <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
@@ -451,7 +451,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
               ) : shownRows.length === 0 ? (
                 <div className="py-24 text-center text-slate-400 font-bold text-sm">No tasks in this range</div>
               ) : (
-                <table className="w-full border-collapse text-[11px] min-w-[900px]">
+                <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[900px]">
                   <thead className="sticky top-0 z-20 bg-background">
                     <tr className="text-[10px] font-black uppercase tracking-wider">
                       {['S.no', 'Type', 'Task', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
@@ -493,7 +493,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                               <td colSpan={canEdit ? 8 : 7} className="border border-border bg-muted/40 px-4 py-2">
                                 {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
                                 {f.steps.length > 0 && (
-                                  <table className="w-full border-collapse text-[11px] mb-2">
+                                  <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
                                     <thead><tr className="text-[9px] font-black uppercase text-slate-500">
                                       {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
                                     </tr></thead>

@@ -115,7 +115,7 @@ const Compare = ({ run }) => {
       {res && (
         <div className="space-y-4">
           <p className="text-sm font-black text-foreground" aria-label="Comparison summary">{c.matched} people matched: {c.same} the same, {c.different} different. {c.onlyOther} only in your file, {c.onlyWorkPilot} only in Work-Pilot.</p>
-          <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-1 pr-3">Total (matched people)</th><th className="pr-3 text-right">Work-Pilot</th><th className="pr-3 text-right">Your file</th><th className="text-right">Difference</th></tr></thead>
+          <div className="overflow-x-auto"><table className="mobile-card-table w-full text-left text-sm"><thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-1 pr-3">Total (matched people)</th><th className="pr-3 text-right">Work-Pilot</th><th className="pr-3 text-right">Your file</th><th className="text-right">Difference</th></tr></thead>
             <tbody>{Object.entries(res.totals).map(([f, t]) => <tr key={f} className="border-t border-border font-bold text-foreground"><td className="py-1 pr-3">{FIELD_NAMES[f] || f}</td><td className="pr-3 text-right">{inr(t.workPilot)}</td><td className="pr-3 text-right">{inr(t.other)}</td><td className={`text-right ${t.difference ? 'text-amber-600' : ''}`}>{inr(t.difference)}</td></tr>)}</tbody></table></div>
           {res.different.length > 0 && (
             <div><p className={label}>Differences</p>

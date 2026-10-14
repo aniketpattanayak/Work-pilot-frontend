@@ -603,7 +603,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 </div>
               );
             })()}
-            <table className="w-full table-fixed border-collapse text-left">
+            <table className="mobile-card-table w-full table-fixed border-collapse text-left">
               <thead className="sticky top-0 z-20 bg-background">
                 <tr className="bg-background border-b border-border">
                   <th className="w-[100px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>

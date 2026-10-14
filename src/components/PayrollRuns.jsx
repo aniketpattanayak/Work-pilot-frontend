@@ -176,7 +176,7 @@ const RunDetail = ({ runId, can, onBack }) => {
 
       <div className={card}>
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="mobile-card-table w-full text-left text-sm">
             <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Paid days</th><th className="pr-3 text-right">Gross</th><th className="pr-3 text-right">Deductions</th><th className="pr-3 text-right">Net pay</th><th className="pr-3">Notes</th><th /></tr></thead>
             <tbody>
               {paid.map((l) => (

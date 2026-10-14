@@ -87,7 +87,7 @@ const EmployeeTable = ({ tenantId, onEdit ,onAddNew }) => {
 
       {/* --- RESPONSIVE TABLE AREA --- */}
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full border-collapse text-left min-w-[800px]">
+        <table className="mobile-card-table w-full border-collapse text-left min-w-[800px]">
           <thead>
             <tr className="bg-background/50 border-b border-border font-black text-slate-400 dark:text-slate-500 text-[9px] uppercase tracking-[0.2em]">
               <th className="px-6 py-5 sm:px-10">Staff Identity / Dept</th>

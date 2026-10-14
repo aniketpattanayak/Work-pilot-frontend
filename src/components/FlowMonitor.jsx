@@ -363,7 +363,7 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
           ) : (
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
+                <table className="mobile-card-table min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/40">
                       {['Order', 'Flow', 'Current step', 'Assigned to', 'Deadline', 'Delay', 'Status', ''].map(h => (
