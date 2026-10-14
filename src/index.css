@@ -146,8 +146,13 @@
   .mobile-card-table thead {
     display: none;
   }
-  .mobile-card-table, .mobile-card-table tbody, .mobile-card-table tr {
+  .mobile-card-table, .mobile-card-table tbody {
     display: block;
+    width: 100%;
+  }
+  .mobile-card-table tr {
+    display: flex;
+    flex-direction: column;
     width: 100%;
   }
   .mobile-card-table tbody tr {
@@ -169,16 +174,51 @@
     border: none !important;
     text-align: right;
     white-space: normal !important;
+    min-width: 0;
+  }
+  .mobile-card-table tbody td > * {
+    min-width: 0;
   }
   .mobile-card-table tbody td[data-label]::before {
     content: attr(data-label);
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.05em;
     color: hsl(var(--muted-foreground));
     text-align: left;
     flex-shrink: 0;
+  }
+
+  /* Primary field (first non-actions cell): the card's title - full
+     width, no "LABEL:" prefix, larger/bolder, shown first. */
+  .mobile-card-table tbody td.mobile-card-title {
+    order: -2;
+    justify-content: flex-start;
+    font-weight: 900;
+    font-size: 0.95rem;
+    padding-bottom: 0.5rem !important;
+    border-bottom: 1px solid hsl(var(--border)) !important;
+    margin-bottom: 0.25rem;
+  }
+  .mobile-card-table tbody td.mobile-card-title::before {
+    content: none;
+  }
+
+  /* Actions column (auto-detected: a cell whose only children are
+     buttons/links): pinned as a row of buttons at the bottom of the
+     card instead of a label:value line. */
+  .mobile-card-table tbody td.mobile-card-actions {
+    order: 99;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+  }
+  .mobile-card-table tbody td.mobile-card-actions::before {
+    content: none;
   }
 }
 
@@ -240,6 +280,128 @@
     flex-shrink: 0;
     background: hsl(var(--card));
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+}
+
+/* ── SHARED PHONE-ONLY TEXT/TAP RULES ────────────────────────────────
+   Apply these classes instead of repeating the same inline Tailwind
+   combination on every button/chip/badge/tab. */
+
+/* Any uppercase tracking-widest micro-label (badges, stat captions,
+   table footnotes) must stay readable - 11px is the floor on phones,
+   whatever size it renders at on desktop. */
+@media (max-width: 767px) {
+  .micro-label {
+    font-size: 11px !important;
+  }
+}
+
+/* Long text that must never spill out of its own button/chip/card:
+   wraps to the container width, or truncates with an ellipsis when the
+   container is a single line (add truncate-label for the latter). */
+.no-overflow-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+.truncate-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  display: block;
+}
+
+/* A button/chip/tab that must fit its label at any width: shrink the
+   label instead of letting it push the control wider than its
+   container, and fall back to a stacked icon+label when there truly
+   isn't room for one line (pair with a <span class="btn-label-stack">
+   around the icon and text). */
+.btn-fit {
+  min-width: 0;
+  max-width: 100%;
+}
+.btn-fit > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.btn-label-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  line-height: 1.1;
+}
+
+/* ── BOTTOM NAVIGATION (phones only) ─────────────────────────────────
+   A fixed, safe-area-aware bar for the 4-5 most used destinations plus
+   a "More" item that opens the existing drawer. Hidden at md: and up,
+   where the sidebar is already visible. Pages reserve space for it via
+   padding added on <main> (see .has-bottom-nav-space). */
+.bottom-nav {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 160;
+    background: hsl(var(--card) / 0.95);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid hsl(var(--border));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .bottom-nav-item {
+    flex: 1 1 0;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+  .bottom-nav-item.active {
+    color: hsl(var(--primary));
+  }
+  .bottom-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .has-bottom-nav-space {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Floating chat / AI launcher buttons must never sit over the bottom
+     nav or its tap targets. */
+  .ai-launcher-btn,
+  .floating-chat-launcher {
+    bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── MOBILE FILTERS (collapsible filter bar) ─────────────────────────
+   See src/components/MobileFilters.jsx. The trigger button and count
+   badge are plain utility classes so the component stays unopinionated
+   about color; the expanded panel becomes a stacked sheet on phones. */
+@media (max-width: 767px) {
+  .mobile-filters-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .mobile-filters-panel > * {
+    width: 100% !important;
   }
 }
 
