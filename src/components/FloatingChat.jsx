@@ -21,7 +21,7 @@ function timeAgo(date) {
   return new Date(date).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 }
 
-export default function FloatingChat({ currentUser }) {
+export default function FloatingChat({ currentUser, openTrigger }) {
   // Don't render on chat page - avoids duplicate socket listeners
   if (typeof window !== 'undefined' && window.location.pathname.includes('/chat')) {
     return null;
@@ -47,6 +47,12 @@ export default function FloatingChat({ currentUser }) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, view]);
+
+  // Opened on demand by the mobile combined launcher (see MobileDualLauncher),
+  // which has no direct access to this component's local `open` state.
+  useEffect(() => {
+    if (openTrigger) setOpen(true);
+  }, [openTrigger]);
 
   const handleSend = async () => {
     if (!text.trim() && !file) return;
@@ -224,8 +230,10 @@ export default function FloatingChat({ currentUser }) {
         </div>
       )}
 
-      {/* ── Bubble button ── */}
+      {/* ── Bubble button ── (desktop/lg+ only; phones use the combined
+          MobileDualLauncher instead, see .launcher-btn-desktop-only in index.css) */}
       <button onClick={() => setOpen(p => !p)}
+        className="launcher-btn-desktop-only"
         style={{ width:52, height:52, borderRadius:'50%', background:'#185FA5', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(24,95,165,0.4)', position:'relative', transition:'transform .15s' }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
