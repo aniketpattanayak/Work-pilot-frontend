@@ -7853,49 +7853,49 @@
     {
       "route": "home",
       "width": 1280,
-      "diffPct": 0.02,
-      "note": ""
-    },
-    {
-      "route": "manage-tasks",
-      "width": 1280,
-      "diffPct": 0.11,
-      "note": ""
-    },
-    {
-      "route": "my-tasks",
-      "width": 1280,
-      "diffPct": 1.31,
-      "note": ""
-    },
-    {
-      "route": "employees",
-      "width": 1280,
-      "diffPct": 2.29,
-      "note": ""
-    },
-    {
-      "route": "home",
-      "width": 1920,
       "diffPct": 0.01,
       "note": ""
     },
     {
       "route": "manage-tasks",
+      "width": 1280,
+      "diffPct": 0.1,
+      "note": ""
+    },
+    {
+      "route": "my-tasks",
+      "width": 1280,
+      "diffPct": 1.32,
+      "note": ""
+    },
+    {
+      "route": "employees",
+      "width": 1280,
+      "diffPct": 2.28,
+      "note": ""
+    },
+    {
+      "route": "home",
       "width": 1920,
-      "diffPct": 0.14,
+      "diffPct": 0.07,
+      "note": ""
+    },
+    {
+      "route": "manage-tasks",
+      "width": 1920,
+      "diffPct": 0.11,
       "note": ""
     },
     {
       "route": "my-tasks",
       "width": 1920,
-      "diffPct": 0.68,
+      "diffPct": 0.69,
       "note": ""
     },
     {
       "route": "employees",
       "width": 1920,
-      "diffPct": 0.4,
+      "diffPct": 0.39,
       "note": ""
     }
   ],

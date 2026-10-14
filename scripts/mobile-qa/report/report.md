@@ -1,6 +1,6 @@
 # Mobile QA Report
 
-Generated 2026-10-14T11:49:18.796Z
+Generated 2026-10-14T11:53:47.009Z
 
 ## Summary (pass/fail counts per check, across all role x route x width combinations)
 
@@ -176,14 +176,14 @@ Generated 2026-10-14T11:49:18.796Z
 
 | Route | Width | Diff |
 |---|---|---|
-| home | 1280 | 0.02%  |
-| manage-tasks | 1280 | 0.11%  |
-| my-tasks | 1280 | 1.31%  |
-| employees | 1280 | 2.29%  |
-| home | 1920 | 0.01%  |
-| manage-tasks | 1920 | 0.14%  |
-| my-tasks | 1920 | 0.68%  |
-| employees | 1920 | 0.4%  |
+| home | 1280 | 0.01%  |
+| manage-tasks | 1280 | 0.1%  |
+| my-tasks | 1280 | 1.32%  |
+| employees | 1280 | 2.28%  |
+| home | 1920 | 0.07%  |
+| manage-tasks | 1920 | 0.11%  |
+| my-tasks | 1920 | 0.69%  |
+| employees | 1920 | 0.39%  |
 
 ## Known exceptions / design decisions
 
