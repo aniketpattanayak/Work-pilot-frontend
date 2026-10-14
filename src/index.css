@@ -79,7 +79,7 @@
        force it (a too-wide grid, an un-wrapped table) gets clipped instead
        of pushing the viewport out. Internal containers keep their own
        overflow-x-auto for horizontal scroll where that's the right thing. */
-    @apply overflow-x-hidden;
+    overflow-x: clip;
     max-width: 100vw;
   }
 
@@ -92,13 +92,6 @@
   h1 { @apply text-3xl md:text-5xl font-black tracking-tighter uppercase; }
   h2 { @apply text-2xl md:text-4xl font-black tracking-tighter uppercase; }
   h3 { @apply text-xl md:text-2xl font-bold uppercase; }
-
-  /* iOS Safari zooms the whole page in when a focused input's computed
-     font-size is under 16px. Every text input/select/textarea in the app
-     gets at least 16px so focusing a form never triggers that zoom. */
-  input, select, textarea {
-    font-size: max(16px, 1em);
-  }
 
   /* 44px is the minimum comfortable touch target (Apple HIG / WCAG 2.5.5).
      Buttons and anchors that render as icon-only controls are usually
@@ -126,6 +119,16 @@
 }
 .safe-bottom {
   bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* iOS Safari zooms the whole page in when a focused input's computed
+   font-size is under 16px. Scoped to phone widths only (desktop keeps
+   whatever size each input was designed with) and !important so it wins
+   over any Tailwind text-sm/text-xs utility on a given input. */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* ── MOBILE CARD TABLE ─────────────────────────────────────────────────
@@ -208,6 +211,15 @@
    .mobile-sheet-body on the scrolling content and .mobile-sheet-actions
    on the sticky button bar. */
 @media (max-width: 640px) {
+  /* The overlay wrapping a sheet is styled as a centered, padded modal
+     backdrop (p-3/p-4) for the desktop dialog look. On phones the sheet
+     itself needs to reach every edge of the viewport, so the overlay's
+     own padding has to go - otherwise the sheet's 100dvh height plus the
+     overlay's padding pushes it taller than the viewport (clipped
+     content/buttons) while still leaving a gap at the sides. */
+  div:has(> .mobile-sheet) {
+    padding: 0 !important;
+  }
   .mobile-sheet {
     width: 100% !important;
     max-width: 100% !important;
