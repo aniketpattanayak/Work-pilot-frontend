@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
+import MobileFilters from '../components/MobileFilters';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -304,32 +305,42 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
       </div>
 
       {/* FILTERS + LEGEND */}
-      <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-7 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-64" />
-          {search && (
-            <button type="button" aria-label="Clear search" title="Clear" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
-          )}
-        </div>
-        <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by location">
-          <option value="All">All Locations</option>
-          {locOptions.map((l) => <option key={l} value={l}>{l}</option>)}
-        </select>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by department">
-          <option value="All">All Departments</option>
-          {deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{people.length} people</span>
-        <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 flex-wrap">
-          <span>TOT total</span><span>OT on-time done</span><span>LD late done</span><span>PO pending (not due)</span><span>LP late pending</span>
-          {thresholds && (
-            <>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.red}`}>&ge; {thresholds.red}%</span>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.orange}`}>&ge; {thresholds.orange}%</span>
-              <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.green}`}>below</span>
-            </>
-          )}
+      <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">
+        <MobileFilters
+          activeCount={[locFilter !== 'All', deptFilter !== 'All'].filter(Boolean).length}
+          onClear={() => { setLocFilter('All'); setDeptFilter('All'); }}
+          className="flex flex-wrap items-center gap-2"
+          alwaysVisible={
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, dept, location..." className="bg-background border border-border rounded-lg pl-8 pr-7 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 w-full sm:w-64" />
+              {search && (
+                <button type="button" aria-label="Clear search" title="Clear" onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
+              )}
+            </div>
+          }
+        >
+          <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by location">
+            <option value="All">All Locations</option>
+            {locOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold" title="Filter by department">
+            <option value="All">All Departments</option>
+            {deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </MobileFilters>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{people.length} people</span>
+          <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 flex-wrap">
+            <span>TOT total</span><span>OT on-time done</span><span>LD late done</span><span>PO pending (not due)</span><span>LP late pending</span>
+            {thresholds && (
+              <>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.red}`}>&ge; {thresholds.red}%</span>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.orange}`}>&ge; {thresholds.orange}%</span>
+                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.green}`}>below</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

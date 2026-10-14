@@ -43,6 +43,7 @@ import {
   CalendarClock,
   User
 } from "lucide-react";
+import MobileFilters from '../components/MobileFilters';
 
 /**
  * DOER CHECKLIST: MISSION TERMINAL v3.5
@@ -385,49 +386,55 @@ const DoerChecklist = ({ doerId }) => {
         </button>
       </div>
 
-      {/* FILTERS & DATE RANGE INPUTS ROW */}
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 mb-6 bg-card/40 p-3 rounded-xl border border-border">
-        <div className="flex flex-wrap items-center gap-2">
-          {['All', 'Completed', 'Today', 'Next 7 Days', 'Pending Work', 'Upcoming'].map(range => (
-            <button
-              key={range}
-              onClick={() => { setTimeFilter(range); setStartDate(''); setEndDate(''); }}
-              className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border whitespace-nowrap transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
-            >
-              {range}
-            </button>
-          ))}
-        </div>
+      {/* FILTERS & DATE RANGE — collapsed behind Filters on phones */}
+      <div className="mb-6">
+        <MobileFilters
+          activeCount={[timeFilter && timeFilter !== 'All', !!startDate, !!endDate].filter(Boolean).length}
+          onClear={() => { setTimeFilter('All'); setStartDate(''); setEndDate(''); }}
+          className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 bg-card/40 p-3 rounded-xl border border-border"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {['All', 'Completed', 'Today', 'Next 7 Days', 'Pending Work', 'Upcoming'].map(range => (
+              <button
+                key={range}
+                onClick={() => { setTimeFilter(range); setStartDate(''); setEndDate(''); }}
+                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border whitespace-nowrap transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
 
-        {/* Date Filter From - To */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-            <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">From:</span>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
-              className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
-            />
+          {/* Date Filter From - To */}
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
+                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
+              />
+            </div>
+            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
+                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); setTimeFilter('All'); }}
+                className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0"
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-            <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">To:</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
-              className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
-            />
-          </div>
-          {(startDate || endDate) && (
-            <button
-              onClick={() => { setStartDate(''); setEndDate(''); setTimeFilter('All'); }}
-              className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        </MobileFilters>
       </div>
 
       {/* EXCEL GRID HEADER WITH RESPONSIVE FLUID TRACKS */}

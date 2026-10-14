@@ -39,6 +39,7 @@ import { dialog } from '../components/Dialog';
 import ImageLightbox from '../components/ImageLightbox';
 import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
+import MobileFilters from '../components/MobileFilters';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread } = useChat();
@@ -313,50 +314,57 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       </div>
 
       {/* ── FILTERS ROW — time filters + status dropdown + name search ── */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-3 items-start sm:items-center">
-        <div className="flex flex-wrap gap-2">
-          {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeFilter(range)}
-              className={'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ' + (timeFilter === range ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border hover:border-slate-400')}
+      <div className="mb-3">
+        <MobileFilters
+          activeCount={[timeFilter !== 'All', statusFilter !== 'All'].filter(Boolean).length}
+          onClear={() => { setTimeFilter('All'); setStatusFilter('All'); }}
+          className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
+          alwaysVisible={
+            <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Filter by name or title…"
+                value={nameFilter}
+                onChange={e => setNameFilter(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+              {nameFilter && (
+                <button aria-label="Clear search" onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            {['All', 'Today', 'Next 7 Days', 'Pending Work'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeFilter(range)}
+                className={'px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ' + (timeFilter === range ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border hover:border-slate-400')}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
             >
-              {range}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
-          >
-            <option value="All">Status: All</option>
-            <option value="Pending">Pending</option>
-            <option value="Accepted">Accepted</option>
-            <option value="Revision Requested">Revision</option>
-            <option value="Completed">Completed</option>
-            <option value="Verified">Verified</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-        </div>
-
-        <div className="relative flex-1 min-w-[200px] sm:max-w-xs ml-auto">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Filter by name or title…"
-            value={nameFilter}
-            onChange={e => setNameFilter(e.target.value)}
-            className="w-full pl-9 pr-8 py-1.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-          />
-          {nameFilter && (
-            <button aria-label="Clear search" onClick={() => setNameFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition">
-              <X size={13} />
-            </button>
-          )}
-        </div>
+              <option value="All">Status: All</option>
+              <option value="Pending">Pending</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Revision Requested">Revision</option>
+              <option value="Completed">Completed</option>
+              <option value="Verified">Verified</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+        </MobileFilters>
       </div>
 
       {/* Result count */}
