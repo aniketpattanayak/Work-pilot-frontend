@@ -320,37 +320,37 @@ const DoerChecklist = ({ doerId }) => {
     <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 px-2 sm:px-6">
 
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 py-2 border-b border-border gap-3">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner">
+      <div className="flex flex-row justify-between items-center mb-3 py-2 border-b border-border gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0">
             <ClipboardCheck size={20} className="text-primary" />
           </div>
-          <div>
-            <h2 className="text-foreground text-xl font-black tracking-tighter uppercase leading-none">Task Hub</h2>
-            <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60">Session Active: {new Date().toLocaleDateString()}</p>
+          <div className="min-w-0">
+            <h2 className="text-foreground text-lg sm:text-xl font-black tracking-tighter uppercase leading-none truncate">Task Hub</h2>
+            <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
-        <button onClick={fetchAllTasks} className="group bg-card border border-border px-4 py-1.5 rounded-lg text-foreground font-black text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm">
+        <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
           <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
 
       {/* CATEGORY TABS SEQUENCE */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <button
           onClick={() => { setActiveCategory('All Data'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
         >
-          <LayoutGrid size={16} />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">All Data</span>
+          <LayoutGrid size={16} className="shrink-0" />
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">All Data</span>
         </button>
 
         <button
           onClick={() => { setActiveCategory('Checklist'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'}`}
         >
-          <Layers size={16} />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Checklist</span>
+          <Layers size={16} className="shrink-0" />
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">Checklist</span>
           {pendingRoutinesCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
               {pendingRoutinesCount}
@@ -360,10 +360,10 @@ const DoerChecklist = ({ doerId }) => {
 
         <button
           onClick={() => { setActiveCategory('Delegation'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'}`}
         >
-          <Briefcase size={16} />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">Delegation</span>
+          <Briefcase size={16} className="shrink-0" />
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">Delegation</span>
           {pendingDelegationsCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md animate-bounce">
               {pendingDelegationsCount}
@@ -373,10 +373,10 @@ const DoerChecklist = ({ doerId }) => {
 
         <button
           onClick={() => { setActiveCategory('FMS'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-2 py-3 rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'}`}
         >
-          <Activity size={16} className={activeCategory === 'FMS' ? 'animate-pulse' : ''} />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest">FMS Missions</span>
+          <Activity size={16} className={`shrink-0 ${activeCategory === 'FMS' ? 'animate-pulse' : ''}`} />
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">FMS Missions</span>
           {filteredData.fms.length > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md">
               {filteredData.fms.length}
@@ -386,13 +386,13 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* FILTERS & DATE RANGE INPUTS ROW */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card/40 p-3 rounded-xl border border-border">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 mb-6 bg-card/40 p-3 rounded-xl border border-border">
         <div className="flex flex-wrap items-center gap-2">
           {['All', 'Completed', 'Today', 'Next 7 Days', 'Pending Work', 'Upcoming'].map(range => (
             <button
               key={range}
               onClick={() => { setTimeFilter(range); setStartDate(''); setEndDate(''); }}
-              className={`px-3 py-1.5 rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
+              className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border whitespace-nowrap transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
             >
               {range}
             </button>
@@ -400,29 +400,29 @@ const DoerChecklist = ({ doerId }) => {
         </div>
 
         {/* Date Filter From - To */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg">
-            <span className="text-[8px] font-black uppercase text-slate-400">From:</span>
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+            <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">From:</span>
             <input
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
-              className="bg-transparent text-xs text-foreground font-semibold outline-none"
+              className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
             />
           </div>
-          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg">
-            <span className="text-[8px] font-black uppercase text-slate-400">To:</span>
+          <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+            <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">To:</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
-              className="bg-transparent text-xs text-foreground font-semibold outline-none"
+              className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
             />
           </div>
           {(startDate || endDate) && (
             <button
               onClick={() => { setStartDate(''); setEndDate(''); setTimeFilter('All'); }}
-              className="text-[9px] font-black uppercase text-red-500 hover:underline px-2"
+              className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0"
             >
               Clear
             </button>
