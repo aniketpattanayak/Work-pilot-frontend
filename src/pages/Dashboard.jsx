@@ -375,7 +375,7 @@ useEffect(() => {
 
       <div className={`flex-1 flex flex-col relative custom-scrollbar transition-all duration-500 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {/* EXECUTIVE HEADER */}
-        <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-xl border-b border-border px-4 md:px-10 py-4 flex justify-between items-center min-h-[80px]">
+        <header className="sticky top-0 z-[100] bg-card/80 backdrop-blur-xl border-b border-border px-3 md:px-10 py-2.5 md:py-4 flex justify-between items-center min-h-[60px] md:min-h-[80px]">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -503,7 +503,7 @@ useEffect(() => {
         />
         
         {/* Modal Content */}
-        <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="mobile-sheet relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
            {/* Close Button */}
            <button 
               onClick={handleCloseModal}
@@ -566,7 +566,7 @@ useEffect(() => {
         </main>
 
         {/* STICKY FOOTER: stays at the bottom of the screen while the page scrolls */}
-        <footer className="sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 text-center">
+        <footer className="sticky bottom-0 z-[90] mt-auto border-t border-border bg-card/90 backdrop-blur-xl py-1.5 px-4 pb-safe text-center">
           <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 tracking-wide">
             Powered by{' '}
             <a href="https://lrbc.ai" target="_blank" rel="noopener noreferrer" className="font-black text-primary hover:underline">LRBC</a>

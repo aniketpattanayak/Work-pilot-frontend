@@ -179,6 +179,27 @@
   }
 }
 
+/* FloatingChat's bubble sits bottom:24/right:24 by inline style (already
+   safe-area aware); only the opened panel needs to become a full sheet on
+   phones instead of a fixed 340x480 box that would overflow a 360px
+   screen. The AI assistant's own closed-state launcher gets nudged up by
+   the safe area too, on top of its existing bottom-24 offset. */
+@media (max-width: 640px) {
+  .floating-chat-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .ai-launcher-btn {
+    bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
 /* ── MOBILE SHEET MODAL ───────────────────────────────────────────────
    Opt a modal's outer panel into this class to turn it into a full-height
    bottom sheet on phones: it fills the screen (minus a small margin),
