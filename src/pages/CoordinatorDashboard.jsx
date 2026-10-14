@@ -813,7 +813,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       {/* WHATSAPP MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.4)] relative animate-in zoom-in-95">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-lg rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.4)] relative animate-in zoom-in-95">
             <div className="px-8 py-8 border-b border-border flex justify-between items-center bg-background/50">
               <div className="flex items-center gap-4">
                 <div className="p-2.5 bg-primary/10 rounded-xl border border-primary/20"><MessageSquare size={24} className="text-primary" /></div>

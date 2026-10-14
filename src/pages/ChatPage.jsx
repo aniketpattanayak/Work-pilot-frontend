@@ -155,7 +155,7 @@ function InputBar({ onSend, onTyping, uploadFile }) {
           onKeyDown={e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); } }}
           placeholder="Type a message…"
           rows={1}
-          style={{ flex:1, resize:'none', background:'transparent', border:'none', padding:'10px 4px', fontSize:13, color:'var(--color-foreground)', outline:'none', lineHeight:1.5, maxHeight:120, overflowY:'auto', fontFamily:'inherit' }}
+          style={{ flex:1, resize:'none', background:'transparent', border:'none', padding:'10px 4px', fontSize:16, color:'var(--color-foreground)', outline:'none', lineHeight:1.5, maxHeight:120, overflowY:'auto', fontFamily:'inherit' }}
         />
         <button onClick={send} disabled={(!text.trim() && !file) || busy}
           style={{ background:'#185FA5', border:'none', margin:5, borderRadius:10, width:36, height:36, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, opacity:(!text.trim() && !file)||busy?0.4:1, transition:'opacity .15s' }}>
@@ -373,7 +373,7 @@ export default function ChatPage({ currentUser }) {
           <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--color-muted)', borderRadius:10, padding:'8px 12px', marginBottom:10 }}>
             <Search size={13} style={{ color:'var(--color-muted-foreground)', flexShrink:0 }}/>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={showNewDM ? 'Search people…' : 'Search conversations…'}
-              style={{ background:'none', border:'none', outline:'none', fontSize:13, color:'var(--color-foreground)', width:'100%' }}/>
+              style={{ background:'none', border:'none', outline:'none', fontSize:16, color:'var(--color-foreground)', width:'100%' }}/>
           </div>
 
           {/* Filters */}
