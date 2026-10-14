@@ -26,6 +26,8 @@ import {
 import CreateChecklist from './CreateChecklist';
 import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
+import MobileFilters from '../components/MobileFilters';
+import ResponsiveGrid from '../components/ResponsiveGrid';
 
 const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const todayYmd = () => ymd(new Date());
@@ -258,10 +260,10 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Task Registry</h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
           <button
             onClick={fetchData}
-            className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition"
+            className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
             Refresh
@@ -270,7 +272,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setShowBulk(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
             >
               <Upload size={14} />
               Bulk Upload
@@ -280,7 +282,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
             >
               <Plus size={14} />
               New Task
@@ -302,44 +304,49 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       )}
 
       {/* ================= FILTER BAR ================= */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3 bg-card/40 p-2.5 rounded-xl border border-border">
-        {/* SEARCH */}
-        <div className="relative group w-full md:w-56 shrink-0">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-background border border-border text-foreground pl-9 pr-8 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-primary/10 text-sm font-semibold"
-          />
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary" />
-          {searchTerm && (
-            <button type="button" aria-label="Clear search" onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
-          )}
-        </div>
-
-        {/* TABS — all visible, no sideways scrolling */}
-        <div className="flex flex-wrap bg-background p-1 rounded-lg border border-border gap-1 flex-1">
-          {frequencyTabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={'flex-1 px-2 py-1 rounded-md font-black text-[9px] uppercase tracking-wider transition whitespace-nowrap ' + (activeTab === tab ? 'bg-primary text-primary-foreground shadow' : 'text-slate-500 hover:text-foreground')}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+      <div className="mb-3 bg-card/40 p-2.5 rounded-xl border border-border">
+        <MobileFilters
+          activeCount={activeTab !== 'All' ? 1 : 0}
+          onClear={() => setActiveTab('All')}
+          className="flex flex-col md:flex-row md:items-center gap-3"
+          alwaysVisible={
+            <div className="relative group w-full md:w-56 shrink-0">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-background border border-border text-foreground pl-9 pr-8 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-primary/10 text-sm font-semibold"
+              />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary" />
+              {searchTerm && (
+                <button type="button" aria-label="Clear search" onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"><X size={13} /></button>
+              )}
+            </div>
+          }
+        >
+          {/* TABS — all visible, no sideways scrolling */}
+          <div className="flex flex-wrap bg-background p-1 rounded-lg border border-border gap-1 flex-1">
+            {frequencyTabs.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={'flex-1 px-2 py-1 rounded-md font-black text-[9px] uppercase tracking-wider transition whitespace-nowrap ' + (activeTab === tab ? 'bg-primary text-primary-foreground shadow' : 'text-slate-500 hover:text-foreground')}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </MobileFilters>
       </div>
 
       {/* EXCEL GRID */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
         {/* SCROLL AREA */}
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin">
-          {/* TABLE */}
-          <div className="w-[1000px] sm:w-full text-sm">
+          <ResponsiveGrid className="w-[1000px] sm:w-full text-sm">
             {/* HEADER */}
-            <div className="grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
+            <div className="mobile-grid-head grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
               <span className="text-center">S no.</span>
               <span>Title</span>
               <span>Assigned to</span>
@@ -358,7 +365,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
               return (
                 <div
                   key={item._id}
-                  className="grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
+                  className="mobile-grid-row grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
                 >
                   <span className="text-center text-xs font-black text-slate-400">{index + 1}</span>
 
@@ -401,7 +408,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                 </div>
               );
             })}
-          </div>
+          </ResponsiveGrid>
         </div>
       </div>
 
