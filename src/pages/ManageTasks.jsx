@@ -287,7 +287,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-6">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-2 sm:px-6">
 
       {previewImage && (
         <div className="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl" onClick={() => setPreviewImage(null)}>

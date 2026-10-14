@@ -164,23 +164,30 @@
     width: 100%;
   }
   .mobile-card-table tbody tr {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
     border: 1px solid hsl(var(--border));
-    border-radius: 1rem;
-    padding: 0.5rem 0.875rem;
+    border-radius: 0.875rem;
+    padding: 0.4rem 0.75rem;
     background: hsl(var(--card));
   }
   .mobile-card-table tbody tr:last-child {
     margin-bottom: 0;
   }
+  /* Label-above-value stacking, not side-by-side: a side-by-side
+     "LABEL ... value" row only works while the value is a short
+     one-liner. The moment a value wraps (a title, a description), the
+     label ends up vertically centered against 2-3 lines of text with a
+     lot of empty space around it, and the card balloons in height for
+     no real content gain. Stacking keeps every field to "small label
+     line, tight value line(s)" with no wasted vertical space. */
   .mobile-card-table tbody td {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.25rem 0 !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 0.2rem 0 !important;
     border: none !important;
-    text-align: right;
+    text-align: left;
     white-space: normal !important;
     min-width: 0;
   }
@@ -189,25 +196,25 @@
   }
   .mobile-card-table tbody td[data-label]::before {
     content: attr(data-label);
+    display: block;
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.05em;
     color: hsl(var(--muted-foreground));
     text-align: left;
-    flex-shrink: 0;
+    margin-bottom: 0.1rem;
   }
 
   /* Primary field (first non-actions cell): the card's title - full
      width, no "LABEL:" prefix, larger/bolder, shown first. */
   .mobile-card-table tbody td.mobile-card-title {
     order: -2;
-    justify-content: flex-start;
     font-weight: 900;
-    font-size: 0.95rem;
-    padding-bottom: 0.375rem !important;
+    font-size: 0.9rem;
+    padding-bottom: 0.3rem !important;
     border-bottom: 1px solid hsl(var(--border)) !important;
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.1rem;
   }
   .mobile-card-table tbody td.mobile-card-title::before {
     content: none;
@@ -218,11 +225,12 @@
      card instead of a label:value line. */
   .mobile-card-table tbody td.mobile-card-actions {
     order: 99;
+    flex-direction: row;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.375rem;
-    padding-top: 0.5rem !important;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    padding-top: 0.35rem !important;
     border-top: 1px solid hsl(var(--border)) !important;
   }
   .mobile-card-table tbody td.mobile-card-actions::before {
@@ -273,50 +281,53 @@
     gap: 0 !important;
     border: 1px solid hsl(var(--border));
     border-left: 1px solid hsl(var(--border)) !important;
-    border-radius: 1rem;
-    padding: 0.5rem 0.875rem !important;
-    margin-bottom: 0.5rem;
+    border-radius: 0.875rem;
+    padding: 0.4rem 0.75rem !important;
+    margin-bottom: 0.4rem;
     background: hsl(var(--card));
   }
+  /* Label-above-value stacking, not side-by-side - see the matching
+     comment on .mobile-card-table above for why. */
   .mobile-grid-row > * {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.25rem 0 !important;
-    text-align: right;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding: 0.2rem 0 !important;
+    text-align: left;
     white-space: normal !important;
     min-width: 0;
   }
   .mobile-grid-row > *[data-label]::before {
     content: attr(data-label);
+    display: block;
     font-weight: 800;
     text-transform: uppercase;
-    font-size: 11px;
+    font-size: 10px;
     letter-spacing: 0.05em;
     color: hsl(var(--muted-foreground));
     text-align: left;
-    flex-shrink: 0;
+    margin-bottom: 0.1rem;
   }
   .mobile-grid-row > .mobile-grid-title {
     order: -2;
-    justify-content: flex-start;
     font-weight: 900;
-    font-size: 0.95rem;
-    padding-bottom: 0.375rem !important;
+    font-size: 0.9rem;
+    padding-bottom: 0.3rem !important;
     border-bottom: 1px solid hsl(var(--border));
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.1rem;
   }
   .mobile-grid-row > .mobile-grid-title::before {
     content: none;
   }
   .mobile-grid-row > .mobile-grid-actions {
     order: 99;
+    flex-direction: row;
     justify-content: flex-end;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.375rem;
-    padding-top: 0.5rem !important;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+    padding-top: 0.35rem !important;
     border-top: 1px solid hsl(var(--border));
   }
   .mobile-grid-row > .mobile-grid-actions::before {

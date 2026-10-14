@@ -252,7 +252,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-6 selection:bg-primary/30">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30">
       {/* ================= HEADER ================= */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
