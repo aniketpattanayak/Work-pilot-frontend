@@ -5,8 +5,8 @@
       "fail": 0
     },
     "b_no_element_overflow": {
-      "pass": 129,
-      "fail": 23
+      "pass": 152,
+      "fail": 0
     },
     "c_no_clipped_text": {
       "pass": 152,
@@ -17,16 +17,16 @@
       "fail": 0
     },
     "e_tap_targets_44px": {
-      "pass": 136,
-      "fail": 16
+      "pass": 152,
+      "fail": 0
     },
     "f_min_font_11px": {
-      "pass": 114,
-      "fail": 38
+      "pass": 152,
+      "fail": 0
     },
     "g_fixed_chrome_no_overlap": {
-      "pass": 119,
-      "fail": 33
+      "pass": 138,
+      "fail": 14
     },
     "h_filters_collapsed": {
       "pass": 152,
@@ -198,7 +198,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -223,10 +223,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -282,8 +280,6 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\"",
             "bottom-nav overlaps button \"Leave\"",
             "bottom-nav overlaps button \"\"",
             "bottom-nav overlaps button \"\""
@@ -339,8 +335,6 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\"",
             "bottom-nav overlaps button \"Leave\"",
             "bottom-nav overlaps button \"\"",
             "bottom-nav overlaps button \"\""
@@ -396,8 +390,6 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\"",
             "bottom-nav overlaps button \"Leave\"",
             "bottom-nav overlaps button \"\"",
             "bottom-nav overlaps button \"\""
@@ -422,8 +414,8 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -447,29 +439,12 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Staff, roles, links \"",
-            "span 9px \"Total:\"",
-            "button 9px \"All\"",
-            "button 9px \"Admin\"",
-            "button 9px \"Assigner\"",
-            "button 9px \"Doer\"",
-            "button 9px \"Coordinator\"",
-            "button 9px \"Viewer\"",
-            "span 9px \"Quality · Pune Wareh\"",
-            "button 8px \"Leave\"",
-            "span 8px \"Doer\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -486,7 +461,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -499,21 +474,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -550,7 +512,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -563,21 +525,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -614,12 +563,12 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "PASS",
+      "g_fixed_chrome_no_overlap": "FAIL",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -627,21 +576,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -660,8 +596,13 @@
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": true,
-          "detail": []
+          "pass": false,
+          "detail": [
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"💬\"",
+            "bottom-nav overlaps button \"\""
+          ]
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -682,7 +623,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "FAIL",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -707,27 +648,16 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "button 10px \"All\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "div 10px \"S no.\"",
-            "div 10px \"Task Name\"",
-            "div 10px \"Assigned To\"",
-            "div 10px \"Description\"",
-            "div 10px \"Deadline\"",
-            "div 10px \"Status\"",
-            "div 10px \"Action\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"💬\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\""
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"💬\"",
+            "bottom-nav overlaps button \"\""
           ]
         },
         "h_filters_collapsed": {
@@ -748,9 +678,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -770,21 +700,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -804,9 +729,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -826,21 +751,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -860,9 +780,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -882,21 +802,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -916,9 +831,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "e_tap_targets_44px": "PASS",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -938,39 +853,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 117x40",
-            "button \"All\" 48x36",
-            "button \"Completed\" 98x36",
-            "button \"Today\" 67x36",
-            "button \"Next 7 Days\" 103x36",
-            "button \"Pending Work\" 118x36",
-            "button \"Upcoming\" 91x36"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 8px \"Session Active: 10/1\"",
-            "span 8px \"5\"",
-            "button 10px \"All\"",
-            "button 10px \"Completed\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "button 10px \"Upcoming\"",
-            "span 8px \"From:\"",
-            "span 8px \"To:\"",
-            "span 8px \"Type: Checklist\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -987,7 +879,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1000,21 +892,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.md:hidden.flex right=367",
-            "div.flex.items-center right=367",
-            "button.btn-fit.relative right=367",
-            "div.flex.gap-1 right=392",
-            "button.px-5.py-1.5 right=387",
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1051,7 +930,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1064,21 +943,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.flex.gap-1 right=392",
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716",
-            "div.relative.group right=519",
-            "div.text-sm.font-black right=519",
-            "td.px-4.py-3 right=716",
-            "div.flex.flex-wrap right=455"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1115,7 +981,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1128,21 +994,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716",
-            "div.relative.group right=519",
-            "div.text-sm.font-black right=519",
-            "td.px-4.py-3 right=716",
-            "div.flex.flex-wrap right=455",
-            "span.ml-2.px-2 right=455"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1183,7 +1036,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -1208,21 +1061,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Precision Industrial\"",
-            "button 9px \"All\"",
-            "button 9px \"Delegation\"",
-            "button 9px \"Checklist\"",
-            "button 9px \"FMS\"",
-            "button 9px \"Columns\"",
-            "span 9px \"From\"",
-            "span 9px \"To\"",
-            "button 10px \"Pending\"",
-            "button 10px \"Upcoming\"",
-            "button 10px \"Completed\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -1243,7 +1083,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1256,10 +1096,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.absolute.-top-20 right=406"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1296,7 +1134,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1309,10 +1147,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.absolute.-top-20 right=436"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1349,7 +1185,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1362,10 +1198,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.absolute.-top-20 right=476"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1402,11 +1236,11 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -1415,10 +1249,8 @@
           "detail": "scrollWidth=768 viewport=768"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.absolute.-top-20 right=790"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1433,19 +1265,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Group System Wide Ta\"",
-            "label 9px \"Coordinator\"",
-            "div 10px \"⚠ Coordinator can ma\"",
-            "span 10px \"0 Selected\"",
-            "div 9px \"Quality\"",
-            "div 9px \"Logistics\"",
-            "div 9px \"Production\"",
-            "div 9px \"Quality\"",
-            "div 9px \"Logistics\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -1501,10 +1322,10 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"Quarterly\"",
-            "floating-chat-launcher overlaps button \"Yearly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Quarterly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Yearly\"",
+            "floating-chat-launcher overlaps button \"Monthly\"",
+            "floating-chat-launcher overlaps button \"Half-Yearly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Monthly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Yearly\""
           ]
@@ -1559,10 +1380,10 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"Quarterly\"",
-            "floating-chat-launcher overlaps button \"Yearly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Quarterly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Yearly\"",
+            "floating-chat-launcher overlaps button \"Monthly\"",
+            "floating-chat-launcher overlaps button \"Half-Yearly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Monthly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Yearly\""
           ]
@@ -1617,10 +1438,10 @@
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "floating-chat-launcher overlaps button \"Quarterly\"",
-            "floating-chat-launcher overlaps button \"Yearly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Quarterly\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Yearly\"",
+            "floating-chat-launcher overlaps button \"Monthly\"",
+            "floating-chat-launcher overlaps button \"Half-Yearly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Monthly\"",
+            "ai-launcher-btn fixed bottom-2 overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Half-Yearly\"",
             "bottom-nav overlaps button \"Yearly\""
           ]
@@ -1644,8 +1465,8 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -1669,16 +1490,12 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Yearly\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -1852,7 +1669,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -1877,10 +1694,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -1901,7 +1716,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1914,16 +1729,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.min-w-[700px] right=721",
-            "div.grid.grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]\r\n right=721",
-            "div right=366",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -1960,7 +1767,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -1973,18 +1780,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.min-w-[700px] right=721",
-            "div.grid.grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]\r\n right=721",
-            "div right=446",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721",
-            "div.mt-2.mt-0 right=463",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721",
-            "div.mt-2.mt-0 right=463"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2021,7 +1818,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -2034,20 +1831,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.min-w-[700px] right=721",
-            "div.grid.grid-cols-[1.2fr_2fr_0.8fr_1fr_1.2fr_1.2fr_0.4fr]\r\n right=721",
-            "div right=446",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721",
-            "div.mt-2.mt-0 right=463",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721",
-            "div.mt-2.mt-0 right=463",
-            "div.flex.flex-col right=721",
-            "div.grid.grid-cols-1 right=721"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2088,7 +1873,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -2113,20 +1898,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "button 10px \"All\"",
-            "button 10px \"Overdue\"",
-            "button 10px \"Due Today\"",
-            "button 10px \"Tomorrow Due\"",
-            "div 10px \"Task Name\"",
-            "div 10px \"Assigned to\"",
-            "div 10px \"Cycle\"",
-            "div 10px \"Last Log\"",
-            "div 10px \"Registry State\"",
-            "div 10px \"Action\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -2304,7 +2077,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -2329,18 +2102,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "button 10px \"Daily\"",
-            "button 10px \"Weekly\"",
-            "button 10px \"Monthly\"",
-            "span 9px \"Done On Time\"",
-            "span 9px \"Done Late\"",
-            "span 9px \"Work Not Done\"",
-            "span 9px \"Total Integrity\"",
-            "p 10px \"Based on 0 tasks cre\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -2361,12 +2124,12 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -2374,11 +2137,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "svg.[object.SVGAnimatedString] right=391",
-            "path.[object.SVGAnimatedString] right=378"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2397,12 +2157,8 @@
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Apply\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Apply\"",
-            "bottom-nav overlaps button \"COMMIT GLOBAL UPDATE\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -2419,12 +2175,12 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -2432,11 +2188,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "svg.[object.SVGAnimatedString] right=421",
-            "path.[object.SVGAnimatedString] right=408"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2455,10 +2208,8 @@
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "bottom-nav overlaps button \"COMMIT GLOBAL UPDATE\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -2475,12 +2226,12 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -2488,11 +2239,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "svg.[object.SVGAnimatedString] right=461",
-            "path.[object.SVGAnimatedString] right=448"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2511,10 +2259,8 @@
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "bottom-nav overlaps button \"COMMIT GLOBAL UPDATE\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -2531,11 +2277,11 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "FAIL",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -2544,10 +2290,8 @@
           "detail": "scrollWidth=768 viewport=768"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "svg.[object.SVGAnimatedString] right=783"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -2562,22 +2306,14 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "label 10px \"Company Name\"",
-            "label 10px \"Logo\"",
-            "p 10px \"These lists become t\"",
-            "label 10px \"Sector / Department\"",
-            "label 10px \"Location\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
             "bottom-nav overlaps button \"Add\"",
-            "bottom-nav overlaps button \"Add\"",
-            "bottom-nav overlaps button \"COMMIT GLOBAL UPDATE\""
+            "bottom-nav overlaps button \"Add\""
           ]
         },
         "h_filters_collapsed": {
@@ -2752,7 +2488,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -2777,14 +2513,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "span 10px \"Scheduled\"",
-            "label 10px \"Admin Notification E\"",
-            "label 10px \"Weekly Day\"",
-            "label 10px \"Monthly Date\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -2962,7 +2692,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -2987,10 +2717,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -3168,7 +2896,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -3193,10 +2921,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -3374,7 +3100,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -3399,10 +3125,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -3580,7 +3304,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -3605,10 +3329,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -3786,7 +3508,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -3811,10 +3533,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -3992,7 +3712,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -4017,10 +3737,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -4198,7 +3916,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -4223,10 +3941,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -4404,7 +4120,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -4429,10 +4145,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -4610,7 +4324,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -4635,10 +4349,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -4816,7 +4528,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -4841,12 +4553,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Support · Active\"",
-            "span 10px \"0\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -5024,7 +4732,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -5049,17 +4757,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Live compliance ledg\"",
-            "span 10px \"0 people\"",
-            "span 10px \"TOT total\"",
-            "span 10px \"OT on-time done\"",
-            "span 10px \"LD late done\"",
-            "span 10px \"PO pending (not due)\"",
-            "span 10px \"LP late pending\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -5237,7 +4936,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -5262,10 +4961,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -5286,7 +4983,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -5299,21 +4996,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -5350,7 +5034,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -5363,21 +5047,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -5414,12 +5085,12 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "PASS",
+      "g_fixed_chrome_no_overlap": "FAIL",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -5427,21 +5098,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.w-[1050px].sm:w-full right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div right=460",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091",
-            "div.grid.grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] right=1091",
-            "div.text-xs.font-bold right=462",
-            "span.truncate.block right=454",
-            "div.border-b.border-border/50 right=1091"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -5460,8 +5118,13 @@
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": true,
-          "detail": []
+          "pass": false,
+          "detail": [
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"💬\"",
+            "bottom-nav overlaps button \"\""
+          ]
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -5482,7 +5145,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "FAIL",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -5507,27 +5170,16 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "button 10px \"All\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "div 10px \"S no.\"",
-            "div 10px \"Task Name\"",
-            "div 10px \"Assigned To\"",
-            "div 10px \"Description\"",
-            "div 10px \"Deadline\"",
-            "div 10px \"Status\"",
-            "div 10px \"Action\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": false,
           "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"💬\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"\""
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"\"",
+            "bottom-nav overlaps button \"💬\"",
+            "bottom-nav overlaps button \"\""
           ]
         },
         "h_filters_collapsed": {
@@ -5548,9 +5200,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -5570,21 +5222,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -5604,9 +5251,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -5626,21 +5273,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -5660,9 +5302,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -5682,21 +5324,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -5716,9 +5353,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "e_tap_targets_44px": "PASS",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -5738,39 +5375,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 117x40",
-            "button \"All\" 48x36",
-            "button \"Completed\" 98x36",
-            "button \"Today\" 67x36",
-            "button \"Next 7 Days\" 103x36",
-            "button \"Pending Work\" 118x36",
-            "button \"Upcoming\" 91x36"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 8px \"Session Active: 10/1\"",
-            "span 8px \"5\"",
-            "button 10px \"All\"",
-            "button 10px \"Completed\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "button 10px \"Upcoming\"",
-            "span 8px \"From:\"",
-            "span 8px \"To:\"",
-            "span 8px \"Type: Checklist\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -5950,7 +5564,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -5975,10 +5589,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -6156,7 +5768,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -6181,10 +5793,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -6362,7 +5972,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -6387,10 +5997,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -6414,9 +6022,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -6436,21 +6044,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -6470,9 +6073,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -6492,21 +6095,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -6526,9 +6124,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -6548,21 +6146,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -6582,9 +6175,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "e_tap_targets_44px": "PASS",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -6604,39 +6197,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 117x40",
-            "button \"All\" 48x36",
-            "button \"Completed\" 98x36",
-            "button \"Today\" 67x36",
-            "button \"Next 7 Days\" 103x36",
-            "button \"Pending Work\" 118x36",
-            "button \"Upcoming\" 91x36"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 8px \"Session Active: 10/1\"",
-            "span 8px \"5\"",
-            "button 10px \"All\"",
-            "button 10px \"Completed\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "button 10px \"Upcoming\"",
-            "span 8px \"From:\"",
-            "span 8px \"To:\"",
-            "span 8px \"Type: Checklist\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -6810,7 +6380,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -6835,10 +6405,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -7016,7 +6584,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -7041,10 +6609,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -7222,7 +6788,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -7247,10 +6813,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -7428,7 +6992,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -7453,10 +7017,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -7477,7 +7039,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -7490,21 +7052,8 @@
           "detail": "scrollWidth=360 viewport=360"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.md:hidden.flex right=367",
-            "div.flex.items-center right=367",
-            "button.btn-fit.relative right=367",
-            "div.flex.gap-1 right=392",
-            "button.px-5.py-1.5 right=387",
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -7541,7 +7090,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -7554,21 +7103,8 @@
           "detail": "scrollWidth=390 viewport=390"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.flex.gap-1 right=392",
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716",
-            "div.relative.group right=519",
-            "div.text-sm.font-black right=519",
-            "td.px-4.py-3 right=716",
-            "div.flex.flex-wrap right=455"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -7605,7 +7141,7 @@
       "loadError": null,
       "evalError": null,
       "a_no_horizontal_scroll": "PASS",
-      "b_no_element_overflow": "FAIL",
+      "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
@@ -7618,21 +7154,8 @@
           "detail": "scrollWidth=430 viewport=430"
         },
         "b_no_element_overflow": {
-          "pass": false,
-          "detail": [
-            "div.min-w-[700px].lg:min-w-full right=733",
-            "div right=733",
-            "table.mobile-card-table.w-full right=733",
-            "tbody.divide-y.divide-border right=733",
-            "tr.hover:bg-primary/[0.02].transition-all right=733",
-            "td.px-4.py-3 right=716",
-            "td.px-4.py-3 right=716",
-            "div.relative.group right=519",
-            "div.text-sm.font-black right=519",
-            "td.px-4.py-3 right=716",
-            "div.flex.flex-wrap right=455",
-            "span.ml-2.px-2 right=455"
-          ]
+          "pass": true,
+          "detail": []
         },
         "c_no_clipped_text": {
           "pass": true,
@@ -7673,7 +7196,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -7698,21 +7221,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Precision Industrial\"",
-            "button 9px \"All\"",
-            "button 9px \"Delegation\"",
-            "button 9px \"Checklist\"",
-            "button 9px \"FMS\"",
-            "button 9px \"Columns\"",
-            "span 9px \"From\"",
-            "span 9px \"To\"",
-            "button 10px \"Pending\"",
-            "button 10px \"Upcoming\"",
-            "button 10px \"Completed\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -7736,9 +7246,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -7758,21 +7268,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -7792,9 +7297,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -7814,21 +7319,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -7848,9 +7348,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
+      "e_tap_targets_44px": "PASS",
       "f_min_font_11px": "PASS",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -7870,21 +7370,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 104x40"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
           "pass": true,
           "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "floating-chat-launcher overlaps button \"Submit\"",
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -7904,9 +7399,9 @@
       "b_no_element_overflow": "PASS",
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
-      "e_tap_targets_44px": "FAIL",
-      "f_min_font_11px": "FAIL",
-      "g_fixed_chrome_no_overlap": "FAIL",
+      "e_tap_targets_44px": "PASS",
+      "f_min_font_11px": "PASS",
+      "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
         "a_no_horizontal_scroll": {
@@ -7926,39 +7421,16 @@
           "detail": []
         },
         "e_tap_targets_44px": {
-          "pass": false,
-          "detail": [
-            "button \"Refresh\" 117x40",
-            "button \"All\" 48x36",
-            "button \"Completed\" 98x36",
-            "button \"Today\" 67x36",
-            "button \"Next 7 Days\" 103x36",
-            "button \"Pending Work\" 118x36",
-            "button \"Upcoming\" 91x36"
-          ]
+          "pass": true,
+          "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 8px \"Session Active: 10/1\"",
-            "span 8px \"5\"",
-            "button 10px \"All\"",
-            "button 10px \"Completed\"",
-            "button 10px \"Today\"",
-            "button 10px \"Next 7 Days\"",
-            "button 10px \"Pending Work\"",
-            "button 10px \"Upcoming\"",
-            "span 8px \"From:\"",
-            "span 8px \"To:\"",
-            "span 8px \"Type: Checklist\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
-          "pass": false,
-          "detail": [
-            "ai-launcher-btn fixed bottom-2 overlaps button \"Submit\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "h_filters_collapsed": {
           "pass": true,
@@ -8132,7 +7604,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -8157,10 +7629,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,
@@ -8338,7 +7808,7 @@
       "c_no_clipped_text": "PASS",
       "d_tables_are_cards": "PASS",
       "e_tap_targets_44px": "PASS",
-      "f_min_font_11px": "FAIL",
+      "f_min_font_11px": "PASS",
       "g_fixed_chrome_no_overlap": "PASS",
       "h_filters_collapsed": "PASS",
       "_details": {
@@ -8363,17 +7833,8 @@
           "detail": []
         },
         "f_min_font_11px": {
-          "pass": false,
-          "detail": [
-            "span 9px \"Work Pilot Node\"",
-            "p 10px \"Read-only company re\"",
-            "span 10px \"0 people\"",
-            "span 10px \"TOT total\"",
-            "span 10px \"OT on-time done\"",
-            "span 10px \"LD late done\"",
-            "span 10px \"PO pending (not due)\"",
-            "span 10px \"LP late pending\""
-          ]
+          "pass": true,
+          "detail": []
         },
         "g_fixed_chrome_no_overlap": {
           "pass": true,

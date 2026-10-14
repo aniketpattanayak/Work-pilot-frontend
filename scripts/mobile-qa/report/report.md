@@ -1,18 +1,18 @@
 # Mobile QA Report
 
-Generated 2026-10-14T10:39:35.467Z
+Generated 2026-10-14T11:22:33.013Z
 
 ## Summary (pass/fail counts per check, across all role x route x width combinations)
 
 | Check | Pass | Fail |
 |---|---|---|
 | a_no_horizontal_scroll | 152 | 0 |
-| b_no_element_overflow | 129 | 23 |
+| b_no_element_overflow | 152 | 0 |
 | c_no_clipped_text | 152 | 0 |
 | d_tables_are_cards | 152 | 0 |
-| e_tap_targets_44px | 136 | 16 |
-| f_min_font_11px | 114 | 38 |
-| g_fixed_chrome_no_overlap | 119 | 33 |
+| e_tap_targets_44px | 152 | 0 |
+| f_min_font_11px | 152 | 0 |
+| g_fixed_chrome_no_overlap | 138 | 14 |
 | h_filters_collapsed | 152 | 0 |
 
 ## Full matrix
@@ -22,155 +22,155 @@ Generated 2026-10-14T10:39:35.467Z
 | Admin | home | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | home | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | home | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | home | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | home | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | employees | 360 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Admin | employees | 390 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Admin | employees | 430 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Admin | employees | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | FAIL | PASS |  |
-| Admin | manage-tasks | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | manage-tasks | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | manage-tasks | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | manage-tasks | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | FAIL | PASS |  |
-| Admin | my-tasks | 360 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Admin | my-tasks | 390 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Admin | my-tasks | 430 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Admin | my-tasks | 768 | PASS | PASS | PASS | PASS | FAIL | FAIL | FAIL | PASS |  |
-| Admin | tracking | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | tracking | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | tracking | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | tracking | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Admin | mapping | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | mapping | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | mapping | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | mapping | 768 | PASS | FAIL | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | employees | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | manage-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | manage-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | manage-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
+| Admin | manage-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
+| Admin | my-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | my-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | my-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | my-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | tracking | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | tracking | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | tracking | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | tracking | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | mapping | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | mapping | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | mapping | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | mapping | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | checklist-setup | 360 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Admin | checklist-setup | 390 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Admin | checklist-setup | 430 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Admin | checklist-setup | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | FAIL | PASS |  |
+| Admin | checklist-setup | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | manage-checklist | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | manage-checklist | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | manage-checklist | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | manage-checklist | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Admin | checklist-monitor | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | checklist-monitor | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | checklist-monitor | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | checklist-monitor | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | manage-checklist | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | checklist-monitor | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | checklist-monitor | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | checklist-monitor | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | checklist-monitor | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | rewards-log | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | rewards-log | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | rewards-log | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | rewards-log | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Admin | settings | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Admin | settings | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Admin | settings | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Admin | settings | 768 | PASS | FAIL | PASS | PASS | PASS | FAIL | FAIL | PASS |  |
+| Admin | rewards-log | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | settings | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | settings | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | settings | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Admin | settings | 768 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Admin | reports | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | reports | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | reports | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | reports | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | reports | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | fms-dashboard | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | fms-dashboard | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | fms-dashboard | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | fms-dashboard | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | fms-dashboard | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | chat | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | chat | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | chat | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | chat | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | chat | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | order-forms | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | order-forms | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | order-forms | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | order-forms | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | order-forms | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | new-order | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | new-order | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | new-order | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | new-order | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | new-order | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-management | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-management | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-management | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | flow-management | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | flow-management | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | flow-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | flow-tasks | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | flow-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | leave | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | leave | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | leave | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | leave | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | leave | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | attendance | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | attendance | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | attendance | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | attendance | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | attendance | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | payroll | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | payroll | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | payroll | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | payroll | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | payroll | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | raise-ticket | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | raise-ticket | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | raise-ticket | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | raise-ticket | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | raise-ticket | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | review-meeting | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | review-meeting | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Admin | review-meeting | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Admin | review-meeting | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Admin | review-meeting | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | home | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | home | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | home | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Assigner | home | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Assigner | manage-tasks | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Assigner | manage-tasks | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Assigner | manage-tasks | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Assigner | manage-tasks | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | FAIL | PASS |  |
-| Assigner | my-tasks | 360 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Assigner | my-tasks | 390 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Assigner | my-tasks | 430 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Assigner | my-tasks | 768 | PASS | PASS | PASS | PASS | FAIL | FAIL | FAIL | PASS |  |
+| Assigner | home | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | manage-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | manage-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | manage-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
+| Assigner | manage-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
+| Assigner | my-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | my-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | my-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Assigner | my-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | create-task | 360 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Assigner | create-task | 390 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
 | Assigner | create-task | 430 | PASS | PASS | PASS | PASS | PASS | PASS | FAIL | PASS |  |
-| Assigner | create-task | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Assigner | create-task | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | chat | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | chat | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Assigner | chat | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Assigner | chat | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Assigner | chat | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | home | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | home | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | home | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Doer | home | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Doer | my-tasks | 360 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Doer | my-tasks | 390 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Doer | my-tasks | 430 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Doer | my-tasks | 768 | PASS | PASS | PASS | PASS | FAIL | FAIL | FAIL | PASS |  |
+| Doer | home | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Doer | my-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Doer | my-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Doer | my-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Doer | my-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | attendance | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | attendance | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | attendance | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Doer | attendance | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Doer | attendance | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | leave | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | leave | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | leave | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Doer | leave | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Doer | leave | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | chat | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | chat | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Doer | chat | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Doer | chat | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Doer | chat | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | home | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | home | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | home | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Coordinator | home | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Coordinator | tracking | 360 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Coordinator | tracking | 390 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Coordinator | tracking | 430 | PASS | FAIL | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Coordinator | tracking | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
-| Coordinator | my-tasks | 360 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Coordinator | my-tasks | 390 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Coordinator | my-tasks | 430 | PASS | PASS | PASS | PASS | FAIL | PASS | FAIL | PASS |  |
-| Coordinator | my-tasks | 768 | PASS | PASS | PASS | PASS | FAIL | FAIL | FAIL | PASS |  |
+| Coordinator | home | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | tracking | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | tracking | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | tracking | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | tracking | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | my-tasks | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | my-tasks | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | my-tasks | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
+| Coordinator | my-tasks | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | chat | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | chat | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Coordinator | chat | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Coordinator | chat | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Coordinator | chat | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Viewer | global-view | 360 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Viewer | global-view | 390 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 | Viewer | global-view | 430 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
-| Viewer | global-view | 768 | PASS | PASS | PASS | PASS | PASS | FAIL | PASS | PASS |  |
+| Viewer | global-view | 768 | PASS | PASS | PASS | PASS | PASS | PASS | PASS | PASS |  |
 
 ## Desktop (1280/1920) pixel-diff vs origin/main
 

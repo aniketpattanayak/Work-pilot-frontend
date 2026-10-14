@@ -546,10 +546,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
       {/* TABS (primary view switch - always visible, not a filter) */}
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit">
+        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit max-w-full overflow-x-auto">
           {['Pending', 'Upcoming', 'Completed'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
+              className={`px-3 sm:px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all shrink-0 ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
               {tab}
             </button>
           ))}

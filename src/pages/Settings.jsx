@@ -425,7 +425,7 @@ const Settings = ({ tenantId }) => {
         {/* SECTION 0: FACTORY IDENTITY */}
         <div data-settings-section="identity" hidden={!showSection('identity')}>
         <section className="bg-card backdrop-blur-xl rounded-2xl border border-border p-5 md:p-6 shadow-sm relative overflow-hidden group">
-           <Building2 size={160} className="hidden md:block absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
+           <Building2 size={160} className="hidden lg:block absolute -right-12 -top-12 text-primary opacity-[0.03] group-hover:scale-110 transition-transform duration-1000 pointer-events-none" />
            <h3 className="text-foreground text-base font-black flex items-center gap-2.5 mb-4 relative z-10 uppercase tracking-tight">
              <ImageIcon size={22} className="text-primary" /> Update company name & logo
            </h3>
@@ -801,7 +801,7 @@ const Settings = ({ tenantId }) => {
       <div data-settings-section="access" hidden={!showSection('access')} className="mt-8"><AccessRolesPanel /></div>
 
       {/* STICKY EXECUTION FOOTER */}
-      <div className="mt-6 sticky bottom-4 z-[100] px-2">
+      <div className="mt-6 sticky bottom-4 lg:bottom-4 z-[100] px-2 mobile-sticky-footer">
         <button onClick={saveSettings} disabled={saving} className={`w-full py-3.5 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.4em] transition-all duration-500 flex items-center justify-center gap-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] ${saving ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed" : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white dark:text-slate-950 active:scale-95 cursor-pointer shadow-emerald-500/20"}`}>
             {saving ? <RefreshCcw className="animate-spin" size={24} /> : <Zap size={24} fill="currentColor" />} {saving ? 'TRANSMITTING FACTORY TELEMETRY...' : 'COMMIT GLOBAL UPDATES'}
         </button>

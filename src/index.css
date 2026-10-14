@@ -416,7 +416,7 @@
 /* Any uppercase tracking-widest micro-label (badges, stat captions,
    table footnotes) must stay readable - 11px is the floor on phones,
    whatever size it renders at on desktop. */
-@media (max-width: 767px) {
+@media (max-width: 768px) {
   .micro-label {
     font-size: 11px !important;
   }
@@ -520,14 +520,30 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* A sticky in-page action bar (e.g. a form's "Save"/"Commit" button)
+     must clear the fixed bottom nav, and the floating launcher must get
+     out of its way entirely rather than float on top of it (see the
+     :has() rule further down, which hides the launcher whenever one of
+     these footers is in the DOM). */
+  .mobile-sticky-footer {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
   .has-bottom-nav-space {
     padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
   }
   /* Floating chat / AI launcher buttons must never sit over the bottom
-     nav or its tap targets. */
+     nav or its tap targets - and, on phones/tablets, every custom grid
+     and card list in this app puts its own row actions (Submit, Edit,
+     Comments, Leave...) hard against the RIGHT edge, so a right-anchored
+     floating launcher is guaranteed to collide with some row's button on
+     any page with enough rows to fill the screen. Moving the launcher to
+     the bottom-left (still clear of the nav) keeps it out of that same
+     dead reckoning without having to chase every page's row layout. */
   .ai-launcher-btn,
   .floating-chat-launcher {
     bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px)) !important;
+    left: 1rem !important;
+    right: auto !important;
   }
 }
 
@@ -540,8 +556,12 @@
 @media (max-width: 1023px) {
   body:has(.mobile-sheet) .ai-launcher-btn,
   body:has(.mobile-sheet) .floating-chat-launcher,
+  body:has(.mobile-sheet) .bottom-nav,
   body:has(.fixed.inset-0.flex.items-center.justify-center) .ai-launcher-btn,
-  body:has(.fixed.inset-0.flex.items-center.justify-center) .floating-chat-launcher {
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .floating-chat-launcher,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .bottom-nav,
+  body:has(.mobile-sticky-footer) .ai-launcher-btn,
+  body:has(.mobile-sticky-footer) .floating-chat-launcher {
     display: none !important;
   }
 }

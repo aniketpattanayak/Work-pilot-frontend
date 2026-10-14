@@ -331,7 +331,7 @@ const DoerChecklist = ({ doerId }) => {
             <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
-        <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
+        <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
           <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
@@ -398,7 +398,7 @@ const DoerChecklist = ({ doerId }) => {
               <button
                 key={range}
                 onClick={() => { setTimeFilter(range); setStartDate(''); setEndDate(''); }}
-                className={`px-3 py-1.5 min-h-[36px] rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border whitespace-nowrap transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
+                className={`px-3 py-1.5 min-h-[44px] lg:min-h-[36px] rounded-lg text-[8px] sm:text-[10px] font-black uppercase tracking-widest border whitespace-nowrap transition-all active:scale-95 ${timeFilter === range ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-card text-slate-500 border-border hover:border-primary/40'}`}
               >
                 {range}
               </button>

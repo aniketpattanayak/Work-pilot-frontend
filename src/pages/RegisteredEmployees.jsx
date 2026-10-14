@@ -293,7 +293,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         </div>
 
         {/* ── COLUMN LABELS (desktop) ─────────────────────────────── */}
-        <div className="max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
+        <div className="max-h-[calc(100dvh-26rem)] lg:max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
         <div className="hidden xl:grid grid-cols-[1.8fr_1.3fr_1.3fr_1.5fr_1.1fr_1fr_1fr_160px] gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border">
           {['Employee', 'Location / Dept', 'Roles', 'Email', 'Phone', 'Linkage', 'Status', 'Action'].map((label, i) => (
             <span key={i} className={`text-[9px] font-black text-slate-400 uppercase tracking-widest ${i === 7 ? 'text-center' : ''}`}>
