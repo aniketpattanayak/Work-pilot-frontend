@@ -43,13 +43,36 @@ export const COUNTRIES = [
 
 export const isIndia = (dialCode) => dialCode === INDIA_DIAL_CODE;
 
-export const findCountryById = (id) => COUNTRIES.find((c) => c.id === id) || null;
+// `list` defaults to the built-in COUNTRIES so every existing call site and
+// test keeps working unchanged; a company with its own Settings-managed list
+// passes that list explicitly (see resolveCountryList below).
+export const findCountryById = (id, list = COUNTRIES) => list.find((c) => c.id === id) || null;
 
 // First country in the list matching a given dial code (used when parsing a
 // stored number, which only recovers a dial code, not which same-dial-code
 // country it belongs to).
-export const findCountryByDialCode = (dialCode) =>
-  COUNTRIES.find((c) => c.dialCode === dialCode) || null;
+export const findCountryByDialCode = (dialCode, list = COUNTRIES) =>
+  list.find((c) => c.dialCode === dialCode) || null;
+
+// The India entry from the built-in default list, used as a fallback when a
+// company's custom list doesn't include one.
+export const DEFAULT_INDIA_COUNTRY = COUNTRIES.find((c) => c.id === "IN");
+
+/**
+ * Resolve the country list to show in the employee form's dropdown: the
+ * company's own Settings-managed list when they have one, or the built-in
+ * default list otherwise. India is always present and first - if the
+ * company's list somehow doesn't include it (it shouldn't, since the
+ * Settings UI keeps it fixed), it's prepended defensively rather than
+ * silently left out, since the India-specific storage/validation rules
+ * depend on an India option being selectable.
+ */
+export const resolveCountryList = (customList) => {
+  if (!Array.isArray(customList) || customList.length === 0) return COUNTRIES;
+  const india = customList.find((c) => c && (c.id === "IN" || c.dialCode === INDIA_DIAL_CODE));
+  const rest = customList.filter((c) => c !== india);
+  return [india || DEFAULT_INDIA_COUNTRY, ...rest];
+};
 
 const onlyDigits = (v) => String(v || "").replace(/\D/g, "");
 
@@ -135,7 +158,7 @@ export const buildStoredNumber = (dialCode, nationalNumber) => {
  * (unless the stored value had no country match, in which case dialCode is
  * null and nationalNumber is the raw stored digits, so nothing is assumed).
  */
-export const parseStoredNumber = (stored) => {
+export const parseStoredNumber = (stored, list = COUNTRIES) => {
   const digits = onlyDigits(stored);
 
   if (digits.length === 10) {
@@ -147,7 +170,7 @@ export const parseStoredNumber = (stored) => {
 
   // Longest-prefix match against known dial codes (excluding India, which
   // is already handled above and would otherwise match almost anything).
-  const candidates = COUNTRIES
+  const candidates = list
     .filter((c) => !isIndia(c.dialCode))
     .map((c) => c.dialCode)
     .filter((code, idx, arr) => arr.indexOf(code) === idx) // de-dupe

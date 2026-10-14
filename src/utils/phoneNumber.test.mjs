@@ -9,6 +9,8 @@ import {
   COUNTRIES,
   findCountryById,
   findCountryByDialCode,
+  resolveCountryList,
+  DEFAULT_INDIA_COUNTRY,
 } from "./phoneNumber.js";
 
 let passed = 0;
@@ -245,6 +247,72 @@ test("Parse: unmatched stored number falls back to raw digits, no country guesse
 test("Parse: longest-prefix match prefers 971 over shorter false prefixes", () => {
   const { dialCode } = parseStoredNumber("971501234567");
   assert.equal(dialCode, "971");
+});
+
+// --- company-managed country list (resolveCountryList) ---
+
+test("resolveCountryList falls back to the built-in default when nothing is set", () => {
+  assert.equal(resolveCountryList(undefined), COUNTRIES);
+  assert.equal(resolveCountryList(null), COUNTRIES);
+  assert.equal(resolveCountryList([]), COUNTRIES);
+});
+
+test("resolveCountryList uses the company's own list when they have one", () => {
+  const custom = [
+    { id: "IN", name: "India", flag: "🇮🇳", dialCode: "91" },
+    { id: "ZZ", name: "Zedland", dialCode: "255" },
+  ];
+  const resolved = resolveCountryList(custom);
+  assert.equal(resolved.length, 2);
+  assert.equal(resolved[0].id, "IN");
+  assert.equal(resolved[1].id, "ZZ");
+});
+
+test("resolveCountryList keeps India first even if it's listed elsewhere", () => {
+  const custom = [
+    { id: "ZZ", name: "Zedland", dialCode: "255" },
+    { id: "IN", name: "India", flag: "🇮🇳", dialCode: "91" },
+  ];
+  const resolved = resolveCountryList(custom);
+  assert.equal(resolved[0].id, "IN");
+  assert.equal(resolved[1].id, "ZZ");
+});
+
+test("resolveCountryList prepends India defensively if a custom list somehow omits it", () => {
+  const custom = [{ id: "ZZ", name: "Zedland", dialCode: "255" }];
+  const resolved = resolveCountryList(custom);
+  assert.equal(resolved.length, 2);
+  assert.equal(resolved[0].id, "IN");
+  assert.equal(resolved[0].dialCode, INDIA_DIAL_CODE);
+  assert.equal(resolved[0], DEFAULT_INDIA_COUNTRY);
+});
+
+test("findCountryById/findCountryByDialCode accept a custom list", () => {
+  const custom = [
+    { id: "IN", name: "India", dialCode: "91" },
+    { id: "ZZ", name: "Zedland", dialCode: "255" },
+  ];
+  assert.equal(findCountryById("ZZ", custom).name, "Zedland");
+  assert.equal(findCountryById("US", custom), null); // not in this company's list
+  assert.equal(findCountryByDialCode("255", custom).id, "ZZ");
+});
+
+test("parseStoredNumber matches a company-custom dial code not in the default list", () => {
+  // "255" (Tanzania-style custom code, not in the built-in COUNTRIES list)
+  // + an 8-digit national number.
+  const custom = resolveCountryList([{ id: "ZZ", name: "Zedland", dialCode: "255" }]);
+  const stored = "25571234567"; // 255 + 71234567 (8 digits)
+  const { dialCode, nationalNumber } = parseStoredNumber(stored, custom);
+  assert.equal(dialCode, "255");
+  assert.equal(nationalNumber, "71234567");
+});
+
+test("parseStoredNumber does NOT match a custom dial code when using the default list", () => {
+  // Same stored number, but parsed against the built-in default list (which
+  // has no dial code "255") - correctly falls back to no match.
+  const stored = "25571234567";
+  const { dialCode } = parseStoredNumber(stored, COUNTRIES);
+  assert.equal(dialCode, null);
 });
 
 console.log(`\n${passed} tests passed`);

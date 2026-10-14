@@ -3,7 +3,6 @@ import BulkUpload from '../components/BulkUpload';
 import API from "../api/axiosConfig"; // Centralized API instance
 import { dialog } from "../components/Dialog";
 import {
-  COUNTRIES,
   INDIA_DIAL_CODE,
   buildStoredNumber,
   parseStoredNumber,
@@ -11,6 +10,7 @@ import {
   maxNationalLength,
   findCountryById,
   findCountryByDialCode,
+  resolveCountryList,
 } from "../utils/phoneNumber";
 import {
   ShieldCheck,
@@ -181,6 +181,21 @@ const AddEmployee = ({
     workOnSunday: false, // Initialized as boolean
   });
 
+  const [allEmployees, setAllEmployees] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
+
+  // Company masters (managed in Settings) + filters for the two mapping lists
+  const [masters, setMasters] = useState({ sectors: [], locations: [] });
+
+  // The company's own Settings-managed WhatsApp country-code list, or the
+  // built-in default list when they haven't set one (or it's empty). India
+  // is always present and first - see resolveCountryList in phoneNumber.js.
+  const effectiveCountries = resolveCountryList(masters.phoneCountries);
+  const [doerFilter, setDoerFilter] = useState({ q: "", loc: "", sec: "" });
+  const [scopeFilter, setScopeFilter] = useState({ q: "", loc: "", sec: "" });
+
   // Selected country for the WhatsApp number field. Tracked by `id` (not by
   // `dialCode`) because several countries share a dial code (US/Canada both
   // use "1") - using dialCode as the <select>'s value would make choosing
@@ -193,17 +208,7 @@ const AddEmployee = ({
   const whatsappDialCode =
     whatsappCountryId === "OTHER"
       ? whatsappManualCode
-      : findCountryById(whatsappCountryId)?.dialCode || "";
-
-  const [allEmployees, setAllEmployees] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showBulk, setShowBulk] = useState(false);
-
-  // Company masters (managed in Settings) + filters for the two mapping lists
-  const [masters, setMasters] = useState({ sectors: [], locations: [] });
-  const [doerFilter, setDoerFilter] = useState({ q: "", loc: "", sec: "" });
-  const [scopeFilter, setScopeFilter] = useState({ q: "", loc: "", sec: "" });
+      : findCountryById(whatsappCountryId, effectiveCountries)?.dialCode || "";
 
   useEffect(() => {
     if (!tenantId) return;
@@ -215,9 +220,10 @@ const AddEmployee = ({
         if (!off) setMasters({
           sectors: Array.isArray(d.sectors) ? d.sectors : [],
           locations: Array.isArray(d.locations) ? d.locations : [],
+          phoneCountries: Array.isArray(d.phoneCountries) ? d.phoneCountries : [],
         });
       } catch (err) {
-        console.error("Could not load sectors/locations:", err);
+        console.error("Could not load sectors/locations/country codes:", err);
       }
     })();
     return () => { off = true; };
@@ -250,13 +256,18 @@ const AddEmployee = ({
    */
   useEffect(() => {
     if (selectedEmployee) {
-      const parsedPhone = parseStoredNumber(selectedEmployee.whatsappNumber);
+      // Parsed (and matched) against the company's own current country
+      // list (effectiveCountries), captured at the moment this effect runs -
+      // by the time an Admin opens Edit on an employee, the Settings fetch
+      // above has normally already completed, so this sees the real list
+      // rather than the built-in default.
+      const parsedPhone = parseStoredNumber(selectedEmployee.whatsappNumber, effectiveCountries);
       // Null dialCode means the stored number didn't match any known
       // country - don't guess, let the user explicitly pick one. Otherwise
       // take the first country in the list sharing that dial code (e.g. a
       // parsed "1" defaults to United States; the user can switch to
       // Canada explicitly if that's what it actually is).
-      const parsedCountry = parsedPhone.dialCode ? findCountryByDialCode(parsedPhone.dialCode) : null;
+      const parsedCountry = parsedPhone.dialCode ? findCountryByDialCode(parsedPhone.dialCode, effectiveCountries) : null;
       if (parsedCountry) {
         setWhatsappCountryId(parsedCountry.id);
         setWhatsappManualCode("");
@@ -316,6 +327,11 @@ const AddEmployee = ({
       setWhatsappManualCode("");
       setIsEditing(false);
     }
+    // effectiveCountries is intentionally excluded: this effect should only
+    // reset the form when the user switches which employee they're editing,
+    // not every time the company's settings happen to reload - it still
+    // reads the latest effectiveCountries via closure when it does run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEmployee]);
 
   /**
@@ -570,7 +586,7 @@ const AddEmployee = ({
                     Select code
                   </option>
                 )}
-                {COUNTRIES.map((c) => (
+                {effectiveCountries.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.flag} {c.name} (+{c.dialCode})
                   </option>
