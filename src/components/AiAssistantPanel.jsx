@@ -57,7 +57,7 @@ function Bubble({ role, children }) {
   );
 }
 
-export default function AiAssistantPanel({ currentUser }) {
+export default function AiAssistantPanel({ currentUser, openTrigger }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState([]); // { role: 'user'|'assistant', text, pending?: {summary, confirmId} }
   const [text, setText] = useState('');
@@ -71,6 +71,12 @@ export default function AiAssistantPanel({ currentUser }) {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history, open]);
+
+  // Opened on demand by the mobile combined launcher (see MobileDualLauncher),
+  // which has no direct access to this component's local `open` state.
+  useEffect(() => {
+    if (openTrigger) setOpen(true);
+  }, [openTrigger]);
 
   useEffect(() => {
     if (!SpeechRecognitionAPI) return;
@@ -148,7 +154,7 @@ export default function AiAssistantPanel({ currentUser }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open AI assistant"
-        className="ai-launcher-btn fixed bottom-24 right-5 md:bottom-6 md:right-24 w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
+        className="ai-launcher-btn launcher-btn-desktop-only fixed bottom-24 right-5 md:bottom-6 md:right-24 w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-lg flex items-center justify-center hover:scale-105 transition-transform"
         style={{ zIndex: 1001 }}
       >
         <Sparkles size={20} />
