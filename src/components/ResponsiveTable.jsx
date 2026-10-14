@@ -55,6 +55,15 @@ export default function ResponsiveTable({ children, className = '' }) {
         const rows = table.querySelectorAll('tbody > tr');
         rows.forEach((row) => {
           const cells = Array.from(row.children);
+
+          // A single colSpan'd cell is a full-width status row (loading /
+          // empty state), not real data - leave it as plain centered text,
+          // never force a column label onto it.
+          if (cells.length === 1 && cells[0].hasAttribute('colspan')) {
+            cells[0].classList.add('mobile-card-fullrow');
+            return;
+          }
+
           let firstContentIdx = -1;
 
           cells.forEach((cell, i) => {

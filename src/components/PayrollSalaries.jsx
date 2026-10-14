@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import { X } from 'lucide-react';
 import { dialog } from './Dialog';
 import { inr, monthLabel } from '../utils/payrollFormat';
+import ResponsiveTable from './ResponsiveTable';
 
 /** Salaries: who has a salary set, and a form to set or change one (a change keeps the old salary as history). */
 const card = 'bg-card rounded-[2rem] border border-border p-5 md:p-8 shadow-xl';
@@ -220,8 +221,9 @@ const PayrollSalaries = ({ can }) => {
         {missing > 0 && <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">{missing} without a salary</span>}
       </div>
       <div className="overflow-x-auto">
+        <ResponsiveTable>
         <table className="mobile-card-table w-full text-left text-sm">
-          <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Department</th><th className="pr-3 text-right">Basic</th><th className="pr-3 text-right">Monthly gross</th><th className="pr-3">From</th><th /></tr></thead>
+          <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Department</th><th className="pr-3 text-right">Basic</th><th className="pr-3 text-right">Monthly gross</th><th className="pr-3">From</th><th><span className="sr-only">Actions</span></th></tr></thead>
           <tbody>
             {shown.map((p) => (
               <tr key={p._id} className="border-t border-border font-bold text-foreground">
@@ -234,6 +236,7 @@ const PayrollSalaries = ({ can }) => {
             {shown.length === 0 && <tr><td colSpan="6" className="py-4 text-sm font-bold text-muted-foreground">No one matches.</td></tr>}
           </tbody>
         </table>
+        </ResponsiveTable>
       </div>
       {open && <Editor person={open} canEdit={canEdit} onClose={close} onSaved={() => { setOpen(null); load(); }} />}
     </div>

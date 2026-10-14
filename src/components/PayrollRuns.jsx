@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import { ArrowLeft, Plus, Trash2, X, Download, AlertTriangle } from 'lucide-react';
 import { dialog } from './Dialog';
 import PayslipModal from './PayslipModal';
+import ResponsiveTable from './ResponsiveTable';
 import { inr, monthLabel, downloadCsv } from '../utils/payrollFormat';
 import PayrollReview from './PayrollReview';
 
@@ -176,8 +177,9 @@ const RunDetail = ({ runId, can, onBack }) => {
 
       <div className={card}>
         <div className="overflow-x-auto">
+          <ResponsiveTable>
           <table className="mobile-card-table w-full text-left text-sm">
-            <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Paid days</th><th className="pr-3 text-right">Gross</th><th className="pr-3 text-right">Deductions</th><th className="pr-3 text-right">Net pay</th><th className="pr-3">Notes</th><th /></tr></thead>
+            <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-2 pr-3">Name</th><th className="pr-3">Paid days</th><th className="pr-3 text-right">Gross</th><th className="pr-3 text-right">Deductions</th><th className="pr-3 text-right">Net pay</th><th className="pr-3">Notes</th><th><span className="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {paid.map((l) => (
                 <tr key={String(l.employeeId)} className={`border-t border-border font-bold text-foreground ${l.hold ? 'opacity-60' : ''}`}>
@@ -193,6 +195,7 @@ const RunDetail = ({ runId, can, onBack }) => {
               ))}
             </tbody>
           </table>
+          </ResponsiveTable>
         </div>
         {noSalary.length > 0 && <p className="text-[11px] font-bold text-muted-foreground mt-4">Not included (no salary set): {noSalary.map((l) => l.name).join(', ')}.</p>}
       </div>

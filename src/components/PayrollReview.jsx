@@ -3,6 +3,7 @@ import API from '../api/axiosConfig';
 import { X, AlertTriangle, CheckCircle2, Info, Upload } from 'lucide-react';
 import { dialog } from './Dialog';
 import { inr, monthLabel } from '../utils/payrollFormat';
+import ResponsiveTable from './ResponsiveTable';
 
 /** Review of one payroll: automatic checks, statutory totals, reviewer sign-off, and a comparison with the payroll in use today. */
 const label = 'text-[10px] font-black text-slate-500 uppercase tracking-[0.25em]';
@@ -115,8 +116,8 @@ const Compare = ({ run }) => {
       {res && (
         <div className="space-y-4">
           <p className="text-sm font-black text-foreground" aria-label="Comparison summary">{c.matched} people matched: {c.same} the same, {c.different} different. {c.onlyOther} only in your file, {c.onlyWorkPilot} only in Work-Pilot.</p>
-          <div className="overflow-x-auto"><table className="mobile-card-table w-full text-left text-sm"><thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-1 pr-3">Total (matched people)</th><th className="pr-3 text-right">Work-Pilot</th><th className="pr-3 text-right">Your file</th><th className="text-right">Difference</th></tr></thead>
-            <tbody>{Object.entries(res.totals).map(([f, t]) => <tr key={f} className="border-t border-border font-bold text-foreground"><td className="py-1 pr-3">{FIELD_NAMES[f] || f}</td><td className="pr-3 text-right">{inr(t.workPilot)}</td><td className="pr-3 text-right">{inr(t.other)}</td><td className={`text-right ${t.difference ? 'text-amber-600' : ''}`}>{inr(t.difference)}</td></tr>)}</tbody></table></div>
+          <ResponsiveTable><div className="overflow-x-auto"><table className="mobile-card-table w-full text-left text-sm"><thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-500"><th className="py-1 pr-3">Total (matched people)</th><th className="pr-3 text-right">Work-Pilot</th><th className="pr-3 text-right">Your file</th><th className="text-right">Difference</th></tr></thead>
+            <tbody>{Object.entries(res.totals).map(([f, t]) => <tr key={f} className="border-t border-border font-bold text-foreground"><td className="py-1 pr-3">{FIELD_NAMES[f] || f}</td><td className="pr-3 text-right">{inr(t.workPilot)}</td><td className="pr-3 text-right">{inr(t.other)}</td><td className={`text-right ${t.difference ? 'text-amber-600' : ''}`}>{inr(t.difference)}</td></tr>)}</tbody></table></div></ResponsiveTable>
           {res.different.length > 0 && (
             <div><p className={label}>Differences</p>
               <div className="space-y-1 mt-2">{res.different.map((m) => (

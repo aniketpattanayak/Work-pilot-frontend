@@ -220,6 +220,13 @@
   .mobile-card-table tbody td.mobile-card-actions::before {
     content: none;
   }
+
+  /* Full-width status row (loading/empty state from a colSpan cell):
+     centered plain text, no label prefix, no right-aligned layout. */
+  .mobile-card-table tbody td.mobile-card-fullrow {
+    justify-content: center;
+    text-align: center;
+  }
 }
 
 /* FloatingChat's bubble sits bottom:24/right:24 by inline style (already
