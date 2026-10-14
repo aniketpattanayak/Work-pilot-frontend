@@ -98,13 +98,18 @@
      smaller than that by default - pad them up to size on touch devices
      without changing their look on desktop (hover-capable pointer). */
   @media (pointer: coarse) {
-    button, a[role="button"], [role="button"] {
+    button, a[role="button"], [role="button"], input, select, textarea {
       min-height: 44px;
+    }
+    button, a[role="button"], [role="button"] {
       min-width: 44px;
     }
     /* Opt a control out when 44px would break a tight inline layout it was
-       deliberately designed into (e.g. a small badge-like toggle). */
-    .tap-target-auto {
+       deliberately designed into (e.g. a small badge-like toggle, a
+       checkbox/radio input, or a compact inline date field). */
+    .tap-target-auto,
+    input[type="checkbox"],
+    input[type="radio"] {
       min-height: 0;
       min-width: 0;
     }
@@ -132,13 +137,16 @@
 }
 
 /* ── MOBILE CARD TABLE ─────────────────────────────────────────────────
-   Opt a <table> into this class and on phone widths every row renders as
-   a stacked card instead of a cramped, horizontally-scrolled grid of tiny
-   cells. Desktop/tablet (>640px) keep the original table layout
+   Opt a <table> into this class and on phone/tablet widths every row
+   renders as a stacked card instead of a cramped, horizontally-scrolled
+   grid of tiny cells. The cutoff is 768px, not the usual 640px sm:
+   breakpoint - the product owner's spec explicitly requires 768px
+   (standard tablet width) to also be clean, and a real `<table>` left
+   in grid mode at 641-768px still forces its own horizontal scroll
+   there. True desktop (1024px+) keeps the original table layout
    untouched. Add `data-label="Column"` to a <td> to show its field name
-   next to the value on mobile; without one the value still shows, just
-   unlabeled. */
-@media (max-width: 640px) {
+   next to the value; without one the value still shows, just unlabeled. */
+@media (max-width: 768px) {
   .mobile-card-table {
     width: 100% !important;
     min-width: 0 !important;
@@ -325,6 +333,21 @@
   .micro-label {
     font-size: 11px !important;
   }
+
+  /* The app has hundreds of these micro-labels authored as Tailwind
+     arbitrary-value utilities (text-[7px] through text-[10px]) spread
+     across every page - adding .micro-label to each one by hand would
+     mean editing nearly every file in src/pages and src/components, the
+     exact per-screen patching this pass is meant to replace. Matching
+     the utility class names directly applies the same 11px floor
+     everywhere at once; a page can still opt out with the (default
+     desktop-only) class itself unaffected above 767px. */
+  [class*="text-[7px]"],
+  [class*="text-[8px]"],
+  [class*="text-[9px]"],
+  [class*="text-[10px]"] {
+    font-size: 11px !important;
+  }
 }
 
 /* Long text that must never spill out of its own button/chip/card:
@@ -395,7 +418,7 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: 0.02em;
     text-transform: uppercase;
@@ -418,6 +441,21 @@
   .ai-launcher-btn,
   .floating-chat-launcher {
     bottom: calc(60px + 1rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Floating chat / AI launcher buttons must never sit over a modal's own
+   pinned action buttons either - whenever any sheet/modal is open, hide
+   the floating launchers entirely rather than let them float on top of
+   whatever that sheet is showing (a Submit/Apply button, a form). They
+   reappear the instant the sheet closes. Scoped to phone/tablet widths
+   only, same as the bump rule above - desktop has room for both. */
+@media (max-width: 1023px) {
+  body:has(.mobile-sheet) .ai-launcher-btn,
+  body:has(.mobile-sheet) .floating-chat-launcher,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .ai-launcher-btn,
+  body:has(.fixed.inset-0.flex.items-center.justify-center) .floating-chat-launcher {
+    display: none !important;
   }
 }
 

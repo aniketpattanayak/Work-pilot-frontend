@@ -82,7 +82,7 @@ export default function FloatingChat({ currentUser }) {
     // bottom offset includes the phone's home-indicator safe area so the
     // bubble never sits under it; className carries the mobile-only
     // full-screen panel override (see .floating-chat-panel in index.css).
-    <div style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom, 0px))', right:24, zIndex:1000, fontFamily:'var(--font-sans)' }}>
+    <div className="floating-chat-launcher" style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom, 0px))', right:24, zIndex:1000, fontFamily:'var(--font-sans)' }}>
 
       {/* ── Chat panel ── */}
       {open && (

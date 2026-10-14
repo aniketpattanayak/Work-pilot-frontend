@@ -401,7 +401,7 @@ useEffect(() => {
           <div className="flex items-center gap-3 md:gap-8 h-full">
             
             {/* UPDATED DUAL EFFICIENCY INDEX PILL */}
-            <div className="hidden md:flex items-center gap-6 pr-8 border-r border-border">
+            <div className="hidden lg:flex items-center gap-6 pr-8 border-r border-border">
                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] leading-tight text-right">Not Done<br/>Index</span>
                <div className="bg-background border border-border rounded-full p-1.5 flex items-center gap-6 pr-6 shadow-inner">
                   
