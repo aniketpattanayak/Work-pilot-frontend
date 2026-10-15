@@ -679,7 +679,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                         <td className="px-4 py-3 text-center">
                           <div className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-600">
                             <UserCheck size={12} className="text-emerald-500" />
-                            {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.assignerId?.name || '—')}
+                            {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.createdBy?.name || task.assignerId?.name || '—')}
                           </div>
                         </td>
                         <td className="px-4 py-3 min-w-0 break-words text-center">
