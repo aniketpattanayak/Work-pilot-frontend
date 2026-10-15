@@ -238,7 +238,7 @@ const DoerChecklist = ({ doerId }) => {
       assignments: filteredAssignments,
       fms: filteredFms,
       all: [
-        ...filteredChecklist.map(i => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Not recorded' })),
+        ...filteredChecklist.map(i => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin' })),
         ...filteredAssignments.map(i => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-' })),
         ...filteredFms.map(i => ({
           ...i,
@@ -697,7 +697,7 @@ const DoerChecklist = ({ doerId }) => {
                   </span>
                 </div>
                 <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
-                  {item.createdBy?.name || item.assignerId?.name || 'Not recorded'}
+                  {item.createdBy?.name || item.assignerId?.name || 'Admin'}
                 </div>
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
                   {item.description || "No description provided."}
