@@ -19,6 +19,7 @@ import ChatPage        from './ChatPage';
 import FloatingChat from '../components/FloatingChat';
 import AiAssistantPanel from '../components/AiAssistantPanel';
 import MobileDualLauncher from '../components/MobileDualLauncher';
+import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
 import { DialogHost } from '../components/Dialog';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -94,6 +95,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   // message list) instead of the whole dashboard column scrolling - so it
   // gets a different (non-padded, non-scrolling) wrapper below. See
   // ChatPage.jsx for why this replaced its old position:fixed layout.
+  const { chatEnabled } = useChat(); // false when SuperAdmin switched Chat off
   const isChatRoute = location.pathname.replace(/\/+$/, '').endsWith('/chat');
   // Bumped by MobileDualLauncher (phones only) to tell FloatingChat /
   // AiAssistantPanel to open themselves - see each component's openTrigger effect.
@@ -558,7 +560,7 @@ useEffect(() => {
             <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
             <Route path="/reports" element={<ReportsTab tenantId={tenantId} />} />
             <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
-            <Route path="chat" element={<ChatPage currentUser={user} />} />
+            <Route path="chat" element={chatEnabled ? <ChatPage currentUser={user} /> : <Navigate to="/dashboard" replace />} />
             <Route path="order-forms" element={<OrderFormsPage tenantId={tenantId} />} />
             <Route path="new-order" element={<NewOrderPage tenantId={tenantId} />} />
             <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
@@ -594,7 +596,7 @@ useEffect(() => {
         }
         .animate-bounce-slow { animation: bounce-slow 3s infinite; }
       `}</style>
-      {!isViewerOnly() && <FloatingChat currentUser={user} openTrigger={chatOpenTrigger} />}
+      {!isViewerOnly() && chatEnabled && <FloatingChat currentUser={user} openTrigger={chatOpenTrigger} />}
       {/* Hidden on the chat page itself: its floating button (bottom-right)
           sat on top of the message composer's Send button, which also lives
           bottom-right. The chat page already has its own full messaging UI,
@@ -609,9 +611,10 @@ useEffect(() => {
           onOpenChat={() => setChatOpenTrigger((t) => t + 1)}
           onOpenAi={() => setAiOpenTrigger((t) => t + 1)}
           hideAi={isChatRoute}
+          hideChat={!chatEnabled}
         />
       )}
-      <BottomNav roles={userRoles} viewerOnly={isViewerOnly()} onOpenMore={() => setSidebarOpen(true)} />
+      <BottomNav roles={userRoles} viewerOnly={isViewerOnly()} hideChat={!chatEnabled} onOpenMore={() => setSidebarOpen(true)} />
       <DialogHost />
     </div>
   );

@@ -56,7 +56,7 @@ const fmsDescription = (m) => {
 };
 
 const DoerChecklist = ({ doerId }) => {
-  const { openTaskThread } = useChat();
+  const { openTaskThread, chatEnabled } = useChat();
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
@@ -516,7 +516,8 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {item.dataType === 'Delegation' && !isPassedOn(item) && (
                     <>
-                      <button onClick={() => openTaskChat({
+                      {chatEnabled && (
+<button onClick={() => openTaskChat({
                         taskId: item._id,
                         taskType: 'delegation',
                         taskTitle: item.title,
@@ -524,6 +525,7 @@ const DoerChecklist = ({ doerId }) => {
                       })} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message">
                         <MessageSquare size={12} />
                       </button>
+)}
                       <button onClick={() => setDetailsModalTask(item)} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90" title="History & files">
                         <History size={12} />
                       </button>
@@ -616,7 +618,8 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {!isPassedOn(task) && (
                     <>
-                      <button onClick={() => openTaskChat({
+                      {chatEnabled && (
+<button onClick={() => openTaskChat({
                         taskId: task._id,
                         taskType: 'delegation',
                         taskTitle: task.title,
@@ -624,6 +627,7 @@ const DoerChecklist = ({ doerId }) => {
                       })} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message">
                         <MessageSquare size={12} />
                       </button>
+)}
                       <button onClick={() => setDetailsModalTask(task)} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90" title="History & files">
                         <History size={12} />
                       </button>

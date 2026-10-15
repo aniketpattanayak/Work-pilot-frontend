@@ -29,7 +29,7 @@ const ALL_ITEMS = {
   attendance: { name: 'Attendance',route: 'attendance',      icon: Clock },
 };
 
-function getItemsForRoles(roles) {
+function getItemsForRoles(roles, hideChat = false) {
   const r = roles.map((x) => String(x).toLowerCase());
   const keys = [];
   if (r.includes('admin')) keys.push('dashboard', 'manageTasks', 'myTasks', 'employees');
@@ -38,16 +38,16 @@ function getItemsForRoles(roles) {
   else if (r.includes('doer')) keys.push('dashboard', 'myTasks', 'attendance', 'chat');
   else keys.push('dashboard', 'myTasks');
   // De-dupe while preserving order, cap at 4 (5th slot is always "More").
-  return [...new Set(keys)].slice(0, 4).map((k) => ALL_ITEMS[k]);
+  return [...new Set(keys)].filter((k) => !(hideChat && k === 'chat')).slice(0, 4).map((k) => ALL_ITEMS[k]);
 }
 
-export default function BottomNav({ roles = [], viewerOnly = false, onOpenMore }) {
+export default function BottomNav({ roles = [], viewerOnly = false, hideChat = false, onOpenMore }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   if (viewerOnly) return null;
 
-  const items = getItemsForRoles(Array.isArray(roles) ? roles : []);
+  const items = getItemsForRoles(Array.isArray(roles) ? roles : [], hideChat);
   const currentPath = location.pathname.split('/').pop() || '';
   const isActive = (route) => (route === '' ? currentPath === 'dashboard' || currentPath === '' : currentPath === route);
 

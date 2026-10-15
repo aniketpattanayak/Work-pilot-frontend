@@ -43,7 +43,7 @@ import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 
 const ManageTasks = ({ assignerId, tenantId }) => {
-  const { openTaskThread } = useChat();
+  const { openTaskThread, chatEnabled } = useChat();
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
@@ -491,7 +491,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             <XCircle size={14} />
                           </button>
                         </>)}
-                        {!isViewer && (
+                        {!isViewer && chatEnabled && (
 <button onClick={(e) => {
                           e.stopPropagation();
                           openTaskChat({

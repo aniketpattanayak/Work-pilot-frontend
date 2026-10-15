@@ -12,6 +12,8 @@ let _messages      = {};
 let _totalUnread   = 0;
 let _employees     = [];
 let _activeConvId  = null;
+let _chatEnabled   = true;   // false when SuperAdmin switched Chat off for this company
+let _featuresFor   = null;   // tenant we already asked about
 
 // Subscribers — components that want re-renders when state changes
 const subscribers = new Set();
@@ -135,6 +137,17 @@ export function useChat() {
       socket.off('messages_read',       onReadReceipt);
     };
   }, [rerender]);
+
+  // Ask once whether this company has Chat switched on (SuperAdmin > Controls > Feature flags).
+  useEffect(() => {
+    const tenantId = localStorage.getItem('tenantId');
+    if (!tenantId || _featuresFor === tenantId) return;
+    _featuresFor = tenantId;
+    API.get(`/tasks/settings/${tenantId}`).then(r => {
+      const enabled = r.data?.superAdmin?.features?.chat !== false;
+      if (enabled !== _chatEnabled) { _chatEnabled = enabled; notify(); }
+    }).catch(() => { _featuresFor = null; });
+  }, []);
 
   // Load conversations once on mount
   useEffect(() => {
@@ -308,6 +321,7 @@ export function useChat() {
     allMessages:        _messages,
     typingUsers:        typingUsers.current,
     totalUnread:        _totalUnread,
+    chatEnabled:        _chatEnabled,
     loadingMsgs:        false,
     employees:          _employees,
     loadConversations,
