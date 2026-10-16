@@ -19,6 +19,17 @@ const BUCKETS = [
   ['latePending', 'Late pending', 'text-red-600']
 ];
 const fmtPct = (n) => `${(Number(n) || 0).toFixed(1)}%`;
+// Calendar day as YYYY-MM-DD in local time (the server reads these as India dates)
+const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const lastNDays = (n) => { const to = new Date(); const from = new Date(); from.setDate(to.getDate() - (n - 1)); return { from: ymd(from), to: ymd(to) }; };
+const RANGES = [['current', 'Current period'], ['7', 'Last 7 days'], ['30', 'Last 30 days'], ['90', 'Last 90 days'], ['custom', 'Date range']];
+// The four numbers asked for, for each work type
+const STAT_TILES = [
+  ['Done on time', (s) => s.onTimeDone, 'text-emerald-600', 'Finished on or before the deadline'],
+  ['Not done on time', (s) => s.lateDone, 'text-amber-600', 'Finished, but after the deadline'],
+  ['Not done', (s) => s.pendingOnTime + s.latePending, 'text-slate-600 dark:text-slate-300', 'Not finished yet (includes the overdue ones)'],
+  ['Not done & overdue', (s) => s.latePending, 'text-red-600', 'Not finished and the deadline has already passed']
+];
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '—');
 const fmtDateTime = (d) => (d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—');
 
@@ -61,6 +72,10 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refDate, setRefDate] = useState(new Date().toISOString().split('T')[0]);
+  const [rangeMode, setRangeMode] = useState('current'); // current | 7 | 30 | 90 | custom
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [appliedCustom, setAppliedCustom] = useState(null); // { from, to } once Apply is pressed
   const [people, setPeople] = useState([]);
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
 
@@ -84,7 +99,13 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
     try {
       setLoading(true);
       setError('');
-      const res = await API.get(`/tasks/user-dashboard/${viewId}`, { params: { date: refDate } });
+      let params = { date: refDate };
+      if (rangeMode === '7' || rangeMode === '30' || rangeMode === '90') params = lastNDays(Number(rangeMode));
+      else if (rangeMode === 'custom') {
+        if (!appliedCustom) { setLoading(false); return; } // wait until the dates are chosen and Apply is pressed
+        params = appliedCustom;
+      }
+      const res = await API.get(`/tasks/user-dashboard/${viewId}`, { params });
       setData(res.data);
     } catch (e) {
       setData(null);
@@ -92,7 +113,7 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
     } finally {
       setLoading(false);
     }
-  }, [viewId, refDate]);
+  }, [viewId, refDate, rangeMode, appliedCustom]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -130,18 +151,45 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
             )}
           </div>
         )}
-        {periodInfo && periodInfo.startDate && (
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>
-            <span className="text-xs font-black uppercase tracking-widest px-2">{PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
-            <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>
-            <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>
-            <button onClick={load} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-wrap">
+            {RANGES.map(([k, label]) => (
+              <button key={k} onClick={() => setRangeMode(k)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${rangeMode === k ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground'}`}>{label}</button>
+            ))}
           </div>
-        )}
+          {periodInfo && periodInfo.startDate && (
+            <>
+              {rangeMode === 'current' && (
+                <>
+                  <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>
+                  <span className="text-xs font-black uppercase tracking-widest px-2">{PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
+                  <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>
+                  <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>
+                </>
+              )}
+              {rangeMode !== 'current' && rangeMode !== 'custom' && (
+                <span className="text-xs font-black uppercase tracking-widest px-2">{fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
+              )}
+            </>
+          )}
+          {rangeMode === 'custom' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</label>
+              <input type="date" value={customFrom} max={customTo || undefined} onChange={(e) => setCustomFrom(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold" />
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</label>
+              <input type="date" value={customTo} min={customFrom || undefined} onChange={(e) => setCustomTo(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold" />
+              <button disabled={!customFrom || !customTo} onClick={() => setAppliedCustom({ from: customFrom, to: customTo })}
+                className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-black disabled:opacity-40">Apply</button>
+            </div>
+          )}
+          <button onClick={load} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
+        </div>
       </div>
 
-      {loading && !data ? (
+      {rangeMode === 'custom' && !appliedCustom ? (
+        <div className="py-20 text-center text-sm font-bold text-slate-500">Choose the From and To dates, then press Apply.</div>
+      ) : loading && !data ? (
         <div className="flex items-center justify-center gap-3 py-24 text-slate-500 text-xs font-black uppercase tracking-widest"><RefreshCcw className="animate-spin text-primary" size={20} /> Loading...</div>
       ) : error ? (
         <div className="py-20 text-center text-sm font-bold text-red-500">{error}</div>
@@ -197,13 +245,21 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
               ))}
               {TYPES.map(([k, label, bg]) => {
                 const s = data.stats[k];
+                const den = Math.max(s.total, s.onTimeDone + s.lateDone + s.pendingOnTime + s.latePending);
                 return (
-                  <div key={k} className="col-span-2 md:col-span-4 xl:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
-                    <div className={`${bg} text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest flex justify-between`}><span>{label}</span><span>weight {data.stats.weights[k]}</span></div>
-                    <div className="grid grid-cols-5 text-center py-2">
-                      {BUCKETS.map(([f, name, cls]) => (
-                        <div key={f}><p className={`text-lg font-black leading-none ${cls}`}>{s[f]}</p><p className="text-[8px] font-black uppercase tracking-wider text-slate-400 mt-1">{name}</p></div>
-                      ))}
+                  <div key={k} className="col-span-2 md:col-span-4 bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className={`${bg} text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest flex justify-between`}><span>{label}</span><span>Total {den}</span></div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 text-center py-3 gap-y-3">
+                      {STAT_TILES.map(([name, get, cls, tip]) => {
+                        const n = get(s);
+                        return (
+                          <div key={name} title={tip}>
+                            <p className={`text-2xl font-black leading-none ${cls}`}>{n}</p>
+                            <p className={`text-xs font-black mt-1 ${cls}`}>{den > 0 ? fmtPct((100 * n) / den) : '—'}</p>
+                            <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mt-1">{name}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );

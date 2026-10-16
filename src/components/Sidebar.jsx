@@ -108,7 +108,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       items: [
         { name: 'Dashboard',        icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
         { name: 'Global View', icon: <Globe />, roles: ['Viewer'], featureKey: 'reviewMeeting' },
-        { name: 'Manage Tasks', icon: <ClipboardList />, roles: ['Admin', 'Assigner'] },
+        { name: 'Manage Tasks', label: 'Manage Delegation', icon: <ClipboardList />, roles: ['Admin', 'Assigner'] },
         { name: 'Manage Checklist', icon: <LayoutList />, roles: ['Admin'] },
         { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
@@ -122,7 +122,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       label: 'Administration',
       items: [
         { name: 'Employees',         icon: <Users />,       roles: ['Admin'] },
-        { name: 'Mapping',           icon: <UserCog />,     roles: ['Admin'] },
+        { name: 'Mapping', label: 'PC Mapping', icon: <UserCog />,     roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
         { name: 'Chat',              icon: <MessageSquare />, roles: ['Admin', 'Coordinator', 'Doer', 'Assigner', 'OrderEntry'], featureKey: 'chat' },
         { name: 'Order Forms',       icon: <FileText />,    roles: ['Admin'] },
@@ -288,7 +288,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
                     <li key={index}>
                       <button
                         onClick={() => handleNavigate(item.name)}
-                        title={item.name}
+                        title={item.label || item.name}
                         className={`
                           w-full flex items-center rounded-xl border transition-all duration-200 active:scale-95
                           ${collapsed
@@ -307,7 +307,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
                           </span>
                           {!collapsed && (
                             <span className={`text-[12.5px] tracking-tight truncate transition-colors duration-200 ${active ? 'font-black text-primary' : 'font-semibold text-slate-600 dark:text-slate-400'}`}>
-                              {item.name}
+                              {item.label || item.name}
                             </span>
                           )}
                         </div>

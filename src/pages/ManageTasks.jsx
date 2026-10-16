@@ -306,7 +306,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <LucideClipboard size={20} className="text-primary shrink-0" />
-          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Work Monitor</h2>
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Delegation Work Monitor</h2>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">

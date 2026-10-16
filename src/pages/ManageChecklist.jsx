@@ -259,7 +259,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <ClipboardList className="text-primary shrink-0" size={20} />
-          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Task Registry</h2>
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Checklist Task Monitor</h2>
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">

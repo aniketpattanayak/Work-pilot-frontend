@@ -479,7 +479,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
           <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0"><ShieldCheck size={20} className="text-primary" /></div>
           <div className="min-w-0">
             <h2 className="text-foreground text-xl font-black tracking-tighter uppercase leading-none truncate">Coordinator Dashboard</h2>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80 italic truncate">Precision Industrial Performance Registry</p>
+            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80 italic truncate">See every task, checklist and flow in one place</p>
           </div>
         </div>
         <button onClick={fetchTasks} className="group shrink-0 bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
