@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance for AWS/Prod
+import { dialog } from './Dialog';
 import {
   UserPlus,
   CheckCircle,
@@ -69,7 +70,10 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const extOptions = limited ? Array.from({ length: maxExt }, (_, i) => ({ k: i + 1, date: new Date(new Date(task.deadline).getTime() + (i + 1) * 86400000) })) : [];
 
   const handleLimitedRevision = async () => {
-    if (!doerRemarks.trim() || !extDays) return alert("Please write the reason and choose the new date.");
+    if (!doerRemarks.trim() || !extDays) return dialog.alert("Please write the reason and choose the new date.");
+    const pickedDay = extOptions.find((o) => String(o.k) === String(extDays));
+    const okLimited = await dialog.confirm("Move the deadline to " + fmtDay(pickedDay.date) + "? This is applied straight away and your assigner is informed.", { title: 'Change deadline?' });
+    if (!okLimited) return;
     try {
       setIsProcessing(true);
       const picked = extOptions.find((o) => String(o.k) === String(extDays));
@@ -79,10 +83,10 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
         remarks: doerRemarks.trim(),
         proposedDeadline: picked.date.toISOString()
       });
-      alert("Done. The deadline is now " + fmtDay(picked.date) + ". Your assigner has been informed.");
+      dialog.alert("Done. The deadline is now " + fmtDay(picked.date) + ". Your assigner has been informed.");
       onSuccess();
     } catch (err) {
-      alert(err.response?.data?.message || "Could not change the deadline. Please try again.");
+      dialog.alert(err.response?.data?.message || "Could not change the deadline. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -91,8 +95,10 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const handleRequestRevision = async () => {
     if (limited) return handleLimitedRevision();
     if (!doerRemarks || !proposedDeadline) {
-      return alert("Fill all fields");
+      return dialog.alert("Fill all fields");
     }
+    const okReq = await dialog.confirm("Send this revision request to your assigner?", { title: 'Request revision?' });
+    if (!okReq) return;
 
     try {
       setIsProcessing(true);
@@ -111,11 +117,11 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
         action: 'Notify'
       });*/
 
-      alert("Revision request sent");
+      dialog.alert("Revision request sent");
       onSuccess();
     } catch (err) {
       console.error(err);
-      alert("Failed");
+      dialog.alert("Failed");
     } finally {
       setIsProcessing(false);
     }
@@ -133,7 +139,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
       // Safety Guard: Extract the date from the remarks string
       //let proposedDate = task.deadline; 
-      if (!approveDate) { alert("Please choose the new deadline date."); return; }
+      if (!approveDate) { dialog.alert("Please choose the new deadline date."); return; }
       // keep the task's original time of day, so choosing a date does not move the deadline to early morning
       const baseTime = task?.deadline ? new Date(task.deadline) : new Date();
       const [yy, mm, dd] = approveDate.split('-').map(Number);
@@ -146,11 +152,11 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
         assignerId: assignerId
       });
 
-      alert("Handshake Successful: New deadline updated to 'Accepted' status.");
+      dialog.alert("Handshake Successful: New deadline updated to 'Accepted' status.");
       onSuccess();
     } catch (err) {
       console.error("Approval Error:", err);
-      alert("System Error: Approval protocol failed.");
+      dialog.alert("System Error: Approval protocol failed.");
     } finally {
       setIsProcessing(false);
     }
@@ -158,7 +164,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
   // --- COMMAND: EXECUTE TASK REROUTING ---
   const handleReassign = async () => {
-    if (!newDoerId) return alert("Identify an alternative Doer node first.");
+    if (!newDoerId) return dialog.alert("Identify an alternative Doer node first.");
 
     try {
       setIsProcessing(true);
@@ -169,11 +175,11 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
         remarks: reassignRemarks || "Task reassigned due to deadline conflict.",
         assignerId: assignerId
       });
-      alert("Success: Task rerouted to new node.");
+      dialog.alert("Success: Task rerouted to new node.");
       onSuccess();
     } catch (err) {
       console.error("Reassignment Error:", err);
-      alert("System Error: Rerouting failed.");
+      dialog.alert("System Error: Rerouting failed.");
     } finally {
       setIsProcessing(false);
     }

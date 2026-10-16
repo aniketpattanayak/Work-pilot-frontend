@@ -166,7 +166,6 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
   const [gSearch, setGSearch]           = useState('');
   const [gStatus, setGStatus]           = useState('all'); // all | active | delayed | ontime | completed
   const [gFlow,   setGFlow]             = useState('');    // template name filter
-  const [gAssign, setGAssign]           = useState('');    // assigned to filter
   const [pagination, setPagination] = useState({ total: 0, pages: 1, page: 1 });
   const [liveLimit, setLiveLimit] = useState(50);
   const [globalLimit, setGlobalLimit] = useState(200);
@@ -239,8 +238,8 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </div>
-            <button onClick={fetchAll} className="px-3 py-1.5 rounded-lg border border-border text-[11px] font-medium hover:bg-muted transition flex items-center gap-1.5">
-              <RefreshCcw size={12} /> Refresh
+            <button onClick={fetchAll} disabled={loading} className="px-3 py-1.5 rounded-lg border border-border text-[11px] font-medium hover:bg-muted transition flex items-center gap-1.5 disabled:opacity-60">
+              <RefreshCcw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
             <button onClick={onCreateFlow}
               className="px-3 py-1.5 rounded-lg bg-primary text-white text-[11px] font-semibold hover:bg-primary/90 transition flex items-center gap-1.5">
@@ -543,12 +542,9 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
               <option value="">All Flows</option>
               {templates.map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
             </select>
-            {/* Assignee search */}
-            <input placeholder="👤 Assignee name..." value={gAssign} onChange={e=>setGAssign(e.target.value)}
-              style={{ flex:1, minWidth:150, padding:'8px 12px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-muted)', color:'var(--color-foreground)', fontSize:12, outline:'none' }} />
             {/* Clear */}
-            {(gSearch||gStatus!=='all'||gFlow||gAssign) && (
-              <button onClick={()=>{setGSearch('');setGStatus('all');setGFlow('');setGAssign('');}}
+            {(gSearch||gStatus!=='all'||gFlow) && (
+              <button onClick={()=>{setGSearch('');setGStatus('all');setGFlow('');}}
                 style={{ padding:'8px 14px', border:'1px solid var(--color-border)', borderRadius:8, background:'var(--color-card)', color:'var(--color-muted-foreground)', fontSize:12, cursor:'pointer' }}>
                 ✕ Clear
               </button>
@@ -600,7 +596,6 @@ export default function FlowMonitor({ tenantId, onCreateFlow, onEditFlow }) {
                   if (gStatus==='ontime' && !(inst.status==='active'&&!inst.isOverdue)) return false;
                   if (gStatus==='completed' && inst.status!=='completed') return false;
                   if (gFlow && inst.templateName!==gFlow) return false;
-                  if (gAssign && !inst.activeStep?.assignedToName?.toLowerCase().includes(gAssign.toLowerCase())) return false;
                   return true;
                 }).map((inst, idx) => {
                   const tmpl = templates.find(t => t._id?.toString() === inst.templateId?.toString() || t.name === inst.templateName);

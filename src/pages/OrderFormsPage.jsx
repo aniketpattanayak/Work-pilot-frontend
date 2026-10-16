@@ -168,13 +168,21 @@ function FormEditor({ form, tenantId, onSaved, onCancel }) {
     const setter = section === 'orderFields' ? setOrderFields : setItemFields;
     setter(p => p.map(f => f.id === id ? { ...f, ...patch } : f));
   };
-  const deleteField = (section, id) => {
+  const deleteField = async (section, id) => {
+    const list = section === 'orderFields' ? orderFields : itemFields;
+    const f = list.find(x => x.id === id);
+    const yes = await dialog.confirm(
+      'Remove the field "' + ((f && f.label) || 'this field') + '" from the form? You can still cancel before saving the form.',
+      { title: 'Remove field', danger: true, confirmText: 'Remove' }
+    );
+    if (!yes) return;
     const setter = section === 'orderFields' ? setOrderFields : setItemFields;
-    setter(p => p.filter(f => f.id !== id));
+    setter(p => p.filter(x => x.id !== id));
   };
 
   const handleSave = async () => {
     if (!formName.trim()) { setError('Enter a form name'); return; }
+    if ([...orderFields, ...itemFields].some(f => !String(f.label || '').trim())) { setError('Every field needs a label. Fill it in or remove the empty field.'); return; }
     setSaving(true); setError('');
     try {
       // If new form, save without templateId — it will be linked when building a flow
@@ -402,7 +410,7 @@ export default function OrderFormsPage({ tenantId }) {
 
   // ── EDITOR VIEW (popup form) ────────────────────────────────────────────────
   if (editing !== null) return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div role="dialog" aria-label="Order form"
         style={{ width: '100%', maxWidth: 880, height: 'min(88vh, 740px)', background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,.35)' }}>
         <FormEditor

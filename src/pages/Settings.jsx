@@ -281,7 +281,10 @@ const Settings = ({ tenantId }) => {
     setNewHoliday({ name: '', date: '' });
   };
 
-  const removeHoliday = (index) => {
+  const removeHoliday = async (index) => {
+    const h = holidayList[index];
+    const yes = await dialog.confirm('Remove the holiday "' + ((h && h.name) || 'this holiday') + '"? Click "Commit Global Updates" afterwards to save the change.', { title: 'Remove holiday', danger: true, confirmText: 'Remove' });
+    if (!yes) return;
     setHolidayList((prevList) => prevList.filter((_, i) => i !== index));
   };
 
@@ -806,7 +809,7 @@ const Settings = ({ tenantId }) => {
           <div className="flex flex-col md:flex-row gap-3 mb-4">
             <input type="text" placeholder="Holiday Name" value={newHoliday.name} onChange={(e) => setNewHoliday(prev => ({...prev, name: e.target.value}))} className="flex-[2] bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm uppercase shadow-inner" />
             <input type="date" value={newHoliday.date} onChange={(e) => setNewHoliday(prev => ({...prev, date: e.target.value}))} className="flex-[1.5] bg-background border border-border text-foreground px-4 py-2.5 rounded-xl outline-none focus:ring-4 focus:ring-primary/10 font-black text-sm shadow-inner" />
-            <button onClick={addHolidayToList} className="bg-primary hover:opacity-90 text-white dark:text-slate-950 px-6 py-2.5 md:py-0 rounded-xl transition-all shadow-md shadow-primary/20 flex items-center justify-center active:scale-95"><PlusCircle size={24} /></button>
+            <button onClick={addHolidayToList} className="bg-primary hover:opacity-90 text-white dark:text-slate-950 px-6 py-2.5 md:py-0 rounded-xl transition-all shadow-md shadow-primary/20 flex items-center justify-center active:scale-95"><PlusCircle size={20} /><span className="ml-2 text-[11px] font-black uppercase tracking-widest">Add</span></button>
           </div>
           <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             {Array.isArray(holidayList) && holidayList.map((h, index) => (

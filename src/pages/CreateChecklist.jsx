@@ -94,7 +94,7 @@ const CreateChecklist = ({ tenantId, onSuccess, hideHeader = false }) => {
   }, [fetchSettings]);
 
 
-  const holidayDates = holidayList.map(h => new Date(h.date));
+  const holidayDates = holidayList.map(h => new Date(h.date)).filter(d => !isNaN(d.getTime()));
 
 // 🔥 Map for quick lookup (for tooltip)
 const holidayMap = {};
@@ -324,6 +324,9 @@ const isDisabledDate = (date) =>
     setFormData({ ...formData, startDate: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` });
   }}
   dateFormat="dd MMM yyyy"
+  minDate={startOfToday()}
+  wrapperClassName="w-full"
+  popperPlacement="bottom-start"
   showYearDropdown
   showMonthDropdown
   dropdownMode="select"

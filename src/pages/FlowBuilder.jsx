@@ -100,6 +100,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
 
   // ── Auto-save key per tenant ──────────────────────────────────────────────
   const DRAFT_KEY = `wp_flow_draft_${tenantId}`;
+  const skipNextAutosave = useRef(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
 
   // ── Form linking ─────────────────────────────────────────────────────────
@@ -174,6 +175,8 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
         if (draft.meta)           setMeta(draft.meta);
         if (draft.nodes)          setNodes(draft.nodes);
         if (draft.selectedFormId) setSelectedFormId(draft.selectedFormId);
+        if (draft.savedAt)        setDraftSavedAt(draft.savedAt);
+        skipNextAutosave.current = true; // restoring is not a new save - keep the original time
         console.log('[FlowBuilder] Draft restored from localStorage');
       }
     } catch (e) {}
@@ -182,6 +185,7 @@ export default function FlowBuilder({ tenantId, wizardConfig, onFlowSaved }) {
   // Auto-save to localStorage whenever meta or nodes change
   useEffect(() => {
     if (!meta.name && nodes.length === 0) return; // don't save empty state
+    if (skipNextAutosave.current) { skipNextAutosave.current = false; return; }
     try {
       const now = Date.now();
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ meta, nodes, selectedFormId, savedAt: now }));

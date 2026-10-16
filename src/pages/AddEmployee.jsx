@@ -175,7 +175,7 @@ const AddEmployee = ({
     email: "",
     joiningDate: "",
     roles: ["Doer"],
-    password: "Password@123",
+    password: "",
     managedDoers: [],
     managedAssigners: [],
     workOnSunday: false, // Initialized as boolean
@@ -318,7 +318,7 @@ const AddEmployee = ({
         email: "",
         joiningDate: "",
         roles: ["Doer"],
-        password: "Password@123",
+        password: "",
         managedDoers: [],
         managedAssigners: [],
         workOnSunday: false, // Explicit reset
@@ -389,6 +389,10 @@ const AddEmployee = ({
       await dialog.alert("Joining date cannot be in the future.", { tone: "error", title: "Check the joining date" });
       return;
     }
+    if (!isEditing && String(formData.password || "").length < 8) {
+      await dialog.alert("Please set a password of at least 8 characters for the new employee.", { tone: "error", title: "Check the password" });
+      return;
+    }
     setLoading(true);
     try {
       const finalRoles = formData.roles.length > 0 ? formData.roles : ["Doer"];
@@ -421,7 +425,7 @@ const AddEmployee = ({
         whatsappNumber: "",
         email: "",
         roles: ["Doer"],
-        password: "Password@123",
+        password: "",
         managedDoers: [],
         managedAssigners: [],
         workOnSunday: false,
@@ -701,6 +705,7 @@ const AddEmployee = ({
             />
             <input
               type="text"
+              autoComplete="new-password"
               placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
               value={formData.password || ""} // Safe Fallback
               required={!isEditing}

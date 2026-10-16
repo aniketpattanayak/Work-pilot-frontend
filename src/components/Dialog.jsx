@@ -85,7 +85,7 @@ export const DialogHost = () => {
   const cancelText = current.cancelText || (current.kind === 'confirm' ? 'No' : 'Cancel');
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget && current.kind !== 'alert') cancel(); }}>
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) cancel(); }}>
       <div role="dialog" aria-modal="true" className="no-auto-sheet w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
         <div className="flex items-start gap-3 px-5 pt-5">
           <div className={`w-10 h-10 shrink-0 rounded-xl border flex items-center justify-center ${tone.ring}`}><Icon size={18} /></div>
@@ -93,9 +93,7 @@ export const DialogHost = () => {
             <p className="text-sm font-black uppercase tracking-tight text-foreground">{current.title || (current.kind === 'confirm' ? 'Please confirm' : current.kind === 'prompt' ? 'Details needed' : current.tone === 'success' ? 'Done' : current.tone === 'error' ? 'Something went wrong' : 'Notice')}</p>
             <p className="text-sm text-slate-500 mt-1 whitespace-pre-line break-words">{current.message}</p>
           </div>
-          {current.kind !== 'alert' && (
-            <button type="button" aria-label="Close" onClick={cancel} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center text-slate-400"><X size={14} /></button>
-          )}
+          <button type="button" aria-label="Close" onClick={cancel} className="w-7 h-7 rounded-lg hover:bg-muted flex items-center justify-center text-slate-400"><X size={14} /></button>
         </div>
         {current.kind === 'prompt' && (
           <div className="px-5 pt-3">

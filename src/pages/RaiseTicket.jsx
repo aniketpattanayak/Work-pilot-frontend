@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
 import { 
@@ -22,7 +22,8 @@ import {
   Filter,
   Layers,
   Pencil,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 
@@ -49,6 +50,21 @@ const RaiseTicket = ({ userId, tenantId }) => {
 
   // --- LEDGER STATES ---
   const [tickets, setTickets] = useState([]);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const visibleTickets = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+    const to = dateTo ? new Date(dateTo + 'T23:59:59.999') : null;
+    return tickets.filter((t) => {
+      if (q && !([t.title, t.category, t.status, t.priority, t.description, (t._id || '').slice(-8)].join(' ').toLowerCase().includes(q))) return false;
+      const d = new Date(t.createdAt);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [tickets, search, dateFrom, dateTo]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -171,12 +187,25 @@ const RaiseTicket = ({ userId, tenantId }) => {
 
       {/* TICKET TABLE */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/50 flex justify-between items-center bg-background/50">
+        <div className="px-4 py-3 border-b border-border/50 flex flex-wrap gap-3 justify-between items-center bg-background/50">
           <h3 className="text-xs font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
             <Layers size={14} /> My Tickets
           </h3>
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-            Total: <span className="text-primary">{tickets.length}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search tickets..."
+                className="pl-8 pr-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/30 w-48" />
+            </div>
+            <input type="date" aria-label="From date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/30" />
+            <span className="text-[10px] font-black text-slate-400 uppercase">to</span>
+            <input type="date" aria-label="To date" value={dateTo} min={dateFrom || undefined} onChange={(e) => setDateTo(e.target.value)} className="px-3 py-2 bg-background border border-border rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/30" />
+            {(search || dateFrom || dateTo) && (
+              <button type="button" onClick={() => { setSearch(''); setDateFrom(''); setDateTo(''); }} className="px-3 py-2 rounded-xl border border-border text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-muted">Clear</button>
+            )}
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              Total: <span className="text-primary">{visibleTickets.length}</span>{visibleTickets.length !== tickets.length && <span> / {tickets.length}</span>}
+            </div>
           </div>
         </div>
 
@@ -195,7 +224,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
               </tr>
             </thead>
             <tbody>
-              {tickets.length > 0 ? tickets.map((ticket, idx) => {
+              {visibleTickets.length > 0 ? visibleTickets.map((ticket, idx) => {
                 const isExpanded = expandedId === ticket._id;
                 const isResolved = ticket.status === 'Resolved';
                 const canEdit = ticket.status === 'Open';
@@ -284,7 +313,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
               }) : (
                 <tr>
                   <td colSpan="7" className="py-16 text-center text-xs font-black uppercase tracking-widest text-slate-400">
-                    {loadingTickets ? 'Loading tickets…' : 'No tickets yet. Click "Raise New Ticket" to send one to support.'}
+                    {loadingTickets ? 'Loading tickets…' : tickets.length > 0 ? 'No tickets match your search or dates.' : 'No tickets yet. Click "Raise New Ticket" to send one to support.'}
                   </td>
                 </tr>
               )}

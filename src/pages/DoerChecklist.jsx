@@ -108,6 +108,15 @@ const DoerChecklist = ({ doerId }) => {
   const [onwardErr, setOnwardErr] = useState('');
   const myRoles = Array.isArray(savedUser.roles) ? savedUser.roles : (savedUser.role ? [savedUser.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
+  // "Revised" belongs to the doer who asked for the new date, not to whoever got the task afterwards
+  const revisedForMe = (t) => {
+    let by = idOf(t.revisedByDoerId);
+    if (!by) {
+      const h = [...(t.history || [])].reverse().find((x) => x.action === 'Deadline Revised');
+      by = h ? idOf(h.performedBy) : '';
+    }
+    return !by || by === String(currentDoerId);
+  };
   // A task I handed to someone else: I can follow it here but not work on it
   const isPassedOn = (t) =>
     idOf(t.doerId) !== String(currentDoerId) &&
@@ -531,8 +540,21 @@ const DoerChecklist = ({ doerId }) => {
                       </button>
                     </>
                   )}
-                  {item.dataType === 'Checklist' && !item.isDone && (
-                    <button onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }} className="px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white bg-emerald-600">Submit</button>
+                  {item.dataType === 'Checklist' && !item.isDone && (() => {
+                    const due = new Date(item.deadlineDate); due.setHours(0, 0, 0, 0);
+                    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+                    const upcoming = due.getTime() > todayStart.getTime();
+                    return (
+                      <button
+                        disabled={upcoming}
+                        title={upcoming ? 'Not due yet' : undefined}
+                        onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }}
+                        className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white ${upcoming ? 'bg-slate-300 cursor-not-allowed opacity-50' : 'bg-emerald-600'}`}
+                      >Submit</button>
+                    );
+                  })()}
+                  {((item.dataType === 'Checklist' && item.isDone) || (item.dataType === 'Delegation' && ['Completed', 'Verified'].includes(item.status))) && (
+                    <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-600"><CheckCircle size={10} className="text-emerald-500" /> Done</span>
                   )}
                   {item.dataType === 'FMS' && (
                     <button onClick={() => { setActiveTask(item); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
@@ -591,7 +613,7 @@ const DoerChecklist = ({ doerId }) => {
                     {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
                     {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
-                  {task.originalDeadline && (
+                  {task.originalDeadline && revisedForMe(task) && (
                     <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was revised">
                       Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
                     </span>
@@ -607,6 +629,9 @@ const DoerChecklist = ({ doerId }) => {
                   {isPassedOn(task) && (<span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {task.doerId?.name || 'someone'}</span>)}
                   {canForward(task) && (
                     <button onClick={() => openOnward(task)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
+                  )}
+                  {['Completed', 'Verified'].includes(task.status) && (
+                    <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-600"><CheckCircle size={10} className="text-emerald-500" /> Done</span>
                   )}
                   {(task.status === "Pending" || task.status === "Accepted") && !isPassedOn(task) && (
                     <>

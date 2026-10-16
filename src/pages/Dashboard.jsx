@@ -188,7 +188,7 @@ const sessionUser = liveUser;
    * Pulls separate "Not Done" stats for Checklist and Delegation categories.
    */
   const fetchUserScore = useCallback(async () => {
-    if (!userId || !currentTenantId) return;
+    if (!userId) return; // the server knows the company from the login token
     try {
       // One call for this person's own numbers (same source as the dashboard page)
       const res = await API.get(`/tasks/user-dashboard/${userId}`, { params: { view: 'Weekly' } });

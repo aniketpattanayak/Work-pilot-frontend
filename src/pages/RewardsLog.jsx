@@ -30,7 +30,7 @@ const parseHistoryPoints = (text) => {
 };
 
 const RewardsLog = ({ userId, tenantId }) => {
-  const [logs, setLogs] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -56,7 +56,9 @@ const RewardsLog = ({ userId, tenantId }) => {
 
       const rawTasks = Array.isArray(tasksRes.data) ? tasksRes.data : (tasksRes.data?.tasks || []);
       const pointsHistory = [];
-      rawTasks.forEach(task => {
+      // An Admin sees the whole company's point entries; everyone else sees only their own tasks'
+      const everyoneForLog = isAdmin ? (Array.isArray(allRes.data) ? allRes.data : (allRes.data?.tasks || null)) : null;
+      (everyoneForLog || rawTasks).forEach(task => {
         (task?.history || []).forEach(entry => {
           if (entry.action === 'Points Calculated' || entry.action === 'Points Awarded') {
             const { n, lead } = parseHistoryPoints(entry.remarks);
@@ -64,7 +66,7 @@ const RewardsLog = ({ userId, tenantId }) => {
           }
         });
       });
-      setLogs(pointsHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
+      setAllLogs(pointsHistory.sort((a, b) => new Date(b.date) - new Date(a.date)));
 
       const everyone = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.tasks || null);
       setAllTasks(everyone || rawTasks);
@@ -101,6 +103,16 @@ const RewardsLog = ({ userId, tenantId }) => {
     return stats;
   }, [allTasks, activeRange, isAdmin]);
 
+  // The history follows the Daily / Weekly / Monthly tab, the same way the cards above do
+  const logs = useMemo(() => {
+    const now = new Date();
+    return allLogs.filter((l) => {
+      const d = new Date(l.date);
+      if (activeRange === 'Daily') return d.toDateString() === now.toDateString();
+      if (activeRange === 'Weekly') return d >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  }, [allLogs, activeRange]);
   const netPoints = logs.reduce((sum, l) => sum + l.pts, 0);
   const pct = (n) => (analytics && analytics.total > 0 ? Math.round((n / analytics.total) * 100) : 0);
 
@@ -211,7 +223,7 @@ const RewardsLog = ({ userId, tenantId }) => {
           !loadError && (
             <div className="py-12 text-center border-2 border-dashed border-border rounded-2xl bg-background/50 px-4">
               <HistoryIcon size={40} className="text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-              <p className="text-slate-500 font-black uppercase tracking-widest text-[11px]">No points recorded yet</p>
+              <p className="text-slate-500 font-black uppercase tracking-widest text-[11px]">{allLogs.length > 0 ? 'No points recorded in this period' : 'No points recorded yet'}</p>
               <p className="text-slate-400 font-bold text-xs mt-2 max-w-md mx-auto">Points are added to the lead doer when a delegation task is completed. If nothing ever appears here, ask your Admin to switch the Performance Engine on in Settings.</p>
             </div>
           )

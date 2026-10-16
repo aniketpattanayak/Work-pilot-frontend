@@ -42,6 +42,12 @@ import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 
+// Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back"
+const displayStatus = (t) => {
+  const last = (t.history || []).slice(-1)[0];
+  return t.status === 'Accepted' && last && last.action === 'Sent Back' ? 'Rejected' : (t.status || '');
+};
+
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread, chatEnabled } = useChat();
   const navigate = useNavigate();
@@ -123,12 +129,12 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           nextWeek.setDate(now.getDate() + 7);
           if (!(deadline >= now && deadline <= nextWeek)) return false;
         }
-        if (range === 'Pending Work' && !(deadline.getTime() < now.getTime() && task.status !== 'Verified' && task.status !== 'Completed')) return false;
+        if (range === 'Pending Work' && (task.status || '') !== 'Pending') return false;
       }
 
       // Status filter dropdown
       if (status !== 'All') {
-        if ((task.status || '').toLowerCase() !== status.toLowerCase()) return false;
+        if (displayStatus(task).toLowerCase() !== status.toLowerCase()) return false;
       }
 
       // Name filter — matches task title OR assigned person name
@@ -462,7 +468,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{task.status}</span>
+                        <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{displayStatus(task)}</span>
                       </div>
                       <div className="flex gap-1.5 justify-end items-center min-w-0">
                         {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (

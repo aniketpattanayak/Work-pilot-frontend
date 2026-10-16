@@ -214,6 +214,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       createdAt: item.createdAt,
       // shown in Frequency Tuning; only sent to the server if the admin changes it
       startDate: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
+      origStart: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
       startDateChanged: false
     });
   };
@@ -222,8 +223,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     if (e) { e.preventDefault(); e.stopPropagation(); }
     if (!String(editData.taskName || '').trim()) { dialog.alert('Please enter the task name.', { tone: 'error' }); return; }
     if (!editData.doerId) { dialog.alert('Please choose who the checklist is assigned to.', { tone: 'error' }); return; }
-    const { startDate, startDateChanged, ...rest } = editData;
+    const { startDate, startDateChanged, origStart, ...rest } = editData;
     if (startDateChanged && !/^\d{4}-\d{2}-\d{2}$/.test(startDate || '')) { dialog.alert('Please choose a valid start date.', { tone: 'error' }); return; }
+    if (startDateChanged && startDate < todayYmd()) { dialog.alert('The start date cannot be in the past. Please choose today or a later date.', { tone: 'error' }); return; }
     try {
       setSaving(true);
       const payload = startDateChanged ? { ...rest, startDate } : rest;
@@ -523,11 +525,12 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Start Date</label>
                 <input
                   type="date"
+                  min={editData.origStart && editData.origStart < todayYmd() ? editData.origStart : todayYmd()}
                   value={editData.startDate || ''}
                   onChange={(e) => setEditData({ ...editData, startDate: e.target.value, startDateChanged: true })}
                   className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 />
-                <p className="text-[10px] text-slate-500 font-bold mt-1">Changing this recalculates the next due date from it. Past dates are allowed.</p>
+                <p className="text-[10px] text-slate-500 font-bold mt-1">Changing this recalculates the next due date from it. Past dates are not allowed.</p>
               </div>
             </div>
 

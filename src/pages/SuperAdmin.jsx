@@ -1041,8 +1041,8 @@ function TicketsModal({ onClose }) {
     try {
       // Try both resolve endpoints
       // Use the correct endpoint: PUT /tickets/resolve with ticketId in body
-      await SA.put('/tickets/resolve', { ticketId: id, remarks });
-      setTickets(p => p.map(t => t._id===id ? {...t, status:'resolved', resolutionRemarks:remarks} : t));
+      await SA.put('/tickets/resolve', { ticketId: id, adminRemarks: remarks });
+      setTickets(p => p.map(t => t._id===id ? {...t, status:'Resolved', adminRemarks:remarks, resolutionRemarks:remarks} : t));
       setSelected(null); setRemarks('');
     } catch(e) { alert('Failed to resolve: ' + (e.response?.data?.message||e.message)); }
     finally { setSaving(false); }
@@ -1051,7 +1051,8 @@ function TicketsModal({ onClose }) {
   const isImage = url => url && /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
 
   const filtered = tickets.filter(t => {
-    const matchFilter = filter==='all' || t.status===filter || (!t.status && filter==='open');
+    const stLow = String(t.status||'').toLowerCase();
+    const matchFilter = filter==='all' || (filter==='open' ? stLow!=='resolved' : stLow===filter);
     const matchSearch = !search || 
       (t.subject||t.title||'').toLowerCase().includes(search.toLowerCase()) ||
       (t.raisedBy||t.employeeName||'').toLowerCase().includes(search.toLowerCase()) ||
@@ -1059,8 +1060,8 @@ function TicketsModal({ onClose }) {
     return matchFilter && matchSearch;
   });
 
-  const openCount     = tickets.filter(t => !t.status || t.status==='open').length;
-  const resolvedCount = tickets.filter(t => t.status==='resolved').length;
+  const openCount     = tickets.filter(t => !t.status || String(t.status).toLowerCase()!=='resolved').length;
+  const resolvedCount = tickets.filter(t => String(t.status||'').toLowerCase()==='resolved').length;
 
   return (
     <Overlay onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -1124,7 +1125,7 @@ function TicketsModal({ onClose }) {
           )}
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {filtered.map(t => {
-              const isResolved = t.status === 'resolved';
+              const isResolved = String(t.status||'').toLowerCase() === 'resolved';
               const files = t.initialMedia || t.files || t.attachments || [];
               return (
                 <div key={t._id} style={{
@@ -1204,8 +1205,8 @@ function TicketsModal({ onClose }) {
                         <CheckCircle2 size={14} style={{ flexShrink:0, marginTop:1 }}/>
                         <div>
                           <div style={{ fontWeight:600, marginBottom:2 }}>Resolved</div>
-                          {(t.resolutionRemarks || t.remarks || t.resolution) &&
-                            <div style={{ opacity:.85 }}>{t.resolutionRemarks || t.remarks || t.resolution}</div>
+                          {(t.resolutionRemarks || t.adminRemarks || t.remarks || t.resolution) &&
+                            <div style={{ opacity:.85 }}>{t.resolutionRemarks || t.adminRemarks || t.remarks || t.resolution}</div>
                           }
                         </div>
                       </div>

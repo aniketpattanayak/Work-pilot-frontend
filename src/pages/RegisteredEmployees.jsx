@@ -42,6 +42,7 @@ import {
  * Fix: Removed horizontal scroll — card-based layout shows all info including email & phone.
  */
 const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) => {
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -76,9 +77,9 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
     setBuddySearchQuery('');
     setLeaveData({
       onLeave: true,
-      startDate: emp.leaveStatus?.startDate ? emp.leaveStatus.startDate.split('T')[0] : '',
-      endDate: emp.leaveStatus?.endDate ? emp.leaveStatus.endDate.split('T')[0] : '',
-      buddyId: emp.leaveStatus?.buddyId || ''
+      startDate: '',
+      endDate: '',
+      buddyId: ''
     });
     setShowLeaveModal(true);
   };
@@ -227,6 +228,14 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total:</span>
               <span className="text-primary font-black text-sm">{filteredEmployees.length}</span>
             </div>
+            <button
+              onClick={async () => { setRefreshing(true); try { await fetchEmployees(); } finally { setRefreshing(false); } }}
+              disabled={refreshing}
+              className="flex items-center gap-2 bg-card border border-border text-foreground px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-muted active:scale-95 transition-all disabled:opacity-60"
+            >
+              <RefreshCcw size={14} className={refreshing ? 'animate-spin' : ''} />
+              Refresh
+            </button>
             <button
               onClick={onAddNew}
               className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"

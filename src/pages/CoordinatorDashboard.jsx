@@ -231,18 +231,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
 
-  // Auto-set date range to next 5 days when switching to Upcoming
+  // Switching tabs starts with no date filter (Upcoming still looks 5 days ahead for checklists by default)
   useEffect(() => {
-    if (activeTab === 'Upcoming') {
-      const from = new Date();
-      const to = new Date();
-      to.setDate(to.getDate() + 5);
-      setDateFrom(from.toISOString().split('T')[0]);
-      setDateTo(to.toISOString().split('T')[0]);
-    } else {
-      setDateFrom('');
-      setDateTo('');
-    }
+    setDateFrom('');
+    setDateTo('');
   }, [activeTab]);
 
   const filteredTasks = useMemo(() => {
@@ -263,7 +255,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       let matchesTab = false;
 
       if (activeTab === 'Completed') {
-        matchesTab = isDone;
+        // Checklists repeat, so they are never "completed" as a whole
+        matchesTab = isDone && task.taskType !== 'Checklist';
       } else if (activeTab === 'Pending') {
         if (isDone) {
           matchesTab = false;
@@ -658,7 +651,6 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                         <td className="px-4 py-3">
                           <div className="relative group max-w-[180px]">
                             <div className="text-sm font-black text-foreground uppercase tracking-tight truncate">{task.title}</div>
-                            <div className="absolute left-0 top-full mt-1 hidden group-hover:block bg-card border border-border rounded-lg p-2 text-xs shadow-xl z-50 w-max max-w-[300px]">{task.title}</div>
                           </div>
                           <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                             {task.taskType === 'FMS'
@@ -731,6 +723,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                                 className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-90">
                                 {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {instances.length} {activeTab === 'Upcoming' ? 'Upcoming' : 'Backlogs'}
                               </button>
+                            )}
+                            {activeTab === 'Completed' && (
+                              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-600"><CheckCircle2 size={12} /> Done</span>
                             )}
                             {!isViewer && activeTab !== 'Completed' && (
 <button onClick={() => openReminderModal(task)}
