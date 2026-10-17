@@ -349,20 +349,20 @@ const DoerChecklist = ({ doerId }) => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
         <button
           onClick={() => { setActiveCategory('All Data'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <LayoutGrid size={16} className="shrink-0" />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">All Data</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">All Data</span>
         </button>
 
         <button
           onClick={() => { setActiveCategory('Checklist'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Checklist' ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Layers size={16} className="shrink-0" />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">Checklist</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">Checklist</span>
           {pendingRoutinesCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full shadow-md animate-bounce">
+            <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black leading-none rounded-full shadow-md ring-2 ring-background">
               {pendingRoutinesCount}
             </span>
           )}
@@ -370,12 +370,12 @@ const DoerChecklist = ({ doerId }) => {
 
         <button
           onClick={() => { setActiveCategory('Delegation'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Delegation' ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Briefcase size={16} className="shrink-0" />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">Delegation</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">Delegation</span>
           {pendingDelegationsCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-md animate-bounce">
+            <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black leading-none rounded-full shadow-md ring-2 ring-background">
               {pendingDelegationsCount}
             </span>
           )}
@@ -383,12 +383,12 @@ const DoerChecklist = ({ doerId }) => {
 
         <button
           onClick={() => { setActiveCategory('FMS'); setTimeFilter('All'); }}
-          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm overflow-hidden ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'}`}
+          className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'FMS' ? 'bg-slate-900 text-white border-slate-900 shadow-slate-900/20' : 'bg-card text-slate-500 border-border'}`}
         >
           <Activity size={16} className={`shrink-0 ${activeCategory === 'FMS' ? 'animate-pulse' : ''}`} />
-          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate">FMS Missions</span>
+          <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">FMS Missions</span>
           {filteredData.fms.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full shadow-md">
+            <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black leading-none rounded-full shadow-md ring-2 ring-background">
               {filteredData.fms.length}
             </span>
           )}
