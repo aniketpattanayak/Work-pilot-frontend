@@ -66,6 +66,7 @@ const DoerChecklist = ({ doerId }) => {
   // ManageTasks.jsx so the doer can see every uploaded photo and the full
   // audit trail (including rejection remarks) for a delegation task.
   const [detailsModalTask, setDetailsModalTask] = useState(null);
+  const [openCards, setOpenCards] = useState({}); // phone cards: tap the title/description to read it in full
   // Full-screen zoomable photo GALLERY - shared by the History & Files
   // modal and the row-level "has photos" thumbnail, same as ManageTasks.jsx.
   const [gallery, setGallery] = useState(null); // { photos, startIndex, task } | null
@@ -522,7 +523,7 @@ const DoerChecklist = ({ doerId }) => {
                   <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{ci.text}</span>
                 </div>
                 <div className="flex flex-col min-w-0 pr-2 max-lg:contents">
-                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] max-lg:line-clamp-2">
+                  <span className={`font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] ${openCards[item.uniqueKey] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [item.uniqueKey]: !o[item.uniqueKey] }))}>
                     {item.title}
                   </span>
                   <span className="max-lg:hidden inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">
@@ -550,13 +551,16 @@ const DoerChecklist = ({ doerId }) => {
                   {item.assignerName || '-'}
                 </div>
                 <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2 max-lg:order-3 max-lg:mb-0 max-lg:mt-1 max-lg:pr-0 max-lg:normal-case max-lg:font-medium max-lg:opacity-100 max-lg:text-muted-foreground max-lg:leading-snug max-lg:[overflow-wrap:anywhere]">
-                  <span className="max-lg:line-clamp-2 max-lg:block">{item.description || "No description provided."}</span>
+                  <span className={`max-lg:block ${openCards[item.uniqueKey] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [item.uniqueKey]: !o[item.uniqueKey] }))}>{item.description || "No description provided."}</span>
                   {item.dataType === 'Delegation' && item.remarks && (
                     <div className="mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-black normal-case tracking-tight not-italic">
                       {item.status === 'Accepted' ? 'Sent back — ' : 'Note — '}{item.remarks}
                     </div>
                   )}
                 </div>
+                {(String(item.title || '').length > 55 || String(item.description || '').length > 70) && (
+                  <button type="button" onClick={() => setOpenCards(o => ({ ...o, [item.uniqueKey]: !o[item.uniqueKey] }))} className="lg:hidden order-3 mt-1 text-[10px] font-black uppercase tracking-widest text-primary w-fit">{openCards[item.uniqueKey] ? 'Show less' : 'Read full'}</button>
+                )}
                 <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
                   <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateText}</span>
                   <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{item.assignerName || '-'}</span></span>
