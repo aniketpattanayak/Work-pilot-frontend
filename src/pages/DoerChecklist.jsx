@@ -285,6 +285,23 @@ const DoerChecklist = ({ doerId }) => {
     };
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate]);
 
+  // Phone card helper: which group a task sits in, plus the short status text and colours for its card.
+  const cardInfo = (item) => {
+    const done = item.dataType === 'Checklist' ? !!item.isDone
+      : item.dataType === 'Delegation' ? (item.status === 'Completed' || item.status === 'Verified')
+      : item.status === 'completed';
+    if (done) return { group: 'Completed', text: 'Completed', stripe: 'before:bg-emerald-500', dot: 'text-emerald-500' };
+    const raw = item.deadlineDate;
+    const d = raw ? new Date(raw) : null;
+    if (!d || Number.isNaN(d.getTime())) return { group: 'Upcoming', text: item.statusLabel || 'Pending', stripe: 'before:bg-slate-500', dot: 'text-slate-400' };
+    d.setHours(0, 0, 0, 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+    if (days < 0) return { group: 'Overdue', text: `Overdue ${-days} day${days === -1 ? '' : 's'}`, stripe: 'before:bg-red-500', dot: 'text-red-500' };
+    if (days === 0) return { group: 'Today', text: 'Due today', stripe: 'before:bg-amber-500', dot: 'text-amber-500' };
+    return { group: 'Upcoming', text: `In ${days} day${days === 1 ? '' : 's'}`, stripe: 'before:bg-slate-500', dot: 'text-slate-400' };
+  };
+
   const pendingRoutinesCount = checklist.filter(item => {
     if (item.isDone) return false;
     const now = new Date();
@@ -480,20 +497,35 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* DATA TERMINAL */}
-      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full">
+      <div className={`flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full ${activeCategory === 'All Data' ? 'max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible' : ''}`}>
         {activeCategory === 'All Data' ? (
           filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
             const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
+            const ci = cardInfo(item);
+            const prevGroup = index > 0 ? cardInfo(filteredData.all[index - 1]).group : null;
+            const groupCount = ci.group !== prevGroup ? filteredData.all.filter(x => cardInfo(x).group === ci.group).length : 0;
+            const dateText = item.deadlineDate ? `${new Date(item.deadlineDate).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} ${new Date(item.deadlineDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A';
+            const typeTone = item.dataType === 'Checklist' ? 'text-sky-500 bg-sky-500/10 border-sky-500/25' : item.dataType === 'Delegation' ? 'text-violet-500 bg-violet-500/10 border-violet-500/25' : 'text-slate-400 bg-slate-500/10 border-slate-500/25';
             return (
-              <div key={item.uniqueKey} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40 dark:hover:bg-primary/[0.02]">
-                <div className="text-xs font-black text-slate-400">
+              <React.Fragment key={item.uniqueKey}>
+              {groupCount > 0 && (
+                <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                  <span>{ci.group} · {groupCount}</span><span className="flex-1 h-px bg-border" />
+                </div>
+              )}
+              <div className={`flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40 dark:hover:bg-primary/[0.02] max-lg:relative max-lg:overflow-hidden max-lg:bg-card max-lg:border max-lg:border-border max-lg:rounded-2xl max-lg:pl-5 max-lg:pr-3.5 max-lg:py-3.5 max-lg:items-stretch max-lg:before:content-[''] max-lg:before:absolute max-lg:before:left-0 max-lg:before:top-0 max-lg:before:bottom-0 max-lg:before:w-1 max-lg:${ci.stripe} ${ci.group === 'Completed' ? 'max-lg:opacity-85' : ''}`}>
+                <div className="hidden lg:block text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                <div className="lg:hidden order-1 flex items-center gap-1.5 mb-2 w-full">
+                  <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeTone}`}>{item.dataType}</span>
+                  <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{ci.text}</span>
+                </div>
+                <div className="flex flex-col min-w-0 pr-2 max-lg:contents">
+                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] max-lg:line-clamp-2">
                     {item.title}
                   </span>
-                  <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">
+                  <span className="max-lg:hidden inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">
                     Type: {item.dataType}
                   </span>
                   {(item.files || []).length > 0 && (() => {
@@ -503,7 +535,7 @@ const DoerChecklist = ({ doerId }) => {
                       <button
                         type="button"
                         onClick={() => openGallery(photos, photos.length - 1, item)}
-                        className="mt-1.5 flex items-center gap-1.5 group/thumb w-fit"
+                        className="mt-1.5 max-lg:order-5 max-lg:mt-2.5 flex items-center gap-1.5 group/thumb w-fit"
                         title="View uploaded photos"
                       >
                         <TaskPhotoThumb file={latest} className="w-7 h-7" />
@@ -514,30 +546,34 @@ const DoerChecklist = ({ doerId }) => {
                     );
                   })()}
                 </div>
-                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                <div className="max-lg:hidden text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
                   {item.assignerName || '-'}
                 </div>
-                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
-                  {item.description || "No description provided."}
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2 max-lg:order-3 max-lg:mb-0 max-lg:mt-1 max-lg:pr-0 max-lg:normal-case max-lg:font-medium max-lg:opacity-100 max-lg:text-muted-foreground max-lg:leading-snug max-lg:[overflow-wrap:anywhere]">
+                  <span className="max-lg:line-clamp-2 max-lg:block">{item.description || "No description provided."}</span>
                   {item.dataType === 'Delegation' && item.remarks && (
                     <div className="mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-black normal-case tracking-tight not-italic">
                       {item.status === 'Accepted' ? 'Sent back — ' : 'Note — '}{item.remarks}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
+                  <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateText}</span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{item.assignerName || '-'}</span></span>
+                </div>
+                <div className="max-lg:hidden flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
                   <p className="uppercase tracking-tighter text-slate-500 truncate">
-                    {item.deadlineDate ? `${new Date(item.deadlineDate).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} ${new Date(item.deadlineDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A'}
+                    {dateText}
                   </p>
                 </div>
-                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                <div className="max-lg:hidden flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
                   <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border text-primary border-primary/20 bg-primary/5">
                     {item.priority || item.dataType}
                   </span>
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto max-lg:order-6 max-lg:flex-nowrap max-lg:items-center max-lg:justify-start max-lg:mt-3 max-lg:pt-3 max-lg:border-t max-lg:border-border [&>button]:max-lg:min-h-10 [&>button]:max-lg:rounded-xl [&>button]:max-lg:text-[11px] [&>button]:max-lg:tracking-[0.14em] [&>span]:max-lg:min-h-10 [&>span]:max-lg:flex [&>span]:max-lg:items-center [&>span]:max-lg:justify-center [&>button:not([title])]:max-lg:flex-1 [&>button[title]]:max-lg:w-10 [&>button[title]]:max-lg:shrink-0 [&>button[title]]:max-lg:flex [&>button[title]]:max-lg:items-center [&>button[title]]:max-lg:justify-center [&>span:not(.shrink-0)]:max-lg:flex-1">
                   {item.dataType === 'Delegation' && isPassedOn(item) && (<span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {item.doerId?.name || 'someone'}</span>)}
                   {canForward(item) && (
                     <button onClick={() => openOnward(item)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
@@ -584,6 +620,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                 </div>
               </div>
+              </React.Fragment>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">No Consolidated Data Found</p></div>
