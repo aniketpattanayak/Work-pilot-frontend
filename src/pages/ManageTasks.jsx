@@ -306,7 +306,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <LucideClipboard size={20} className="text-primary shrink-0" />
-          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Delegation Work Monitor</h2>
+          <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Delegation Work Monitor</h2>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
@@ -383,8 +383,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       )}
 
       {/* TASK TABLE */}
-      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin">
+      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
+        <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
           <ResponsiveGrid className="w-[1050px] sm:w-full">
             {/* HEADER */}
             <div className="mobile-grid-head grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
@@ -406,11 +406,21 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             ) : (
               filteredTasks.map((task, index) => {
                 const isRevision = task.status === 'Revision Requested';
+                // Phone card colour: red overdue, amber today / revision, green done, grey upcoming.
+                const cardTone = (() => {
+                  if (['Completed', 'Verified'].includes(task.status)) return 'done';
+                  if (isRevision) return 'revision';
+                  if (!task.deadline) return 'upcoming';
+                  const d = new Date(task.deadline); d.setHours(0, 0, 0, 0);
+                  const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+                  return d < t0 ? 'overdue' : (d.getTime() === t0.getTime() ? 'today' : 'upcoming');
+                })();
 
                 return (
-                  <div key={task._id} className="border-b border-border/50 last:border-0">
+                  <div key={task._id} className="border-b border-border/50 last:border-0 max-md:border-0">
                     <div
-                      className={`mobile-grid-row grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
+                      data-tone={cardTone}
+                      className={`mobile-grid-row mgr-card mgr-card--task grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >
                       <div className="text-xs font-black text-slate-400">

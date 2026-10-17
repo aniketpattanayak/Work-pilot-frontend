@@ -347,9 +347,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       </div>
 
       {/* EXCEL GRID */}
-      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden">
+      <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         {/* SCROLL AREA */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin">
+        <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
           <ResponsiveGrid className="w-[1000px] sm:w-full text-sm">
             {/* HEADER */}
             <div className="mobile-grid-head grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
@@ -371,7 +371,8 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
               return (
                 <div
                   key={item._id}
-                  className="mobile-grid-row grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
+                  data-tone="chk"
+                  className="mobile-grid-row mgr-card mgr-card--chk grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
                 >
                   <span className="text-center text-xs font-black text-slate-400">{index + 1}</span>
 
