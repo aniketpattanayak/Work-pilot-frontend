@@ -182,6 +182,28 @@ const DoerChecklist = ({ doerId }) => {
 
   useEffect(() => { fetchAllTasks(); }, [fetchAllTasks]);
 
+  // Display order for every list on this page: overdue pending work first, then today, then upcoming
+  // (soonest first), and finished work last (most recently finished first).
+  const sortSeq = (list, dateOf, doneOf) => {
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const ms = (v) => { const t = new Date(v).getTime(); return Number.isNaN(t) ? Infinity : t; };
+    const rank = (it) => {
+      if (doneOf(it)) return 3;
+      const raw = dateOf(it);
+      if (!raw) return 2;
+      const d = new Date(raw); d.setHours(0, 0, 0, 0);
+      const t = d.getTime();
+      return Number.isNaN(t) ? 2 : (t < todayMs ? 0 : (t === todayMs ? 1 : 2));
+    };
+    return [...list].sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      const ta = ms(dateOf(a)), tb = ms(dateOf(b));
+      if (ta === tb) return 0;
+      return ra === 3 ? (ta < tb ? 1 : -1) : (ta < tb ? -1 : 1);
+    });
+  };
+
   const filteredData = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -223,30 +245,30 @@ const DoerChecklist = ({ doerId }) => {
       return true;
     };
 
-    const filteredAssignments = delegatedTasks.filter(item => {
+    const filteredAssignments = sortSeq(delegatedTasks.filter(item => {
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
       return filterByDateAndStatus(item.deadline, isCompleted, isPending);
-    });
+    }), (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified');
 
-    const filteredChecklist = checklist.filter(item => {
+    const filteredChecklist = sortSeq(checklist.filter(item => {
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
       return filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
-    });
+    }), (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone);
 
-    const filteredFms = fmsMissions.filter(item => {
+    const filteredFms = sortSeq(fmsMissions.filter(item => {
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
       return filterByDateAndStatus(deadlineDate, isCompleted, isPending);
-    });
+    }), (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline, (i) => i.status === 'completed');
 
     return {
       routines: filteredChecklist,
       assignments: filteredAssignments,
       fms: filteredFms,
-      all: [
+      all: sortSeq([
         ...filteredChecklist.map(i => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin' })),
         ...filteredAssignments.map(i => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-' })),
         ...filteredFms.map(i => ({
@@ -259,7 +281,7 @@ const DoerChecklist = ({ doerId }) => {
           statusLabel: i.isOverdue ? 'Delayed' : 'On track',
           assignerName: i.activeStep?.assignedToName || i.assignerName || 'System'
         }))
-      ]
+      ], (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : i.dataType === 'Delegation' ? (i.status === 'Completed' || i.status === 'Verified') : i.status === 'completed'))
     };
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate]);
 
