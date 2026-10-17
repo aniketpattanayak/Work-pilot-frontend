@@ -286,6 +286,21 @@ const DoerChecklist = ({ doerId }) => {
     };
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate]);
 
+  // Shared phone-card pieces for the Checklist, Delegation and FMS tabs (same look as All Data).
+  const typeToneOf = (t) => t === 'Checklist' ? 'text-sky-500 bg-sky-500/10 border-sky-500/25' : t === 'Delegation' ? 'text-violet-500 bg-violet-500/10 border-violet-500/25' : 'text-slate-400 bg-slate-500/10 border-slate-500/25';
+  const mobileHead = (list, index, toItem) => {
+    const ci = cardInfo(toItem(list[index]));
+    const prev = index > 0 ? cardInfo(toItem(list[index - 1])).group : null;
+    if (ci.group === prev) return null;
+    const n = list.filter(x => cardInfo(toItem(x)).group === ci.group).length;
+    return (
+      <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+        <span>{ci.group} · {n}</span><span className="flex-1 h-px bg-border" />
+      </div>
+    );
+  };
+  const rowBase = (ci) => `flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40 max-lg:relative max-lg:overflow-hidden max-lg:bg-card max-lg:border max-lg:border-border max-lg:rounded-2xl max-lg:pl-5 max-lg:pr-3.5 max-lg:py-3.5 max-lg:items-stretch max-lg:before:content-[''] max-lg:before:absolute max-lg:before:left-0 max-lg:before:top-0 max-lg:before:bottom-0 max-lg:before:w-1 max-lg:${ci.stripe} ${ci.group === 'Completed' ? 'max-lg:opacity-85' : ''}`;
+
   // Phone card helper: which group a task sits in, plus the short status text and colours for its card.
   const cardInfo = (item) => {
     const done = item.dataType === 'Checklist' ? !!item.isDone
@@ -498,7 +513,7 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* DATA TERMINAL */}
-      <div className={`flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full ${activeCategory === 'All Data' ? 'max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible' : ''}`}>
+      <div className={`flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible`}>
         {activeCategory === 'All Data' ? (
           filteredData.all.length > 0 ? filteredData.all.map((item, index) => {
             const isPastDue = item.deadlineDate && new Date(item.deadlineDate) < new Date();
@@ -620,7 +635,7 @@ const DoerChecklist = ({ doerId }) => {
                     <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-600"><CheckCircle size={10} className="text-emerald-500" /> Done</span>
                   )}
                   {item.dataType === 'FMS' && (
-                    <button onClick={() => { setActiveTask(item); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
+                    <button onClick={() => { setActiveTask(item); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 max-lg:bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
                   )}
                 </div>
               </div>
@@ -632,14 +647,24 @@ const DoerChecklist = ({ doerId }) => {
         ) : activeCategory === 'Delegation' ? (
           filteredData.assignments.length > 0 ? filteredData.assignments.map((task, index) => {
             const isPastDue = new Date(task.deadline) < new Date();
+            const toItem = (t) => ({ ...t, dataType: 'Delegation', deadlineDate: t.deadline, statusLabel: t.status });
+            const ci = cardInfo(toItem(task));
+            const dateText = task.deadline ? `${new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} ${new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A';
+            const k = task._id;
 
             return (
-              <div key={task._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
-                <div className="text-xs font-black text-slate-400">
+              <React.Fragment key={task._id}>
+              {mobileHead(filteredData.assignments, index, toItem)}
+              <div className={rowBase(ci)}>
+                <div className="hidden lg:block text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                <div className="lg:hidden order-1 flex items-center gap-1.5 mb-2 w-full">
+                  <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf('Delegation')}`}>Delegation</span>
+                  <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{ci.text}</span>
+                </div>
+                <div className="flex flex-col min-w-0 pr-2 max-lg:contents">
+                  <span className={`font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>
                     {task.title}
                   </span>
                   {(task.files || []).length > 0 && (() => {
@@ -649,7 +674,7 @@ const DoerChecklist = ({ doerId }) => {
                       <button
                         type="button"
                         onClick={() => openGallery(photos, photos.length - 1, task)}
-                        className="mt-1.5 flex items-center gap-1.5 group/thumb w-fit"
+                        className="mt-1.5 max-lg:order-5 max-lg:mt-2.5 flex items-center gap-1.5 group/thumb w-fit"
                         title="View uploaded photos"
                       >
                         <TaskPhotoThumb file={latest} className="w-7 h-7" />
@@ -660,18 +685,28 @@ const DoerChecklist = ({ doerId }) => {
                     );
                   })()}
                 </div>
-                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                <div className="max-lg:hidden text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
                   {task.assignerId?.name || 'Registry Admin'}
                 </div>
-                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
-                  {task.description || "No description provided."}
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2 max-lg:order-3 max-lg:mb-0 max-lg:mt-1 max-lg:pr-0 max-lg:normal-case max-lg:font-medium max-lg:opacity-100 max-lg:text-muted-foreground max-lg:leading-snug max-lg:[overflow-wrap:anywhere]">
+                  <span className={`max-lg:block ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>{task.description || "No description provided."}</span>
                   {task.remarks && (
                     <div className="mt-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-black normal-case tracking-tight not-italic">
                       {task.status === 'Accepted' ? 'Sent back — ' : 'Note — '}{task.remarks}
                     </div>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                {(String(task.title || '').length > 55 || String(task.description || '').length > 70) && (
+                  <button type="button" onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))} className="lg:hidden order-3 mt-1 text-[10px] font-black uppercase tracking-widest text-primary w-fit">{openCards[k] ? 'Show less' : 'Read full'}</button>
+                )}
+                <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
+                  <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateText}</span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{task.assignerId?.name || 'Registry Admin'}</span></span>
+                  {task.originalDeadline && revisedForMe(task) && (
+                    <span className="basis-full text-[10px] font-black uppercase text-amber-600">Revised · was {new Date(task.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)</span>
+                  )}
+                </div>
+                <div className="max-lg:hidden flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
                   <p className={`uppercase tracking-tighter truncate ${isPastDue && task.status !== 'Completed' ? 'text-red-500' : 'text-slate-500'}`}>
                     {new Date(task.deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}{' '}
@@ -683,13 +718,13 @@ const DoerChecklist = ({ doerId }) => {
                     </span>
                   )}
                 </div>
-                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                <div className="max-lg:hidden flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
                   <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDue ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>
                     {task.priority || 'Standard'}
                   </span>
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {task.status}</span>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto max-lg:order-6 max-lg:flex-nowrap max-lg:items-center max-lg:justify-start max-lg:mt-3 max-lg:pt-3 max-lg:border-t max-lg:border-border [&>button]:max-lg:min-h-10 [&>button]:max-lg:rounded-xl [&>button]:max-lg:text-[11px] [&>button]:max-lg:tracking-[0.14em] [&>span]:max-lg:min-h-10 [&>span]:max-lg:flex [&>span]:max-lg:items-center [&>span]:max-lg:justify-center [&>button:not([title])]:max-lg:flex-1 [&>button[title]]:max-lg:w-10 [&>button[title]]:max-lg:shrink-0 [&>button[title]]:max-lg:flex [&>button[title]]:max-lg:items-center [&>button[title]]:max-lg:justify-center [&>span:not(.shrink-0)]:max-lg:flex-1">
                   {isPassedOn(task) && (<span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {task.doerId?.name || 'someone'}</span>)}
                   {canForward(task) && (
                     <button onClick={() => openOnward(task)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
@@ -724,6 +759,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                 </div>
               </div>
+              </React.Fragment>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Directives Synchronized</p></div>
@@ -732,37 +768,57 @@ const DoerChecklist = ({ doerId }) => {
           filteredData.fms.length > 0 ? filteredData.fms.map((mission, index) => {
             const deadline = mission.activeStep?.plannedDeadline || mission.completedAt || mission.plannedDeadline;
             const isDelayed = !!mission.isOverdue || (!!deadline && mission.status !== 'completed' && new Date() > new Date(deadline));
+            const toItem = (m) => ({ ...m, dataType: 'FMS', deadlineDate: m.activeStep?.plannedDeadline || m.completedAt || m.plannedDeadline });
+            const ci = cardInfo(toItem(mission));
+            const k = mission.instanceId || mission._id;
+            const dateText = deadline ? `${new Date(deadline).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })} ${new Date(deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A';
+            const who = mission.activeStep?.assignedToName || mission.assignerName || 'System';
+            const fmsDesc = fmsDescription(mission);
             return (
-              <div key={mission.instanceId || mission._id} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
-                <div className="text-xs font-black text-slate-400">
+              <React.Fragment key={k}>
+              {mobileHead(filteredData.fms, index, toItem)}
+              <div className={rowBase(ci)}>
+                <div className="hidden lg:block text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                <div className="lg:hidden order-1 flex items-center gap-1.5 mb-2 w-full">
+                  <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf('FMS')}`}>FMS</span>
+                  <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${isDelayed && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{ci.group === 'Completed' ? 'Completed' : isDelayed ? 'Delayed' : ci.text}</span>
+                </div>
+                <div className="flex flex-col min-w-0 pr-2 max-lg:contents">
+                  <span className={`font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>
                     {mission.activeStep?.nodeName || mission.templateName || mission.nodeName} <span className="text-slate-400 ml-2 font-bold opacity-60">#{mission.orderIdentifier}</span>
                   </span>
                 </div>
-                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
-                  {mission.activeStep?.assignedToName || mission.assignerName || 'System'}
+                <div className="max-lg:hidden text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {who}
                 </div>
-                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
-                  {fmsDescription(mission)}
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2 max-lg:order-3 max-lg:mb-0 max-lg:mt-1 max-lg:pr-0 max-lg:normal-case max-lg:font-medium max-lg:opacity-100 max-lg:text-muted-foreground max-lg:leading-snug max-lg:[overflow-wrap:anywhere]">
+                  <span className={`max-lg:block ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>{fmsDesc}</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                {(String(mission.activeStep?.nodeName || mission.templateName || mission.nodeName || '').length > 40 || String(fmsDesc || '').length > 70) && (
+                  <button type="button" onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))} className="lg:hidden order-3 mt-1 text-[10px] font-black uppercase tracking-widest text-primary w-fit">{openCards[k] ? 'Show less' : 'Read full'}</button>
+                )}
+                <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
+                  <span className="flex items-center gap-1.5 min-w-0"><Clock size={13} className="shrink-0 opacity-70" />{dateText}</span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{who}</span></span>
+                </div>
+                <div className="max-lg:hidden flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Clock size={12} className={isDelayed ? 'text-red-500' : 'text-primary/30 shrink-0'} />
                   <p className={`uppercase tracking-tighter truncate ${isDelayed ? 'text-red-500 font-black' : 'text-slate-500'}`}>
                     {deadline ? new Date(deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                   </p>
                 </div>
-                <div className="flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
+                <div className="max-lg:hidden flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
                   <span className={`px-2 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${mission.status === 'completed' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : isDelayed ? 'text-red-600 border-red-200 bg-red-50' : 'text-sky-600 border-sky-200 bg-sky-50'}`}>
                     {mission.status === 'completed' ? 'COMPLETED' : isDelayed ? 'DELAYED' : 'ON TRACK'}
                   </span>
                 </div>
-                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto">
-                  <button onClick={() => { setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
+                <div className="flex flex-wrap justify-end gap-2 w-full lg:w-auto max-lg:order-6 max-lg:flex-nowrap max-lg:items-center max-lg:justify-start max-lg:mt-3 max-lg:pt-3 max-lg:border-t max-lg:border-border [&>button]:max-lg:min-h-10 [&>button]:max-lg:rounded-xl [&>button]:max-lg:text-[11px] [&>button]:max-lg:tracking-[0.14em] [&>span]:max-lg:min-h-10 [&>span]:max-lg:flex [&>span]:max-lg:items-center [&>span]:max-lg:justify-center [&>button:not([title])]:max-lg:flex-1 [&>button[title]]:max-lg:w-10 [&>button[title]]:max-lg:shrink-0 [&>button[title]]:max-lg:flex [&>button[title]]:max-lg:items-center [&>button[title]]:max-lg:justify-center [&>span:not(.shrink-0)]:max-lg:flex-1">
+                  <button onClick={() => { setActiveTask(mission); setModalType("FMS"); setShowModal(true); }} className="px-4 py-1 bg-slate-900 max-lg:bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Done</button>
                 </div>
               </div>
+              </React.Fragment>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Sequential Registry Synchronized</p></div>
@@ -775,36 +831,55 @@ const DoerChecklist = ({ doerId }) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const isFuture = displayDate.getTime() > today.getTime();
+            const toItem = (c) => ({ ...c, dataType: 'Checklist', deadlineDate: c.instanceDate || c.nextDueDate });
+            const ci = cardInfo(toItem(item));
+            const k = `${item._id}-${item.instanceDate}`;
+            const dateText = `${String(displayDate.getDate()).padStart(2, '0')} ${displayDate.toLocaleString('default', { month: 'short' })} ${displayDate.getFullYear()}`;
+            const who = item.createdBy?.name || item.assignerId?.name || 'Admin';
 
             return (
-              <div key={`${item._id}-${item.instanceDate}`} className="flex flex-col lg:grid lg:grid-cols-[64px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_170px] items-start lg:items-center px-4 py-3 lg:px-6 border-b border-border last:border-0 hover:bg-muted/40">
-                <div className="text-xs font-black text-slate-400">
+              <React.Fragment key={k}>
+              {mobileHead(filteredData.routines, index, toItem)}
+              <div className={rowBase(ci)}>
+                <div className="hidden lg:block text-xs font-black text-slate-400">
                   {index + 1}
                 </div>
-                <div className="flex flex-col min-w-0 pr-2">
-                  <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">
+                <div className="lg:hidden order-1 flex items-center gap-1.5 mb-2 w-full">
+                  <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf('Checklist')}`}>Checklist</span>
+                  <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{ci.text}</span>
+                </div>
+                <div className="flex flex-col min-w-0 pr-2 max-lg:contents">
+                  <span className={`font-black text-sm text-foreground whitespace-normal break-words block leading-tight max-lg:order-2 max-lg:text-[15px] max-lg:font-extrabold max-lg:leading-snug max-lg:[overflow-wrap:anywhere] ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>
                     {item.taskName}
                   </span>
-                  <span className="text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
+                  <span className="max-lg:hidden text-[7px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
                     Registry Scope: {item.frequency || 'Daily'} Protocol
                   </span>
                 </div>
-                <div className="text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
-                  {item.createdBy?.name || item.assignerId?.name || 'Admin'}
+                <div className="max-lg:hidden text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 w-full lg:w-auto mb-1 lg:mb-0 truncate px-1">
+                  {who}
                 </div>
-                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2">
-                  {item.description || "No description provided."}
+                <div className="text-xs opacity-70 uppercase font-semibold whitespace-normal break-words w-full lg:w-auto mb-1 lg:mb-0 pr-2 max-lg:order-3 max-lg:mb-0 max-lg:mt-1 max-lg:pr-0 max-lg:normal-case max-lg:font-medium max-lg:opacity-100 max-lg:text-muted-foreground max-lg:leading-snug max-lg:[overflow-wrap:anywhere]">
+                  <span className={`max-lg:block ${openCards[k] ? '' : 'max-lg:line-clamp-2'}`} onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))}>{item.description || "No description provided."}</span>
                 </div>
-                <div className="flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[10px] font-black">
+                {(String(item.taskName || '').length > 55 || String(item.description || '').length > 70) && (
+                  <button type="button" onClick={() => setOpenCards(o => ({ ...o, [k]: !o[k] }))} className="lg:hidden order-3 mt-1 text-[10px] font-black uppercase tracking-widest text-primary w-fit">{openCards[k] ? 'Show less' : 'Read full'}</button>
+                )}
+                <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
+                  <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateText}</span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{who}</span></span>
+                  <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>
+                </div>
+                <div className="max-lg:hidden flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[10px] font-black">
                   <Calendar size={12} className="text-slate-400 shrink-0" />
                   <p className={`uppercase tracking-tighter truncate ${isBacklog ? 'text-amber-600' : 'text-slate-500'}`}>
                     {`${displayDate.toLocaleString('default', { month: 'short' }).toUpperCase()} ${String(displayDate.getDate()).padStart(2, '0')}, ${displayDate.getFullYear()}`}
                   </p>
                 </div>
-                <div className="flex justify-center w-full lg:w-auto mb-1 lg:mb-0">
+                <div className="max-lg:hidden flex justify-center w-full lg:w-auto mb-1 lg:mb-0">
                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{item.frequency || 'Daily'} CYCLE</span>
                 </div>
-                <div className="flex justify-end w-full lg:w-auto">
+                <div className="flex justify-end w-full lg:w-auto max-lg:order-6 max-lg:flex-nowrap max-lg:items-center max-lg:justify-start max-lg:mt-3 max-lg:pt-3 max-lg:border-t max-lg:border-border [&>button]:max-lg:min-h-10 [&>button]:max-lg:rounded-xl [&>button]:max-lg:text-[11px] [&>button]:max-lg:tracking-[0.14em] [&>span]:max-lg:min-h-10 [&>span]:max-lg:flex [&>span]:max-lg:items-center [&>span]:max-lg:justify-center [&>button:not([title])]:max-lg:flex-1 [&>button[title]]:max-lg:w-10 [&>button[title]]:max-lg:shrink-0 [&>button[title]]:max-lg:flex [&>button[title]]:max-lg:items-center [&>button[title]]:max-lg:justify-center [&>span:not(.shrink-0)]:max-lg:flex-1">
                   {item.isDone ? (
                     <span className="px-4 py-1.5 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 shadow-sm flex items-center gap-2">
                       <CheckCircle size={10} className="text-emerald-500" /> Done
@@ -821,6 +896,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                 </div>
               </div>
+              </React.Fragment>
             );
           }) : (
             <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Registry Synchronized</p></div>
