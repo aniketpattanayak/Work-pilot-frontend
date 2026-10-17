@@ -113,7 +113,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'Manage Checklist', icon: <LayoutList />, roles: ['Admin'] },
         { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'Personal Tasks',   icon: <NotebookPen />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Personal Tasks',   icon: <NotebookPen />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], featureKey: 'personalTasks' },
         { name: 'Attendance',       icon: <Clock />,           roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'attendance' },
         { name: 'Leave',            icon: <CalendarDays />,    roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
         { name: 'Payroll',          icon: <Wallet />,          roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'payroll' },

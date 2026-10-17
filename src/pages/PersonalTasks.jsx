@@ -183,6 +183,7 @@ const PersonalTasks = () => {
   const [items, setItems] = useState([]);
   const [shared, setShared] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [off, setOff] = useState(false);
   const [tab, setTab] = useState('mine');
   const [filter, setFilter] = useState('All');
   const [form, setForm] = useState(null);
@@ -202,7 +203,8 @@ const PersonalTasks = () => {
       ]);
       setItems(m.data || []); setShared(s.data || []);
     } catch (e) {
-      dialog.alert(errMsg(e, 'Could not load your list.'), { title: 'Load failed', tone: 'error' });
+      if (e?.response?.status === 403 && e.response.data?.disabled) setOff(true);
+      else dialog.alert(errMsg(e, 'Could not load your list.'), { title: 'Load failed', tone: 'error' });
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -361,6 +363,16 @@ const PersonalTasks = () => {
       {text}{count > 0 ? ` (${count})` : ''}
     </button>
   );
+
+  if (off) {
+    return (
+      <div className="w-full max-w-3xl mx-auto py-20 text-center">
+        <Lock size={28} className="mx-auto text-slate-400 mb-3" />
+        <p className="text-sm font-bold text-foreground">Personal Tasks is switched off for your company.</p>
+        <p className="text-xs text-slate-500 mt-1">Please ask your Work-Pilot administrator if you need it.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-3xl mx-auto pb-24">

@@ -544,12 +544,13 @@ const DoerChecklist = ({ doerId }) => {
                     const due = new Date(item.deadlineDate); due.setHours(0, 0, 0, 0);
                     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
                     const upcoming = due.getTime() > todayStart.getTime();
+                    if (upcoming) return (
+                      <span className="px-3 py-1 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 cursor-default select-none" title="This checklist is not due yet">Not due yet</span>
+                    );
                     return (
                       <button
-                        disabled={upcoming}
-                        title={upcoming ? 'Not due yet' : undefined}
                         onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }}
-                        className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white ${upcoming ? 'bg-slate-300 cursor-not-allowed opacity-50' : 'bg-emerald-600'}`}
+                        className="px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white bg-emerald-600"
                       >Submit</button>
                     );
                   })()}
@@ -745,11 +746,12 @@ const DoerChecklist = ({ doerId }) => {
                     <span className="px-4 py-1.5 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 shadow-sm flex items-center gap-2">
                       <CheckCircle size={10} className="text-emerald-500" /> Done
                     </span>
+                  ) : isFuture ? (
+                    <span className="px-3 py-1 rounded font-black text-[8px] uppercase tracking-widest bg-slate-100 text-slate-400 border border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 cursor-default select-none" title="This checklist is not due yet">Not due yet</span>
                   ) : (
                     <button
-                      disabled={isFuture}
                       onClick={() => { setActiveTask(item); setModalType("Checklist"); setShowModal(true); }}
-                      className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white transition-all ${isFuture ? 'bg-slate-300 cursor-not-allowed opacity-50' : 'active:scale-95 ' + (isBacklog ? 'bg-amber-600' : 'bg-emerald-600')}`}
+                      className={`px-4 py-1 rounded font-black text-[8px] uppercase tracking-widest shadow-md text-white transition-all active:scale-95 ${isBacklog ? 'bg-amber-600' : 'bg-emerald-600'}`}
                     >
                       Submit
                     </button>

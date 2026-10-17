@@ -9,7 +9,7 @@ import {
   Star, ClipboardList, Wifi, X, Eye, EyeOff, Save, Trash2,
   Globe, Mail, Calendar, Clock, User, ArrowUpRight, Filter,
   Bell, Package, ToggleLeft, ToggleRight, CreditCard, StickyNote,
-  ChevronDown, ChevronUp, LayoutGrid, List, Sparkles
+  ChevronDown, ChevronUp, LayoutGrid, List, Sparkles, NotebookPen
 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 
@@ -219,7 +219,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       setAmount(sa.amount || 0);
       setRenewal(sa.renewalDate ? sa.renewalDate.slice(0,10) : '');
       setNote(sa.internalNote || '');
-      setFeatures(sa.features || {});
+      setFeatures({ ...(sa.features || {}), personalTasks: sa.features?.personalTasks ?? true });
       setHrModules({ attendance: false, leave: false, payroll: false, ...(r.data.tenant?.hrModules || {}) });
       setCustomMongoUri(sa.customMongoUri || '');
       setCustomWhatsappKey(sa.customWhatsappKey || '');
@@ -263,7 +263,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
     ? recentLogs.filter(l => l.action?.includes(logFilter) || l.employeeName?.toLowerCase().includes(logFilter.toLowerCase()) || l.description?.toLowerCase().includes(logFilter.toLowerCase()))
     : recentLogs;
 
-  const FEAT_ICONS = { tasks:CheckCircle2, fms:Zap, chat:MessageSquare, reports:BarChart3, orderForms:ShoppingCart, whatsapp:Bell, rewards:Star, checklist:ClipboardList };
+  const FEAT_ICONS = { tasks:CheckCircle2, personalTasks:NotebookPen, fms:Zap, chat:MessageSquare, reports:BarChart3, orderForms:ShoppingCart, whatsapp:Bell, rewards:Star, checklist:ClipboardList };
 
   return (
     <Overlay onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -337,7 +337,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                   <ToggleRight size={14}/> Feature status
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }}>
-                  {Object.entries(sa.features || {}).map(([f, on]) => {
+                  {Object.entries({ ...(sa.features || {}), personalTasks: sa.features?.personalTasks ?? true }).map(([f, on]) => {
                     const Icon = FEAT_ICONS[f] || Settings;
                     return (
                       <div key={f} style={{ padding:'10px 14px', borderRight:`1px solid ${C.border}`,
@@ -734,7 +734,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <Icon size={15} color={on?C.blue:C.muted2}/>
                           <span style={{ fontSize:13, fontWeight:500, color:on?C.text:C.muted2 }}>
-                            {({'tasks':'Manage Tasks','checklist':'Checklist','fms':'Flow Management','chat':'Chat','whatsapp':'WhatsApp','tracking':'Coordinator Tracking','reviewMeeting':'Review Meeting','employees':'Employees','mapping':'Mapping','orderForms':'Order Forms','newOrder':'New Order','reports':'Reports Hub','rewards':'Rewards Log','settings':'Settings'})[f] || f.charAt(0).toUpperCase()+f.slice(1)}
+                            {({'tasks':'Manage Tasks','personalTasks':'Personal Tasks','checklist':'Checklist','fms':'Flow Management','chat':'Chat','whatsapp':'WhatsApp','tracking':'Coordinator Tracking','reviewMeeting':'Review Meeting','employees':'Employees','mapping':'Mapping','orderForms':'Order Forms','newOrder':'New Order','reports':'Reports Hub','rewards':'Rewards Log','settings':'Settings'})[f] || f.charAt(0).toUpperCase()+f.slice(1)}
                           </span>
                         </div>
                         {on ? <ToggleRight size={20} color={C.blue}/> : <ToggleLeft size={20} color={C.muted2}/>}

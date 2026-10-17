@@ -105,7 +105,7 @@ const ImageLightbox = ({ photos, startIndex = 0, task, onClose }) => {
         )}
       </div>
 
-      <div className="mt-4 px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-sm text-white text-xs font-bold text-center max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="no-auto-sheet mt-4 px-5 py-3 rounded-2xl bg-white/10 backdrop-blur-sm text-white text-xs font-bold text-center max-w-lg" onClick={(e) => e.stopPropagation()}>
         {photoCaption(photo, task)}
       </div>
     </div>
