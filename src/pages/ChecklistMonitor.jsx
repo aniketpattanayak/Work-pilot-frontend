@@ -3,6 +3,8 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import API from '../api/axiosConfig';
+import { dialog } from '../components/Dialog';
+import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import { 
   CheckCircle, 
@@ -53,6 +55,12 @@ const ChecklistMonitor = ({ tenantId }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [remarks, setRemarks] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const maxFileMb = useUploadLimit();
+  const pickSingleFile = (input) => {
+    const { ok, problems } = checkFiles(input.files, maxFileMb);
+    if (problems.length) { dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' }); input.value = ''; return; }
+    setSelectedFile(ok[0] || null);
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
@@ -567,9 +575,10 @@ const ChecklistMonitor = ({ tenantId }) => {
             <form onSubmit={handleMarkDone} className="space-y-12">
               <textarea required placeholder="Mission execution debriefing..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-44 bg-background border border-border text-foreground p-8 rounded-[2.5rem] outline-none focus:ring-8 focus:ring-primary/5 text-base font-bold shadow-inner resize-none" />
               <div className="relative border-3 border-dashed border-border rounded-[2.5rem] p-12 text-center hover:border-primary/50 transition-all bg-background/50">
-                  <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer" />
                   <Upload size={48} className={`mx-auto mb-6 ${selectedFile ? 'text-emerald-500' : 'text-slate-400'}`} />
                   <p className="text-sm font-black text-foreground uppercase tracking-tight">{selectedFile ? selectedFile.name : "Authorize Snap upload"}</p>
+                  <p className="mt-2 text-xs font-bold text-slate-400">{uploadHint(maxFileMb)}</p>
               </div>
               <button type="submit" disabled={isSubmitting} className="w-full py-8 rounded-[2.5rem] bg-primary text-primary-foreground font-black text-sm uppercase tracking-[0.5em] shadow-2xl transition-all active:scale-95 disabled:opacity-50">Push to Registry Node</button>
             </form>

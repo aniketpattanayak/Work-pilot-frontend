@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Paperclip, ChevronLeft } from 'lucide-react';
 import { useChat } from './useChat';
 import API from '../api/axiosConfig';
+import { dialog } from './Dialog';
+import { useUploadLimit, checkFiles } from '../utils/uploadLimit';
 
 function Avatar({ name, size = 28 }) {
   const colors = ['#185FA5','#0F6E56','#3C3489','#854F0B','#A32D2D','#3B6D11'];
@@ -31,6 +33,13 @@ export default function FloatingChat({ currentUser, openTrigger }) {
   const [text, setText]             = useState('');
   const [uploading, setUploading]   = useState(false);
   const [file, setFile]             = useState(null);
+  const maxFileMb = useUploadLimit();
+  const pickFile = (input) => {
+    const { ok, problems } = checkFiles(input.files, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+    setFile(ok[0] || null);
+    input.value = '';
+  };
   const fileRef                     = useRef();
   const messagesEndRef              = useRef();
   const myId = currentUser?._id || currentUser?.id;
@@ -59,7 +68,11 @@ export default function FloatingChat({ currentUser, openTrigger }) {
     let fileData = {};
     if (file) {
       setUploading(true);
-      try { fileData = await uploadFile(file); } finally { setUploading(false); }
+      try { fileData = await uploadFile(file); }
+      catch (err) {
+        dialog.alert(err?.response?.data?.message || 'The file could not be uploaded. Please try again.', { tone: 'error', title: 'Upload failed' });
+        return;
+      } finally { setUploading(false); }
     }
     await sendMessage(activeConvId, { text: text.trim(), ...fileData });
     setText('');
@@ -209,7 +222,7 @@ export default function FloatingChat({ currentUser, openTrigger }) {
                     <button onClick={() => fileRef.current?.click()} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--color-muted-foreground)', padding:4, display:'flex' }}>
                       <Paperclip size={15} />
                     </button>
-                    <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e => setFile(e.target.files[0])} />
+                    <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e => pickFile(e.target)} />
                     <input value={text} onChange={e => { setText(e.target.value); sendTyping(activeConvId); }}
                       onKeyDown={e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder="Message…"

@@ -4,6 +4,7 @@ import { Send, Paperclip, X, Search, Plus, MessageSquare, ChevronLeft, Users, Me
 import { useChat } from '../components/useChat';
 import { dialog } from '../components/Dialog';
 import API from '../api/axiosConfig';
+import { useUploadLimit, checkFiles } from '../utils/uploadLimit';
 
 // ─── TINY HELPERS ─────────────────────────────────────────────────────────────
 function timeStr(date) {
@@ -115,6 +116,13 @@ function Bubble({ msg, isMine, showName }) {
 function InputBar({ onSend, onTyping, uploadFile }) {
   const [text, setText]   = useState('');
   const [file, setFile]   = useState(null);
+  const maxFileMb = useUploadLimit();
+  const pickFile = (input) => {
+    const { ok, problems } = checkFiles(input.files, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+    setFile(ok[0] || null);
+    input.value = '';
+  };
   const [busy, setBusy]   = useState(false);
   const fileRef           = useRef();
   const textRef           = useRef();
@@ -124,7 +132,11 @@ function InputBar({ onSend, onTyping, uploadFile }) {
     let extra = {};
     if (file) {
       setBusy(true);
-      try { extra = await uploadFile(file); } finally { setBusy(false); }
+      try { extra = await uploadFile(file); }
+      catch (err) {
+        dialog.alert(err?.response?.data?.message || 'The file could not be uploaded. Please try again.', { tone: 'error', title: 'Upload failed' });
+        return;
+      } finally { setBusy(false); }
     }
     onSend({ text: text.trim(), ...extra });
     setText(''); setFile(null);
@@ -140,7 +152,7 @@ function InputBar({ onSend, onTyping, uploadFile }) {
           <button onClick={()=>setFile(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:2, display:'flex' }}><X size={12}/></button>
         </div>
       )}
-      <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e=>setFile(e.target.files[0])} />
+      <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e=>pickFile(e.target)} />
       <div style={{ display:'flex', gap:0, alignItems:'flex-end', background:'var(--color-muted)', borderRadius:14, border:'1.5px solid transparent', transition:'border-color .15s', overflow:'hidden' }}
         onFocusCapture={e=>e.currentTarget.style.borderColor='#185FA5'}
         onBlurCapture={e=>e.currentTarget.style.borderColor='transparent'}>

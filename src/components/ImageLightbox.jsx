@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { resolvePhotoUrl, photoCaption } from '../utils/taskPhotos';
+import { isImageName, fileExt } from '../utils/uploadLimit';
+import { iconForExt } from './LocalFileThumb';
+import { ExternalLink, Download } from 'lucide-react';
 
 /**
  * Full-screen photo GALLERY with zoom. Opened on ANY task photo
@@ -56,6 +59,8 @@ const ImageLightbox = ({ photos, startIndex = 0, task, onClose }) => {
   const src = resolvePhotoUrl(photo?.fileUrl);
   const hasPrev = index > 0;
   const hasNext = index < photos.length - 1;
+  const isImg = isImageName(photo?.fileName || photo?.fileUrl);
+  const FileTileIcon = iconForExt(fileExt(photo?.fileName || photo?.fileUrl));
 
   return (
     <div
@@ -87,7 +92,16 @@ const ImageLightbox = ({ photos, startIndex = 0, task, onClose }) => {
       )}
 
       <div className="flex-1 w-full flex items-center justify-center overflow-auto" onClick={(e) => e.stopPropagation()}>
-        {failed || !src ? (
+        {!isImg && src ? (
+          <div className="flex flex-col items-center gap-4 text-white px-8 py-10 rounded-2xl border border-white/20 bg-white/5 max-w-sm">
+            <FileTileIcon size={48} className="text-white/80" />
+            <span className="text-sm font-bold text-center break-all">{photo?.fileName || 'File'}</span>
+            <div className="flex gap-2">
+              <a href={src} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-black uppercase tracking-widest"><ExternalLink size={14} /> Open</a>
+              <a href={src} download={photo?.fileName || true} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest"><Download size={14} /> Download</a>
+            </div>
+          </div>
+        ) : failed || !src ? (
           <div className="flex flex-col items-center gap-3 text-white/70 px-8 py-10 rounded-2xl border border-dashed border-white/20">
             <ImageOff size={40} />
             <span className="text-xs font-bold uppercase tracking-widest text-center break-all">{photo?.fileName || 'This photo could not be loaded'}</span>

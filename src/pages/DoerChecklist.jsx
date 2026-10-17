@@ -6,6 +6,8 @@ import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import { useChat } from '../components/useChat';
 import ImageLightbox from '../components/ImageLightbox';
+import LocalFileThumb from '../components/LocalFileThumb';
+import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 import {
@@ -328,6 +330,18 @@ const DoerChecklist = ({ doerId }) => {
   }).length;
 
   const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t)).length;
+
+  const maxFileMb = useUploadLimit();
+  const addDelegationFiles = (list) => {
+    const { ok, problems } = checkFiles(list, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+    if (ok.length) setDelegationFiles((prev) => [...prev, ...ok]);
+  };
+  const pickSingleFile = (input) => {
+    const { ok, problems } = checkFiles(input.files, maxFileMb);
+    if (problems.length) { dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' }); input.value = ''; return; }
+    setSelectedFile(ok[0] || null);
+  };
 
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
@@ -938,10 +952,9 @@ const DoerChecklist = ({ doerId }) => {
                       <Upload size={16} /> From storage
                       <input
                         type="file"
-                        accept="image/*"
                         multiple
                         className="hidden"
-                        onChange={(e) => setDelegationFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                        onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
                       />
                     </label>
                     <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
@@ -951,33 +964,25 @@ const DoerChecklist = ({ doerId }) => {
                         accept="image/*"
                         capture="environment"
                         className="hidden"
-                        onChange={(e) => setDelegationFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                        onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
                       />
                     </label>
                   </div>
                   {delegationFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                       {delegationFiles.map((f, i) => (
-                        <div key={i} className="relative">
-                          <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
-                          <button
-                            type="button"
-                            onClick={() => setDelegationFiles((prev) => prev.filter((_, j) => j !== i))}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]"
-                            aria-label={`Remove ${f.name}`}
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
+                        <LocalFileThumb key={i} file={f} onRemove={() => setDelegationFiles((prev) => prev.filter((_, j) => j !== i))} />
                       ))}
                     </div>
                   )}
+                  <p className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}</p>
                 </div>
               ) : (
                 <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
-                  <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                  <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                   <Upload size={20} className="mx-auto text-slate-400 mb-2" />
                   <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
+                  <p className="mt-1 text-[8px] font-bold text-slate-400 normal-case">{uploadHint(maxFileMb)}</p>
                 </div>
               )}
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ImageOff } from 'lucide-react';
 import { resolvePhotoUrl } from '../utils/taskPhotos';
+import { isImageName, fileExt } from '../utils/uploadLimit';
+import { iconForExt } from './LocalFileThumb';
 
 /**
  * A single evidence-photo thumbnail. Always resolves its URL through the
@@ -17,6 +19,21 @@ const TaskPhotoThumb = ({ file, className = 'w-16 h-16', onClick, title }) => {
   useEffect(() => { setFailed(false); }, [src]);
 
   const Wrapper = onClick ? 'button' : 'div';
+  const isImg = isImageName(file?.fileName || file?.fileUrl);
+
+  // PDF / Excel / CSV / Word / zip ...: a labelled file tile instead of a (broken) picture.
+  if (!isImg && src) {
+    const ext = fileExt(file?.fileName || file?.fileUrl);
+    const Icon = iconForExt(ext);
+    const tileProps = onClick ? { type: 'button', onClick } : {};
+    return (
+      <Wrapper {...tileProps} title={title || file?.fileName}
+        className={`${className} rounded-xl border border-border bg-background hover:border-primary transition-all flex flex-col items-center justify-center gap-0.5 p-1 text-center overflow-hidden`}>
+        <Icon size={18} className="text-primary shrink-0" />
+        <span className="text-[7px] font-black uppercase tracking-tight text-slate-500 leading-tight break-all line-clamp-2">{file?.fileName || ext.toUpperCase()}</span>
+      </Wrapper>
+    );
+  }
   const wrapperProps = onClick ? { type: 'button', onClick } : {};
 
   if (failed || !src) {

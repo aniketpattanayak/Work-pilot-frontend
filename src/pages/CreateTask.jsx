@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, forwardRef, useRef } from "react";
 import API from '../api/axiosConfig'; 
 import { dialog } from '../components/Dialog';
+import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
 import {
@@ -182,19 +183,11 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     setShowDoerDropdown(false);
   };
 
+  const maxFileMb = useUploadLimit();
   const handleFileChange = (e) => {
-    const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'zip'];
-    const MAX_MB = 10;
     const picked = Array.from(e.target.files || []);
-    const ok = [];
-    const problems = [];
-    picked.forEach((f) => {
-      const ext = (f.name.split('.').pop() || '').toLowerCase();
-      if (!ALLOWED_EXT.includes(ext)) problems.push('"' + f.name + '" is not an allowed file type.');
-      else if (f.size > MAX_MB * 1024 * 1024) problems.push('"' + f.name + '" is larger than ' + MAX_MB + ' MB.');
-      else ok.push(f);
-    });
-    if (problems.length) dialog.alert(problems.join('\n') + '\n\nAllowed: images, PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP (max ' + MAX_MB + ' MB each).', { tone: 'error', title: 'File not added' });
+    const { ok, problems } = checkFiles(picked, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
     setSelectedFiles([...selectedFiles, ...ok]);
     e.target.value = '';
   };
@@ -401,7 +394,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                   <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
                     <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                     <p className="text-sm text-slate-500 group-hover:text-primary transition">Click to upload files</p>
-                    <p className="text-xs text-slate-400">Images, PDF, Word, Excel, PowerPoint, CSV, TXT, ZIP — max 10 MB each</p>
+                    <p className="text-xs text-slate-400">{uploadHint(maxFileMb)}</p>
                   </div>
                   {selectedFiles.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">

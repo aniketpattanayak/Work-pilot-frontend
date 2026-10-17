@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
+import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
+import { iconForExt } from '../components/LocalFileThumb';
+import { fileExt } from '../utils/uploadLimit';
 import { 
   Ticket, 
   Send, 
@@ -98,8 +101,11 @@ const RaiseTicket = ({ userId, tenantId }) => {
     setShowForm(true);
   };
 
+  const maxFileMb = useUploadLimit();
   const handleFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files);
+    const { ok: selectedFiles, problems } = checkFiles(e.target.files, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+    e.target.value = '';
     setFiles(prev => [...prev, ...selectedFiles]);
     const newPreviews = selectedFiles.map(file => ({
       name: file.name,
@@ -373,19 +379,21 @@ const RaiseTicket = ({ userId, tenantId }) => {
 
               {!editId && (
                 <div>
-                  <label className={lblCls}>Photos / videos <span className="normal-case tracking-normal font-bold text-slate-400">(optional)</span></label>
+                  <label className={lblCls}>Photos / videos / files <span className="normal-case tracking-normal font-bold text-slate-400">(optional)</span></label>
                   <div className="border-2 border-dashed border-border p-5 rounded-2xl text-center relative hover:border-primary/40 transition-all bg-background/50">
-                    <input type="file" multiple accept="image/*,video/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     <div className="flex items-center justify-center gap-3 text-slate-400">
                       <ImageIcon size={22} /><Video size={22} />
                       <p className="text-[10px] font-black uppercase tracking-widest">Click to attach</p>
+                    </div>
+                    <div className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}
                     </div>
                   </div>
                   {previews.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
                       {previews.map((preview, i) => (
                         <div key={i} className="group relative aspect-square bg-background border border-border rounded-xl overflow-hidden">
-                          {preview.url ? <img src={preview.url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900"><Play size={20} className="text-primary" /></div>}
+                          {preview.url ? <img src={preview.url} alt="" className="w-full h-full object-cover" /> : (() => { const Ico = (preview.type || '').startsWith('video/') ? Play : iconForExt(fileExt(preview.name)); return <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-1 text-center bg-slate-100 dark:bg-slate-900"><Ico size={20} className="text-primary" /><span className="text-[8px] font-black text-slate-500 break-all line-clamp-2">{preview.name}</span></div>; })()}
                           <button type="button" aria-label="Remove file" onClick={() => removeFile(i)} className="absolute top-1.5 right-1.5 p-1 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity"><X size={12} /></button>
                         </div>
                       ))}

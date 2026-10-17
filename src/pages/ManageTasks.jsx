@@ -37,6 +37,8 @@ import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
 import { dialog } from '../components/Dialog';
 import ImageLightbox from '../components/ImageLightbox';
+import LocalFileThumb from '../components/LocalFileThumb';
+import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 import MobileFilters from '../components/MobileFilters';
@@ -74,6 +76,12 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [rejectModalTask, setRejectModalTask] = useState(null);
   const [rejectRemarks, setRejectRemarks] = useState('');
   const [rejectFiles, setRejectFiles] = useState([]);
+  const maxFileMb = useUploadLimit();
+  const addRejectFiles = (list) => {
+    const { ok, problems } = checkFiles(list, maxFileMb);
+    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+    if (ok.length) setRejectFiles((prev) => [...prev, ...ok]);
+  };
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   // History/files details modal: shared by the assigner and the doer side
@@ -571,17 +579,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                  Photo evidence (optional)
+                  Photo / file evidence (optional)
                 </label>
                 <div className="flex gap-2">
                   <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
                     <Upload size={14} /> From storage
                     <input
                       type="file"
-                      accept="image/*"
                       multiple
                       className="hidden"
-                      onChange={(e) => setRejectFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                      onChange={(e) => { addRejectFiles(e.target.files); e.target.value = ''; }}
                     />
                   </label>
                   <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
@@ -591,27 +598,18 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                       accept="image/*"
                       capture="environment"
                       className="hidden"
-                      onChange={(e) => setRejectFiles((prev) => [...prev, ...Array.from(e.target.files || [])])}
+                      onChange={(e) => { addRejectFiles(e.target.files); e.target.value = ''; }}
                     />
                   </label>
                 </div>
                 {rejectFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {rejectFiles.map((f, i) => (
-                      <div key={i} className="relative">
-                        <img src={URL.createObjectURL(f)} alt={f.name} className="w-16 h-16 object-cover rounded-lg border border-border" />
-                        <button
-                          type="button"
-                          onClick={() => setRejectFiles((prev) => prev.filter((_, j) => j !== i))}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]"
-                          aria-label={`Remove ${f.name}`}
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
+                      <LocalFileThumb key={i} file={f} onRemove={() => setRejectFiles((prev) => prev.filter((_, j) => j !== i))} />
                     ))}
                   </div>
                 )}
+                <p className="mt-2 text-[10px] font-bold text-muted-foreground">{uploadHint(maxFileMb)}</p>
               </div>
             </div>
             <div className="p-6 pt-0 flex-shrink-0">

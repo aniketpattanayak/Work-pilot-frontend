@@ -192,6 +192,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const [msg, setMsg]     = useState('');
   const [empLimit, setEmpLimit]   = useState('');
   const [waLimit, setWaLimit]     = useState('');
+  const [uploadMb, setUploadMb]   = useState(10);
   const [plan, setPlan]           = useState('free');
   const [amount, setAmount]       = useState('');
   const [renewalDate, setRenewal] = useState('');
@@ -215,6 +216,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       const sa = r.data.tenant?.superAdmin || {};
       setEmpLimit(sa.employeeLimit ?? 50);
       setWaLimit(sa.whatsappLimit ?? 1000);
+      setUploadMb(sa.uploadLimitMb ?? 10);
       setPlan(sa.plan || 'free');
       setAmount(sa.amount || 0);
       setRenewal(sa.renewalDate ? sa.renewalDate.slice(0,10) : '');
@@ -614,8 +616,19 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                     <input type="number" value={waLimit} onChange={e=>setWaLimit(e.target.value)} style={inputStyle}/>
                   </div>
                 </div>
+                <div style={{ marginBottom:14 }}>
+                  <label style={labelStyle}>Max upload size per file (MB)</label>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                    <input type="number" min={1} max={100} value={uploadMb} onChange={e=>setUploadMb(e.target.value)} style={{ ...inputStyle, maxWidth:120 }}/>
+                    {[5,10,25,50].map(n => (
+                      <button key={n} type="button" onClick={()=>setUploadMb(n)}
+                        style={{ padding:'6px 12px', borderRadius:8, border:`1px solid ${Number(uploadMb)===n?C.blue:C.border}`, background:Number(uploadMb)===n?C.blueL:'transparent', color:C.text, fontSize:12, fontWeight:600, cursor:'pointer' }}>{n} MB</button>
+                    ))}
+                  </div>
+                  <div style={{ fontSize:11, color:C.muted, marginTop:6 }}>Applies to every attachment this company uploads (tasks, evidence, tickets, chat). Any file type is allowed; allowed range 1 to 100 MB. The server's web proxy (nginx client_max_body_size) must be at least this large.</div>
+                </div>
                 {msg && <MsgBanner msg={msg}/>}
-                <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/limits`,{employeeLimit:Number(empLimit),whatsappLimit:Number(waLimit)}))}
+                <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/limits`,{employeeLimit:Number(empLimit),whatsappLimit:Number(waLimit),uploadLimitMb:Number(uploadMb)}))}
                   disabled={saving} style={primaryBtn}>
                   <Save size={14}/>{saving?'Saving…':'Save limits'}
                 </button>
