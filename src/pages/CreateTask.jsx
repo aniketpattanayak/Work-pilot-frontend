@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, forwardRef, useRef } from "rea
 import API from '../api/axiosConfig'; 
 import { dialog } from '../components/Dialog';
 import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import useCustomFields from '../hooks/useCustomFields';
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
 import {
@@ -53,6 +55,8 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
   const doerDropdownRef = useRef(null);
 
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const { fields: customFieldDefs } = useCustomFields('delegation'); // company-defined extra fields (empty = form unchanged)
+  const [customValues, setCustomValues] = useState({});
   const [employees, setEmployees] = useState(initialEmployees || []);
   const [loading, setLoading] = useState(!initialEmployees || initialEmployees.length === 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -219,6 +223,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
     if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
     selectedFiles.forEach((file) => formData.append("taskFiles", file));
+    if (customFieldDefs.length > 0) formData.append("customFields", JSON.stringify(customValues));
 
     try {
       await API.post("/tasks/create-task", formData, {
@@ -227,6 +232,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
       dialog.alert("The task was assigned.", { tone: 'success' });
       setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, maxExtensionDays: "3", coworkers: [] });
       setSelectedFiles([]);
+      setCustomValues({});
       setSelectedHelpers([]);
       setDoerSearch('');
       setFollowerSearch('');
@@ -297,6 +303,15 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                 placeholder="Enter Description"
               />
             </div>
+
+            {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
+            <DynamicFieldRenderer
+              variant="plain"
+              fields={customFieldDefs}
+              values={customValues}
+              requireOnCreate
+              onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))}
+            />
 
             {/* MAIN GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

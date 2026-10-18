@@ -43,6 +43,10 @@ import TaskPhotoThumb from '../components/TaskPhotoThumb';
 import { groupPhotosByHistory, allTaskPhotos } from '../utils/taskPhotos';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
+import ConfigurableTable from '../components/ConfigurableTable';
+import ColumnCustomizer from '../components/ColumnCustomizer';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import useConfigurableColumns from '../hooks/useConfigurableColumns';
 
 // Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back"
 const displayStatus = (t) => {
@@ -103,7 +107,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     description: '',
     doerId: '',
     deadline: '',
-    priority: 'Medium'
+    priority: 'Medium',
+    customFields: {}
   });
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -273,7 +278,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       description: task.description || '',
       doerId: task.doerId?._id || task.doerId || '',
       deadline: toDatetimeLocal(task.deadline),
-      priority: task.priority || 'Medium'
+      priority: task.priority || 'Medium',
+      customFields: (task.customFields && typeof task.customFields === 'object') ? { ...task.customFields } : {}
     });
     setIsEditOpen(true);
   };
@@ -292,6 +298,169 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       dialog.alert(err.response?.data?.message || "The task could not be updated. Please try again.", { tone: 'error' });
     }
   };
+
+  // Built-in columns of the task list (company custom fields are added by ConfigurableTable).
+  const taskColumns = [
+    {
+      key: 'sno', label: 'S no.', width: '60px',
+      cellClassName: 'text-xs font-black text-slate-400',
+      render: (task, index) => (
+        <>
+                        {index + 1}
+        </>
+      ),
+    },
+    {
+      key: 'title', label: 'Task Name', width: '1.5fr',
+      cellClassName: 'min-w-0 pr-2',
+      render: (task, index) => (
+        <>
+                        <span className="font-black text-sm whitespace-normal break-words block">{task.title}</span>
+                        {(task.files || []).length > 0 && (() => {
+                          // So anyone looking at the list — not just whoever opens
+                          // History & files — can see at a glance that a photo was
+                          // sent, by whom and at which stage. Click opens the FULL
+                          // gallery of every photo on this task (not just this one),
+                          // starting on the most recent, with prev/next + zoom.
+                          const photos = allTaskPhotos(task);
+                          const latest = photos[photos.length - 1];
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openGallery(photos, photos.length - 1, task); }}
+                              className="mt-1.5 flex items-center gap-1.5 group/thumb"
+                              title="View uploaded photos"
+                            >
+                              <TaskPhotoThumb file={latest} className="w-7 h-7" />
+                              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
+                                {photos.length > 1 ? `+${photos.length} photos` : '1 photo'}
+                              </span>
+                            </button>
+                          );
+                        })()}
+        </>
+      ),
+    },
+    {
+      key: 'assignedTo', label: 'Assigned To', width: '1.5fr',
+      cellClassName: 'text-xs font-bold min-w-0 pr-2',
+      render: (task, index) => (
+        <>
+                        <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
+                        {(task.forwardChain || []).length > 0 && (
+  <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
+)}
+        </>
+      ),
+    },
+    {
+      key: 'description', label: 'Description', width: '2fr',
+      cellClassName: 'min-w-0 pr-2',
+      render: (task, index) => (
+        <>
+                        <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">
+                          {task.description || "No description provided."}
+                        </p>
+        </>
+      ),
+    },
+    {
+      key: 'deadline', label: 'Deadline', width: '1fr',
+      cellClassName: 'text-xs font-bold min-w-0',
+      render: (task, index) => (
+        <>
+                        {task.deadline ? (
+                          <>
+                            {new Date(task.deadline).toLocaleDateString()}{' '}
+                            <span className="text-muted-foreground font-semibold">
+                              {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </>
+                        ) : 'AWAITING'}
+                        {task.originalDeadline && (
+                          <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The doer revised the deadline within the allowed days">
+                            Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString()} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
+                          </span>
+                        )}
+        </>
+      ),
+    },
+    {
+      key: 'status', label: 'Status', width: '1fr',
+      cellClassName: 'min-w-0',
+      render: (task, index) => (
+        <>
+                        <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{displayStatus(task)}</span>
+        </>
+      ),
+    },
+    {
+      key: 'actions', label: 'Action', width: '160px', pinEnd: true, headerClassName: 'text-right pr-4',
+      cellClassName: 'flex gap-1.5 justify-end items-center min-w-0',
+      render: (task, index) => (
+        <>
+                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
+                          // Once the doer has marked the task done (Completed) or it's been
+                          // Verified, the assigner can no longer edit it - the button is
+                          // removed entirely rather than shown disabled.
+<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
+                          title="Edit Task"
+                          className="p-2 rounded-xl border transition-all active:scale-90 bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white">
+                          <Edit3 size={14} />
+                        </button>
+                        )}
+                        {!isViewer && task.status === 'Revision Requested' && (
+                          <button onClick={(e) => { e.stopPropagation(); setRevisionModalTask(task); }}
+                            className="p-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all active:scale-90" title="Revision Control">
+                            <AlertTriangle size={14} />
+                          </button>
+                        )}
+                        {!isViewer && task.status === 'Completed' && (<>
+                          <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, true); }}
+                            className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
+                            <CheckCircle size={14} />
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, false); }}
+                            className="p-2 bg-red-500/5 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
+                            <XCircle size={14} />
+                          </button>
+                        </>)}
+                        {!isViewer && chatEnabled && (
+<button onClick={(e) => {
+                          e.stopPropagation();
+                          openTaskChat({
+                            taskId: task._id,
+                            taskType: 'delegation',
+                            taskTitle: task.title || task.taskTitle || 'Task',
+                            // Bug fix: task.assignerId is a populated object here
+                            // ({_id, name, ...}), not a plain id - pushing it
+                            // straight into participants silently corrupted the
+                            // thread's participant list. Always resolve to the id.
+                            participants: [task.doerId?._id || task.doerId, task.assignerId?._id || task.assignerId].filter(Boolean),
+                          });
+                        }}
+                          className="flex items-center gap-1 text-[11px] px-2 py-2 rounded-xl border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all font-bold" title="Comments">
+                          💬
+                        </button>
+)}
+                        <button onClick={(e) => { e.stopPropagation(); setDetailsModalTask(task); }}
+                          className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-xl transition-all active:scale-90" title="History & files">
+                          <History size={14} />
+                        </button>
+                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
+                          // Same rule as Edit above: once the doer has marked it done, the
+                          // Delete button is removed entirely, not shown disabled.
+<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id, task.title); }}
+                          title="Delete Task"
+                          className="p-2 rounded-xl border transition-all active:scale-90 bg-background border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500">
+                          <Trash2 size={14} />
+                        </button>
+                        )}
+        </>
+      ),
+    },
+  ];
+  const taskCtl = useConfigurableColumns({ tableKey: 'delegation_table', columns: taskColumns, customFieldEntity: 'delegation', phoneUsesDefaults: true });
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[400px] gap-6">
@@ -317,6 +486,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Delegation Work Monitor</h2>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="hidden md:block"><ColumnCustomizer ctl={taskCtl} /></div>
           <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
@@ -394,25 +564,24 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
           <ResponsiveGrid className="w-[1050px] sm:w-full">
-            {/* HEADER */}
-            <div className="mobile-grid-head grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20">
-              <div>S no.</div>
-              <div>Task Name</div>
-              <div>Assigned To</div>
-              <div>Description</div>
-              <div>Deadline</div>
-              <div>Status</div>
-              <div className="text-right pr-4">Action</div>
-            </div>
-
-            {filteredTasks.length === 0 ? (
+            <ConfigurableTable
+              controller={taskCtl}
+              minWidthClass="md:min-w-[var(--cfg-min)]"
+              rows={filteredTasks}
+              rowKey={(task) => task._id}
+              renderHeader={({ cells, style }) => (
+                <div className="mobile-grid-head grid px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20" style={style}>
+                  {cells}
+                </div>
+              )}
+              empty={(
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <Search size={32} className="text-muted-foreground opacity-30 mb-3" />
                 <p className="text-sm text-muted-foreground font-medium">No tasks found</p>
                 {nameFilter && <p className="text-xs text-muted-foreground mt-1">Try a different name or clear the filter</p>}
               </div>
-            ) : (
-              filteredTasks.map((task, index) => {
+              )}
+              renderRow={({ row: task, cells, style }) => {
                 const isRevision = task.status === 'Revision Requested';
                 // Phone card colour: red overdue, amber today / revision, green done, grey upcoming.
                 const cardTone = (() => {
@@ -425,133 +594,19 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 })();
 
                 return (
-                  <div key={task._id} className="border-b border-border/50 last:border-0 max-md:border-0">
+                  <div className="border-b border-border/50 last:border-0 max-md:border-0">
                     <div
                       data-tone={cardTone}
-                      className={`mobile-grid-row mgr-card mgr-card--task grid grid-cols-[60px_1.5fr_1.5fr_2fr_1fr_1fr_160px] items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
+                      style={style}
+                      className={`mobile-grid-row mgr-card mgr-card--task grid items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >
-                      <div className="text-xs font-black text-slate-400">
-                        {index + 1}
-                      </div>
-                      <div className="min-w-0 pr-2">
-                        <span className="font-black text-sm whitespace-normal break-words block">{task.title}</span>
-                        {(task.files || []).length > 0 && (() => {
-                          // So anyone looking at the list — not just whoever opens
-                          // History & files — can see at a glance that a photo was
-                          // sent, by whom and at which stage. Click opens the FULL
-                          // gallery of every photo on this task (not just this one),
-                          // starting on the most recent, with prev/next + zoom.
-                          const photos = allTaskPhotos(task);
-                          const latest = photos[photos.length - 1];
-                          return (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); openGallery(photos, photos.length - 1, task); }}
-                              className="mt-1.5 flex items-center gap-1.5 group/thumb"
-                              title="View uploaded photos"
-                            >
-                              <TaskPhotoThumb file={latest} className="w-7 h-7" />
-                              <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground group-hover/thumb:text-primary">
-                                {photos.length > 1 ? `+${photos.length} photos` : '1 photo'}
-                              </span>
-                            </button>
-                          );
-                        })()}
-                      </div>
-                      <div className="text-xs font-bold min-w-0 pr-2">
-                        <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
-                        {(task.forwardChain || []).length > 0 && (
-  <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
-)}
-                      </div>
-                      <div className="min-w-0 pr-2">
-                        <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">
-                          {task.description || "No description provided."}
-                        </p>
-                      </div>
-                      <div className="text-xs font-bold min-w-0">
-                        {task.deadline ? (
-                          <>
-                            {new Date(task.deadline).toLocaleDateString()}{' '}
-                            <span className="text-muted-foreground font-semibold">
-                              {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </>
-                        ) : 'AWAITING'}
-                        {task.originalDeadline && (
-                          <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The doer revised the deadline within the allowed days">
-                            Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString()} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{displayStatus(task)}</span>
-                      </div>
-                      <div className="flex gap-1.5 justify-end items-center min-w-0">
-                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
-                          // Once the doer has marked the task done (Completed) or it's been
-                          // Verified, the assigner can no longer edit it - the button is
-                          // removed entirely rather than shown disabled.
-<button onClick={(e) => { e.stopPropagation(); handleOpenEdit(task); }}
-                          title="Edit Task"
-                          className="p-2 rounded-xl border transition-all active:scale-90 bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-white">
-                          <Edit3 size={14} />
-                        </button>
-                        )}
-                        {!isViewer && task.status === 'Revision Requested' && (
-                          <button onClick={(e) => { e.stopPropagation(); setRevisionModalTask(task); }}
-                            className="p-2 bg-amber-500/10 text-amber-600 rounded-xl border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all active:scale-90" title="Revision Control">
-                            <AlertTriangle size={14} />
-                          </button>
-                        )}
-                        {!isViewer && task.status === 'Completed' && (<>
-                          <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, true); }}
-                            className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
-                            <CheckCircle size={14} />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, false); }}
-                            className="p-2 bg-red-500/5 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
-                            <XCircle size={14} />
-                          </button>
-                        </>)}
-                        {!isViewer && chatEnabled && (
-<button onClick={(e) => {
-                          e.stopPropagation();
-                          openTaskChat({
-                            taskId: task._id,
-                            taskType: 'delegation',
-                            taskTitle: task.title || task.taskTitle || 'Task',
-                            // Bug fix: task.assignerId is a populated object here
-                            // ({_id, name, ...}), not a plain id - pushing it
-                            // straight into participants silently corrupted the
-                            // thread's participant list. Always resolve to the id.
-                            participants: [task.doerId?._id || task.doerId, task.assignerId?._id || task.assignerId].filter(Boolean),
-                          });
-                        }}
-                          className="flex items-center gap-1 text-[11px] px-2 py-2 rounded-xl border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all font-bold" title="Comments">
-                          💬
-                        </button>
-)}
-                        <button onClick={(e) => { e.stopPropagation(); setDetailsModalTask(task); }}
-                          className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-xl transition-all active:scale-90" title="History & files">
-                          <History size={14} />
-                        </button>
-                        {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
-                          // Same rule as Edit above: once the doer has marked it done, the
-                          // Delete button is removed entirely, not shown disabled.
-<button onClick={(e) => { e.stopPropagation(); handleCancelTask(task._id, task.title); }}
-                          title="Delete Task"
-                          className="p-2 rounded-xl border transition-all active:scale-90 bg-background border-border text-slate-400 hover:bg-red-500/10 hover:text-red-500">
-                          <Trash2 size={14} />
-                        </button>
-                        )}
-                      </div>
+                      {cells}
                     </div>
                   </div>
                 );
-              })
-            )}
+              }}
+            />
           </ResponsiveGrid>
         </div>
       </div>
@@ -810,6 +865,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <option value="Urgent">Urgent</option>
                 </select>
               </div>
+              {/* Company-defined extra fields (renders nothing when the company has none) */}
+              <DynamicFieldRenderer
+                variant="plain"
+                fields={taskCtl.customFields}
+                values={editFormData.customFields}
+                onChange={(name, value) => setEditFormData((f) => ({ ...f, customFields: { ...(f.customFields || {}), [name]: value } }))}
+              />
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <button
                   type="button"

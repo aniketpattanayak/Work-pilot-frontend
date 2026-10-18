@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
 import AccessRolesPanel from '../components/AccessRolesPanel';
+import CustomFieldsManager from '../components/CustomFieldsManager';
 import { dialog } from '../components/Dialog';
 import { COUNTRIES as DEFAULT_PHONE_COUNTRIES } from '../utils/phoneNumber';
 import { 
@@ -431,6 +432,7 @@ const Settings = ({ tenantId }) => {
   const SETTINGS_SECTIONS = [
     { id: 'identity', cat: 'company', title: 'Company name and logo', keywords: 'brand logo name organisation identity' },
     { id: 'masters', cat: 'company', title: 'Departments and locations', keywords: 'sector department location branch' },
+    { id: 'customFields', cat: 'company', title: 'Extra fields', keywords: 'custom field form column employee task extra additional' },
     { id: 'phoneCountries', cat: 'company', title: 'Country codes', keywords: 'country code phone whatsapp dial international' },
     { id: 'weekend', cat: 'time', title: 'Weekly off', keywords: 'weekend weekly saturday sunday off days' },
     { id: 'hours', cat: 'time', title: 'Operational hours', keywords: 'opening closing office timing working hours attendance late' },
@@ -943,6 +945,8 @@ const Settings = ({ tenantId }) => {
         </section>
         </div>
       </div>
+
+      <div data-settings-section="customFields" hidden={!showSection('customFields')} className="mt-8"><CustomFieldsManager /></div>
 
       <div data-settings-section="access" hidden={!showSection('access')} className="mt-8"><AccessRolesPanel /></div>
 

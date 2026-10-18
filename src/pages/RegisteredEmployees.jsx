@@ -3,6 +3,10 @@ import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveTable from '../components/ResponsiveTable';
+import ConfigurableTable from '../components/ConfigurableTable';
+import ColumnCustomizer from '../components/ColumnCustomizer';
+import useConfigurableColumns from '../hooks/useConfigurableColumns';
+import { customSummary } from '../utils/customFieldsConfig';
 
 // On leave only while today is inside the saved date range (same rule as the server).
 const isOnLeaveNow = (ls) => {
@@ -208,6 +212,169 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
     return matchesSearch && (selectedRole === 'All' || empRoles.includes(selectedRole));
   });
 
+  // Built-in columns of the desktop list (company custom fields are added by ConfigurableTable).
+  const rowInfo = (emp) => ({
+    isOnLeave: isOnLeaveNow(emp.leaveStatus),
+    roles: Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []),
+    avatarColor: getAvatarColor(emp.name),
+  });
+  const employeeColumns = [
+    {
+      key: 'employee', label: 'Employee', width: '1.8fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
+                          {emp.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
+                          <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase tracking-tight">
+                            <Briefcase size={9} className="text-primary/50 flex-shrink-0" />
+                            <span className="truncate">{emp.department || 'General'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'location_dept', label: 'Location / Dept', width: '1.3fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <MapPin size={11} className="text-primary/40 flex-shrink-0" />
+                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.location || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Briefcase size={11} className="text-primary/40 flex-shrink-0" />
+                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.department || '—'}</span>
+                        </div>
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'roles', label: 'Roles', width: '1.3fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="flex flex-wrap gap-1">
+                        {roles.map((r, i) => (
+                          <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'email', label: 'Email', width: '1.5fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Mail size={11} className="text-primary/40 flex-shrink-0" />
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
+                          {emp.email || '—'}
+                        </span>
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'phone', label: 'Phone', width: '1.1fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Phone size={11} className="text-primary/40 flex-shrink-0" />
+                        <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400 truncate">
+                          {emp.whatsappNumber || '—'}
+                        </span>
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'linkage', label: 'Linkage', width: '1fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div>{renderTeamLinks(emp)}</div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'status', label: 'Status', width: '1fr',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div>
+                        {isOnLeave ? (
+                          <div className="flex items-center gap-1.5">
+                            <Plane size={11} className="text-amber-500 flex-shrink-0" />
+                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">On Leave</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tight">Active</span>
+                          </div>
+                        )}
+                      </div>
+
+                  
+        );
+      },
+    },
+    {
+      key: 'actions', label: 'Action', width: '160px', pinEnd: true, headerClassName: 'text-center',
+      render: (emp) => {
+        const { isOnLeave, roles, avatarColor } = rowInfo(emp);
+        return (
+                      <div className="flex justify-center gap-1.5">
+                        <button
+                          onClick={() => openLeaveManager(emp)}
+                          className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest active:scale-90 whitespace-nowrap"
+                        >
+                          Leave
+                        </button>
+                        <button
+                          onClick={() => onEdit(emp)}
+                          className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90 flex items-center justify-center"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp._id, emp.name)}
+                          className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90 flex items-center justify-center"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+        );
+      },
+    },
+  ];
+  const colCtl = useConfigurableColumns({ tableKey: 'employee_table', columns: employeeColumns, customFieldEntity: 'employee' });
+
   return (
     <>
       <div className="animate-in fade-in duration-500">
@@ -228,6 +395,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total:</span>
               <span className="text-primary font-black text-sm">{filteredEmployees.length}</span>
             </div>
+            <div className="hidden xl:block"><ColumnCustomizer ctl={colCtl} /></div>
             <button
               onClick={async () => { setRefreshing(true); try { await fetchEmployees(); } finally { setRefreshing(false); } }}
               disabled={refreshing}
@@ -303,17 +471,17 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
 
         {/* ── COLUMN LABELS (desktop) ─────────────────────────────── */}
         <div className="max-h-[calc(100dvh-26rem)] lg:max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
-        <div className="hidden xl:grid grid-cols-[1.8fr_1.3fr_1.3fr_1.5fr_1.1fr_1fr_1fr_160px] gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border">
-          {['Employee', 'Location / Dept', 'Roles', 'Email', 'Phone', 'Linkage', 'Status', 'Action'].map((label, i) => (
-            <span key={i} className={`text-[9px] font-black text-slate-400 uppercase tracking-widest ${i === 7 ? 'text-center' : ''}`}>
-              {label}
-            </span>
-          ))}
-        </div>
-
         {/* ── EMPLOYEE ROWS ───────────────────────────────────────── */}
         <div className="space-y-2">
-          {filteredEmployees.map((emp) => {
+          <ConfigurableTable
+            controller={colCtl}
+            rowsClassName="space-y-2"
+            rows={filteredEmployees}
+            rowKey={(emp) => emp._id}
+            renderHeader={({ cells, style }) => (
+              <div className="hidden xl:grid gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border text-[9px] font-black text-slate-400 uppercase tracking-widest" style={style}>{cells}</div>
+            )}
+            renderRow={({ row: emp, cells, style }) => {
             const isOnLeave = isOnLeaveNow(emp.leaveStatus);
             const roles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
             const avatarColor = getAvatarColor(emp.name);
@@ -321,102 +489,11 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
 
             return (
               <div
-                key={emp._id}
                 className="bg-card border border-border rounded-xl px-5 py-4 hover:border-primary/20 hover:shadow-sm transition-all duration-200"
               >
                 {/* ── DESKTOP ──────────────────────────────────────── */}
-                <div className="hidden xl:grid grid-cols-[1.8fr_1.3fr_1.3fr_1.5fr_1.1fr_1fr_1fr_160px] gap-x-4 items-center">
-
-                  {/* Name + Dept */}
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
-                      {emp.name?.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
-                      <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase tracking-tight">
-                        <Briefcase size={9} className="text-primary/50 flex-shrink-0" />
-                        <span className="truncate">{emp.department || 'General'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Location / Dept */}
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <MapPin size={11} className="text-primary/40 flex-shrink-0" />
-                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.location || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Briefcase size={11} className="text-primary/40 flex-shrink-0" />
-                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.department || '—'}</span>
-                    </div>
-                  </div>
-
-                  {/* Roles */}
-                  <div className="flex flex-wrap gap-1">
-                    {roles.map((r, i) => (
-                      <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Email */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Mail size={11} className="text-primary/40 flex-shrink-0" />
-                    <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
-                      {emp.email || '—'}
-                    </span>
-                  </div>
-
-                  {/* Phone */}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Phone size={11} className="text-primary/40 flex-shrink-0" />
-                    <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400 truncate">
-                      {emp.whatsappNumber || '—'}
-                    </span>
-                  </div>
-
-                  {/* Linkage */}
-                  <div>{renderTeamLinks(emp)}</div>
-
-                  {/* Leave Status */}
-                  <div>
-                    {isOnLeave ? (
-                      <div className="flex items-center gap-1.5">
-                        <Plane size={11} className="text-amber-500 flex-shrink-0" />
-                        <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">On Leave</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tight">Active</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex justify-center gap-1.5">
-                    <button
-                      onClick={() => openLeaveManager(emp)}
-                      className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest active:scale-90 whitespace-nowrap"
-                    >
-                      Leave
-                    </button>
-                    <button
-                      onClick={() => onEdit(emp)}
-                      className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90 flex items-center justify-center"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(emp._id, emp.name)}
-                      className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90 flex items-center justify-center"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                <div className="hidden xl:grid gap-x-4 items-center" style={style}>
+                  {cells}
                 </div>
 
                 {/* ── MOBILE / TABLET ───────────────────────────────── */}
@@ -491,10 +568,23 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                       </div>
                     )}
                   </div>
+
+                  {/* Company-defined extra fields (only the ones this person has a value for) */}
+                  {(() => {
+                    const items = customSummary(colCtl.customFields, emp);
+                    return items.length ? (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-border/50">
+                        {items.map(({ def, text }) => (
+                          <span key={def.fieldName} className="text-[10px] text-slate-500"><b className="uppercase tracking-wider">{def.fieldLabel}:</b> {text}</span>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             );
-          })}
+            }}
+          />
 
           {/* ── EMPTY STATE ──────────────────────────────────────── */}
           {filteredEmployees.length === 0 && (

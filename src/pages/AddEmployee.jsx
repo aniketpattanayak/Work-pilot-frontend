@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import DynamicFieldRenderer from "../components/DynamicFieldRenderer";
+import useCustomFields from "../hooks/useCustomFields";
 import BulkUpload from '../components/BulkUpload';
 import API from "../api/axiosConfig"; // Centralized API instance
 import { dialog } from "../components/Dialog";
@@ -181,6 +183,7 @@ const AddEmployee = ({
     workOnSunday: false, // Initialized as boolean
   });
 
+  const { fields: customFieldDefs } = useCustomFields("employee"); // company-defined extra fields (empty = form unchanged)
   const [allEmployees, setAllEmployees] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -561,6 +564,16 @@ const AddEmployee = ({
             <span className="text-[10px] text-slate-400 mt-1 ml-1">Used for leave accrual and payroll pro-ration. Leave blank to default to today.</span>
           </div>
         </div>
+
+        {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
+        <DynamicFieldRenderer
+          fields={customFieldDefs}
+          values={formData.customFields}
+          requireOnCreate={!isEditing}
+          onChange={(name, value) =>
+            setFormData((f) => ({ ...f, customFields: { ...(f.customFields || {}), [name]: value } }))
+          }
+        />
 
         {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 ">
