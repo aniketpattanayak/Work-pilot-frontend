@@ -276,7 +276,7 @@ shadow-lg space-y-5">
     className={`w-full py-4 rounded-xl font-black text-[11px] uppercase tracking-widest transition
       ${!selectedSupervisor
         ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-        : 'bg-primary text-white hover:bg-sky-400 active:scale-95'
+        : 'bg-primary text-white hover:bg-violet-400 active:scale-95'
       }
     `}
   >

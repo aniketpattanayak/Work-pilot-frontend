@@ -834,7 +834,7 @@ const AddEmployee = ({
           disabled={loading}
           className={`group relative mt-4 py-5 px-8 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-[0.3em] transition-all duration-300 flex items-center justify-center gap-4 shadow-xl ${loading
             ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
-            : "bg-gradient-to-r from-sky-500 to-sky-600 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 cursor-pointer"
+            : "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white dark:text-slate-950 hover:shadow-primary/30 active:scale-95 cursor-pointer"
             }`}
         >
           {loading ? (

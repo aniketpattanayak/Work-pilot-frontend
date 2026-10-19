@@ -35,9 +35,9 @@ const C = {
   text2:    '#344054',
   muted:    '#667085',
   muted2:   '#98A2B3',
-  blue:     '#1570EF',
-  blueL:    '#EFF4FF',
-  blueT:    '#175CD3',
+  blue:     '#7C3AED',
+  blueL:    '#F3EEFF',
+  blueT:    '#6D28D9',
   green:    '#079455',
   greenL:   '#ECFDF3',
   greenT:   '#067647',
@@ -71,7 +71,7 @@ function initials(name='') {
   return name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase() || '??';
 }
 function avatar(name, size=36) {
-  const COLS = ['#1570EF','#079455','#6941C6','#DC6803','#D92D20','#0E7090'];
+  const COLS = ['#7C3AED','#079455','#6941C6','#DC6803','#D92D20','#0E7090'];
   const bg   = COLS[(name?.charCodeAt(0)||0) % COLS.length];
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', background:bg, color:'#fff',
@@ -1356,7 +1356,7 @@ const inputStyle = { width:'100%', padding:'9px 12px', border:`1px solid ${C.bor
   fontFamily:'inherit', transition:'border-color .15s' };
 const labelStyle = { fontSize:12, fontWeight:500, color:'#344054', display:'block', marginBottom:5 };
 const primaryBtn = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px',
-  background:'#1570EF', color:'white', border:'none', borderRadius:8, fontSize:13,
+  background:'#7C3AED', color:'white', border:'none', borderRadius:8, fontSize:13,
   fontWeight:600, cursor:'pointer', transition:'opacity .12s' };
 const secondaryBtn = { display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px',
   background:'white', color:'#344054', border:'1px solid #D0D5DD', borderRadius:8,
@@ -1525,7 +1525,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
                         <tr key={t._id} onClick={()=>setSelected(t._id)}
                           style={{ borderBottom:`1px solid ${C.border}`, cursor:'pointer',
                             background: i%2===0?C.card:'#FAFAFA', transition:'background .1s' }}
-                          onMouseEnter={e=>e.currentTarget.style.background='#EFF4FF'}
+                          onMouseEnter={e=>e.currentTarget.style.background='#F3EEFF'}
                           onMouseLeave={e=>e.currentTarget.style.background=i%2===0?C.card:'#FAFAFA'}>
                           <td style={{ padding:'10px 14px', borderRight:`1px solid ${C.border}` }}>
                             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
