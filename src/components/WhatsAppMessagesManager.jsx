@@ -11,25 +11,26 @@ const PLAIN = { maytapi: true };
  * template name, or send it from another of the company's numbers.
  */
 export default function WhatsAppMessagesManager() {
-  const [data, setData] = useState({ templates: [], provider: 'doubletick' });
+  const [data, setData] = useState({ templates: [], provider: 'doubletick', ownApi: false });
   const [open, setOpen] = useState(null);
   const [form, setForm] = useState({});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ text: '', bad: false });
 
   const load = useCallback(async () => {
-    try { const r = await API.get('/config/settings'); setData({ templates: r.data.templates || [], provider: r.data.provider || 'doubletick' }); }
+    try { const r = await API.get('/config/settings'); setData({ templates: r.data.templates || [], provider: r.data.provider || 'doubletick', ownApi: !!r.data.ownApi }); }
     catch (e) { setMsg({ text: (e.response && e.response.data && e.response.data.message) || 'Could not load the messages.', bad: true }); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const plain = !!PLAIN[data.provider];
+  const own = data.ownApi; // own WhatsApp account = may change names / wording / order
   const openRow = (t) => {
     setMsg({ text: '', bad: false });
     if (open === t.key) { setOpen(null); return; }
     const s = t.saved || {};
     setOpen(t.key);
-    setForm({ enabled: s.enabled !== false, body: s.body || t.body, providerTemplate: s.providerTemplate || '', senderPhoneId: s.senderPhoneId || '' });
+    setForm({ enabled: s.enabled !== false, body: s.body || t.body, providerTemplate: s.providerTemplate || '', senderPhoneId: s.senderPhoneId || '', language: s.language || '', variableOrder: s.variableOrder || '' });
   };
   const call = async (fn, ok) => {
     setBusy(true); setMsg({ text: '', bad: false });
@@ -42,6 +43,8 @@ export default function WhatsAppMessagesManager() {
     body: form.body.trim() === t.body.trim() ? '' : form.body,   // same as standard = nothing to store
     providerTemplate: form.providerTemplate,
     senderPhoneId: form.senderPhoneId,
+    language: form.language,
+    variableOrder: form.variableOrder,
   }), 'Saved.');
   const reset = (t) => call(async () => { await API.delete(`/config/settings/whatsapp-templates/${t.key}`); setOpen(null); }, 'Back to the standard message.');
   const quickToggle = (t) => call(() => API.put(`/config/settings/whatsapp-templates/${t.key}`, { enabled: (t.saved && t.saved.enabled) === false }), 'Saved.');
@@ -50,15 +53,20 @@ export default function WhatsAppMessagesManager() {
     <section className="bg-card rounded-2xl border border-border p-5 md:p-6 shadow-sm" data-testid="whatsapp-messages">
       <h3 className="text-foreground text-base font-black mb-1 uppercase tracking-tight">WhatsApp messages</h3>
       <p className="text-[11px] text-slate-500 mb-1">Every WhatsApp message the system sends. Switch one off, or open it to change it.</p>
-      <p className="text-[11px] text-slate-500 mb-4">
+      {own && <p className="text-[11px] text-slate-500 mb-4">
         {plain
           ? 'Your WhatsApp provider sends plain text, so you can change the wording below.'
           : 'Your WhatsApp provider sends templates approved inside WhatsApp. The words are fixed by that approval, so here you can switch a message off or point it to another approved template name. To change the words, get a new template approved with your provider and enter its name.'}
-      </p>
+      </p>}
+      {!own && (
+        <p className="text-[11px] text-amber-600 font-bold mb-4" data-testid="wa-shared-note">
+          Your company uses the platform's shared WhatsApp account, so the message names and wording are fixed. You can switch a message on or off. To use your own templates, connect your own WhatsApp account (ask the platform owner).
+        </p>
+      )}
       <ul className="space-y-2">
         {data.templates.map((t) => {
           const on = !(t.saved && t.saved.enabled === false);
-          const edited = !!(t.saved && (t.saved.body || t.saved.providerTemplate || t.saved.senderPhoneId));
+          const edited = !!(t.saved && (t.saved.body || t.saved.providerTemplate || t.saved.senderPhoneId || t.saved.language || t.saved.variableOrder));
           return (
             <li key={t.key} className="rounded-xl border border-border bg-background">
               <div className="flex items-center justify-between gap-3 p-3">
@@ -73,7 +81,8 @@ export default function WhatsAppMessagesManager() {
               </div>
               {open === t.key && (
                 <div className="border-t border-border p-3 space-y-3">
-                  <div>
+                  {!own && <p className="text-[11px] text-slate-500">Use the switch on the right to turn this message on or off.</p>}
+                  {own && <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Values this message can use</p>
                     <div className="flex flex-wrap gap-1.5">
                       {t.variables.map((v, i) => (
@@ -84,29 +93,42 @@ export default function WhatsAppMessagesManager() {
                         </button>
                       ))}
                     </div>
-                  </div>
-                  {plain && (
+                  </div>}
+                  {own && plain && (
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Message wording</label>
                       <textarea rows={8} className={inp + ' mt-1 font-mono'} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
                     </div>
                   )}
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  {own && <div className="grid sm:grid-cols-2 gap-3">
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Approved template name (optional)</label>
                       <input className={inp + ' mt-1'} placeholder={t.key} value={form.providerTemplate} onChange={(e) => setForm({ ...form, providerTemplate: e.target.value })} />
                     </div>
+                    {!plain && (
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Template language (optional)</label>
+                        <input className={inp + ' mt-1'} placeholder="en  (or hi, en_US)" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} />
+                      </div>
+                    )}
+                    {!plain && (
+                      <div className="sm:col-span-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Order of the values (optional)</label>
+                        <input className={inp + ' mt-1'} placeholder={t.variables.map((_, i) => i + 1).join(',')} value={form.variableOrder} onChange={(e) => setForm({ ...form, variableOrder: e.target.value })} />
+                        <p className="text-[10px] text-slate-500 mt-1">Only if your own approved template has its slots in another order. Example: 2,1,3 puts value 2 in slot 1, value 1 in slot 2, value 3 in slot 3. Leave empty for the standard order.</p>
+                      </div>
+                    )}
                     {plain && (
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Send from another number (phone ID, optional)</label>
                         <input className={inp + ' mt-1'} placeholder="Leave empty to use the main number" value={form.senderPhoneId} onChange={(e) => setForm({ ...form, senderPhoneId: e.target.value })} />
                       </div>
                     )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  </div>}
+                  {own && <div className="flex flex-wrap items-center gap-2">
                     <button type="button" disabled={busy} onClick={() => save(t)} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Save size={14} /> Save this message</button>
                     {t.saved && <button type="button" disabled={busy} onClick={() => reset(t)} className="px-4 py-2 rounded-xl border border-border text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><RotateCcw size={14} /> Back to standard</button>}
-                  </div>
+                  </div>}
                 </div>
               )}
             </li>
