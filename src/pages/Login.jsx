@@ -203,7 +203,7 @@ const Login = ({ onLoginSuccess }) => {
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="w-full mt-6 py-5 rounded-2xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 cursor-pointer"
+            className="w-full mt-6 py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 cursor-pointer"
           >
             {isSubmitting ? (
                 <RefreshCcw className="animate-spin" size={20} />

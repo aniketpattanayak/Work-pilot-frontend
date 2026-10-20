@@ -843,7 +843,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                   value={customMessage} onChange={(e) => setCustomMessage(e.target.value)} placeholder="Enter mission briefing details..." />
               </div>
               <button onClick={handleSendWhatsApp} disabled={isSendingWA}
-                className="w-full bg-primary hover:bg-violet-400 text-primary-foreground font-black py-6 rounded-[1.5rem] flex items-center justify-center gap-4 transition-all active:scale-95 shadow-2xl shadow-primary/20 uppercase text-xs tracking-[0.3em] disabled:opacity-50">
+                className="w-full bg-primary hover:bg-sky-400 text-primary-foreground font-black py-6 rounded-[1.5rem] flex items-center justify-center gap-4 transition-all active:scale-95 shadow-2xl shadow-primary/20 uppercase text-xs tracking-[0.3em] disabled:opacity-50">
                 <MessageCircle size={22} /> {isSendingWA ? 'Sending...' : 'Transmit via WhatsApp'}
               </button>
             </div>

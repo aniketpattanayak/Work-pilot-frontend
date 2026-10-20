@@ -345,7 +345,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
                         w-full py-5 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.3em] transition-all active:scale-95 flex items-center justify-center gap-4 shadow-2xl
                         ${!newDoerId
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-border cursor-not-allowed opacity-50'
-                    : 'bg-primary hover:bg-violet-400 text-white dark:text-slate-950 shadow-primary/20'
+                    : 'bg-primary hover:bg-sky-400 text-white dark:text-slate-950 shadow-primary/20'
                   }
                     `}
               >
