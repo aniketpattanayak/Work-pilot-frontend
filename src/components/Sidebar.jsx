@@ -126,7 +126,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     {
       label: 'Administration',
       items: [
-        { name: 'Employees',         icon: <Users />,       roles: ['Admin'] },
+        { name: 'Employees', label: 'Manage Employee', icon: <Users />,       roles: ['Admin'] },
         { name: 'Mapping', label: 'PC Mapping', icon: <UserCog />,     roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
         { name: 'Chat',              icon: <MessageSquare />, roles: ['Admin', 'Coordinator', 'Doer', 'Assigner', 'OrderEntry'], featureKey: 'chat' },

@@ -386,7 +386,7 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
               <Users size={20} className="text-primary" />
             </div>
             <div>
-              <h3 className="text-foreground text-xl font-black tracking-tight uppercase leading-none">Staff Directory</h3>
+              <h3 className="text-foreground text-xl font-black tracking-tight uppercase leading-none">Manage Employee</h3>
               <p className="text-slate-500 text-[10px] font-medium mt-1">Staff, roles, links and leave status</p>
             </div>
           </div>

@@ -85,6 +85,13 @@ import { Plus } from "lucide-react";
  * Fully Responsive | Multi-Tenant | Dual-Theme (Light/Dark)
  * UPDATED: Integrated Dual "Not Done %" Index for Checklist and Delegation.
  */
+const PAGE_TITLES = {
+  'manage-tasks': 'Manage Delegation', 'manage-checklist': 'Manage Checklist', 'my-tasks': 'My Tasks', 'my-flow-tasks': 'My Flow Tasks',
+  'following': 'Following', 'personal-tasks': 'Personal Tasks', 'employees': 'Manage Employee', 'mapping': 'PC Mapping', 'tracking': 'Tracking',
+  'chat': 'Chat', 'order-forms': 'Order Forms', 'new-order': 'New Order', 'flow-management': 'Flow Management', 'review-meeting': 'Review Meeting',
+  'reports': 'Reports Hub', 'rewards-log': 'Rewards Log', 'settings': 'Settings', 'raise-ticket': 'Raise Ticket', 'global-view': 'Global View',
+};
+
 const Dashboard = ({ user, tenantId, onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -237,6 +244,7 @@ const sessionUser = liveUser;
   const getPageTitle = () => {
     const path = location.pathname.split("/").pop();
     if (!path || path === "dashboard") return "Overview";
+    if (PAGE_TITLES[path]) return PAGE_TITLES[path]; // same name as the side menu
     return path.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
@@ -405,7 +413,7 @@ useEffect(() => {
                 <h2 className="text-foreground text-sm md:text-base font-black tracking-tight leading-none mb-1 uppercase">
                   {getPageTitle()}
                 </h2>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Work Pilot Node</span>
+                
               </div>
             </div>
           </div>

@@ -539,7 +539,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <LucideClipboard size={20} className="text-primary shrink-0" />
-          <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Delegation Work Monitor</h2>
+          <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Manage Delegation</h2>
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
           <div className="hidden md:block"><ColumnCustomizer ctl={taskCtl} /></div>

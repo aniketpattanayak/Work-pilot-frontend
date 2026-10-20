@@ -18,6 +18,7 @@ import {
   Target,
   ChevronDown,
   History,
+  MessageSquare,
   Settings2,
   Check,
   Plus,
@@ -26,6 +27,8 @@ import {
 import CreateChecklist from './CreateChecklist';
 import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
+import { useNavigate } from 'react-router-dom';
+import { useChat } from '../components/useChat';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
@@ -43,6 +46,14 @@ const todayYmd = () => ymd(new Date());
  */
 const ManageChecklist = ({ tenantId, assignerId }) => {
   const isViewer = isViewerOnly();
+  const navigate = useNavigate();
+  const { openTaskThread, chatEnabled } = useChat();
+  const [historyFor, setHistoryFor] = useState(null); // History modal for one checklist task
+  const openChat = async (item) => {
+    const idOf = (v) => String((v && v._id) || v || '');
+    const conv = await openTaskThread({ taskId: item._id, taskType: 'checklist', taskTitle: item.taskName, participants: [idOf(item.doerId), idOf(item.createdBy) || assignerId].filter(Boolean) });
+    if (conv && conv._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+  };
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [tenantSettings, setTenantSettings] = useState(null);
@@ -266,8 +277,12 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         </select>
       );
     } },
-    { key: 'actions', label: 'Actions', width: '120px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
+    { key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
       <>
+        {chatEnabled && !isViewer && (
+          <button onClick={(e) => { e.stopPropagation(); openChat(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg" title="Message"><MessageSquare size={14} /></button>
+        )}
+        <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
         {!isViewer && (
           <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
         )}
@@ -288,11 +303,31 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
 
   return (
     <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30">
+      {historyFor && (
+        <div className="fixed inset-0 z-[9994] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistoryFor(null)}>
+          <div className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border">
+              <h3 className="font-black text-sm uppercase tracking-widest truncate">History - {historyFor.taskName}</h3>
+              <button onClick={() => setHistoryFor(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              {(historyFor.history || []).length === 0 ? <p className="text-xs text-muted-foreground italic">No history yet.</p> : (historyFor.history || []).slice().reverse().map((h, i) => (
+                <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
+                  <div className="font-bold text-foreground">{h.action}</div>
+                  {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
+                  {h.attachmentUrl && <a href={h.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary font-bold">Open attached file</a>}
+                  <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}{h.instanceDate ? ` · for ${new Date(h.instanceDate).toLocaleDateString()}` : ''}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* ================= HEADER ================= */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <ClipboardList className="text-primary shrink-0" size={20} />
-          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Checklist Task Monitor</h2>
+          <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Manage Checklist</h2>
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">

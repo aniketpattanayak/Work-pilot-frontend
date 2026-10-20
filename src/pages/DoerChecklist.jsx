@@ -148,6 +148,29 @@ const DoerChecklist = ({ doerId }) => {
   const [subSummary, setSubSummary] = useState({});    // type -> { id -> { total, done } }
   const myRoles = Array.isArray(savedUser.roles) ? savedUser.roles : (savedUser.role ? [savedUser.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
+  // Chat + History work for every kind of task (delegation, checklist, FMS step)
+  const chatOptsFor = (item) => {
+    if (item.dataType === 'Checklist') return { taskId: item._id, taskType: 'checklist', taskTitle: item.title, participants: [idOf(item.doerId) || currentDoerId, idOf(item.assignerId) || idOf(item.createdBy)].filter(Boolean) };
+    if (item.dataType === 'FMS') return { taskId: item.instanceId || item._id, taskType: 'flow', taskTitle: item.title, participants: [currentDoerId].filter(Boolean) };
+    return { taskId: item._id, taskType: 'delegation', taskTitle: item.title, participants: [idOf(item.doerId) || currentDoerId, idOf(item.assignerId)].filter(Boolean) };
+  };
+  const withHistory = (item) => {
+    if (item.dataType === 'Checklist') {
+      const who = (item.doerId && item.doerId.name) || item.doerName || 'Doer';
+      return { ...item, history: (item.history || []).map((h) => ({ ...h, performedBy: h.performedBy || { name: who } })) };
+    }
+    if (item.dataType === 'FMS') {
+      const rows = [];
+      (item.nodeHistory || []).forEach((n) => {
+        const inputs = n.inputs && typeof n.inputs === 'object' ? Object.entries(n.inputs).map(([k, v]) => `${k}: ${v}`).join(', ') : '';
+        const late = n.delayMinutes > 0 ? `Late by ${n.delayMinutes} min` : 'On time';
+        rows.push({ action: `${n.nodeName} - ${n.decision ? String(n.decision).toUpperCase() : 'Done'}`, performedBy: { name: n.completedByName || n.assignedToName }, timestamp: n.completedAt, remarks: [inputs, late].filter(Boolean).join(' · ') });
+      });
+      if (item.activeStep) rows.push({ action: `Now with: ${item.activeStep.nodeName}`, performedBy: { name: item.activeStep.assignedToName }, timestamp: item.activeStep.activatedAt, remarks: '' });
+      return { ...item, history: rows };
+    }
+    return item;
+  };
   // "Revised" belongs to the doer who asked for the new date, not to whoever got the task afterwards
   const revisedForMe = (t) => {
     let by = idOf(t.revisedByDoerId);
@@ -610,12 +633,12 @@ const DoerChecklist = ({ doerId }) => {
       <>
         {passed && <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {(item.doerId && item.doerId.name) || 'someone'}</span>}
         <ActionsMenu items={menu} disabled={done || passed || menu.length === 0} disabledTitle={done ? 'This task is done' : passed ? 'You passed this task on' : 'No actions available'} className={cls} />
-        {item.dataType === 'Delegation' && !passed && (
+        {!passed && (
           <>
             {chatEnabled && (
-              <button type="button" onClick={() => openTaskChat({ taskId: item._id, taskType: 'delegation', taskTitle: item.title, participants: [idOf(item.doerId) || currentDoerId, idOf(item.assignerId)].filter(Boolean) })} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="Message"><MessageSquare size={12} /></button>
+              <button type="button" onClick={() => openTaskChat(chatOptsFor(item))} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="Message"><MessageSquare size={12} /></button>
             )}
-            <button type="button" onClick={() => setDetailsModalTask(item)} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="History & files"><History size={12} /></button>
+            <button type="button" onClick={() => setDetailsModalTask(withHistory(item))} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="History & files"><History size={12} /></button>
           </>
         )}
       </>
@@ -703,7 +726,7 @@ const DoerChecklist = ({ doerId }) => {
             <ClipboardCheck size={20} className="text-primary" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-foreground text-lg sm:text-xl font-black tracking-tighter uppercase leading-none truncate">Task Hub</h2>
+            <h2 className="text-foreground text-lg sm:text-xl font-black tracking-tighter uppercase leading-none truncate">My Tasks</h2>
             <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
