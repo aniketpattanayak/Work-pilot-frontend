@@ -87,6 +87,10 @@ const DoerChecklist = ({ doerId }) => {
   // Custom Date Range Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  // Extra filters: order of the list + the date the task was given to me
+  const [sortMode, setSortMode] = useState('Default');
+  const [givenFrom, setGivenFrom] = useState('');
+  const [givenTo, setGivenTo] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
@@ -211,6 +215,39 @@ const DoerChecklist = ({ doerId }) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
+    // Date a task was given to the doer, per task type
+    const givenOf = {
+      Delegation: (t) => t.createdAt,
+      Checklist: (t) => t.createdAt || t.startDate,
+      FMS: (t) => t.activeStep?.activatedAt || t.startedAt || t.createdAt,
+    };
+    const dayOf = (v) => { if (!v) return null; const d = new Date(v); if (Number.isNaN(d.getTime())) return null; d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const givenOk = (type, t) => {
+      if (!givenFrom && !givenTo) return true;
+      const g = dayOf(givenOf[type](t));
+      if (g === null) return false;
+      if (givenFrom && g < dayOf(givenFrom)) return false;
+      if (givenTo && g > dayOf(givenTo)) return false;
+      return true;
+    };
+    // "Recent first" etc. replaces the default order when chosen
+    const orderBy = (list, type, dlOf, defaultSorted) => {
+      if (sortMode === 'Default') return defaultSorted;
+      const key = (t) => {
+        const v = sortMode.startsWith('Deadline') ? dlOf(t) : givenOf[type](t);
+        const x = new Date(v).getTime();
+        return Number.isNaN(x) ? null : x;
+      };
+      const dir = (sortMode === 'Recent first' || sortMode === 'Deadline latest') ? -1 : 1;
+      return [...list].sort((a, b) => {
+        const ka = key(a), kb = key(b);
+        if (ka === null && kb === null) return 0;
+        if (ka === null) return 1;
+        if (kb === null) return -1;
+        return (ka - kb) * dir;
+      });
+    };
+
     const filterByDateAndStatus = (dateStr, isCompleted, isPendingWorkCondition) => {
       if (startDate || endDate) {
         if (!dateStr) return false;
@@ -248,30 +285,36 @@ const DoerChecklist = ({ doerId }) => {
       return true;
     };
 
-    const filteredAssignments = sortSeq(delegatedTasks.filter(item => {
+    const assignmentsKept = delegatedTasks.filter(item => {
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
-      return filterByDateAndStatus(item.deadline, isCompleted, isPending);
-    }), (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified');
+      return givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
+    });
+    const filteredAssignments = orderBy(assignmentsKept, 'Delegation', (i) => i.deadline,
+      sortSeq(assignmentsKept, (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified'));
 
-    const filteredChecklist = sortSeq(checklist.filter(item => {
+    const checklistKept = checklist.filter(item => {
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
-      return filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
-    }), (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone);
+      return givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
+    });
+    const filteredChecklist = orderBy(checklistKept, 'Checklist', (i) => i.instanceDate || i.nextDueDate,
+      sortSeq(checklistKept, (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone));
 
-    const filteredFms = sortSeq(fmsMissions.filter(item => {
+    const fmsKept = fmsMissions.filter(item => {
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
-      return filterByDateAndStatus(deadlineDate, isCompleted, isPending);
-    }), (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline, (i) => i.status === 'completed');
+      return givenOk('FMS', item) && filterByDateAndStatus(deadlineDate, isCompleted, isPending);
+    });
+    const filteredFms = orderBy(fmsKept, 'FMS', (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline,
+      sortSeq(fmsKept, (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline, (i) => i.status === 'completed'));
 
     return {
       routines: filteredChecklist,
       assignments: filteredAssignments,
       fms: filteredFms,
-      all: sortSeq([
+      all: (() => { const combined = [
         ...filteredChecklist.map(i => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin' })),
         ...filteredAssignments.map(i => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-' })),
         ...filteredFms.map(i => ({
@@ -284,9 +327,14 @@ const DoerChecklist = ({ doerId }) => {
           statusLabel: i.isOverdue ? 'Delayed' : 'On track',
           assignerName: i.activeStep?.assignedToName || i.assignerName || 'System'
         }))
-      ], (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : i.dataType === 'Delegation' ? (i.status === 'Completed' || i.status === 'Verified') : i.status === 'completed'))
+      ];
+        if (sortMode === 'Default') return sortSeq(combined, (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : i.dataType === 'Delegation' ? (i.status === 'Completed' || i.status === 'Verified') : i.status === 'completed'));
+        const keyOf = (i) => { const x = new Date(sortMode.startsWith('Deadline') ? i.deadlineDate : givenOf[i.dataType](i)).getTime(); return Number.isNaN(x) ? null : x; };
+        const dir = (sortMode === 'Recent first' || sortMode === 'Deadline latest') ? -1 : 1;
+        return combined.sort((a, b) => { const ka = keyOf(a), kb = keyOf(b); if (ka === null && kb === null) return 0; if (ka === null) return 1; if (kb === null) return -1; return (ka - kb) * dir; });
+      })()
     };
-  }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate]);
+  }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate, sortMode, givenFrom, givenTo]);
 
   // Shared phone-card pieces for the Checklist, Delegation and FMS tabs (same look as All Data).
   const typeToneOf = (t) => t === 'Checklist' ? 'text-sky-500 bg-sky-500/10 border-sky-500/25' : t === 'Delegation' ? 'text-violet-500 bg-violet-500/10 border-violet-500/25' : 'text-slate-400 bg-slate-500/10 border-slate-500/25';
@@ -467,8 +515,8 @@ const DoerChecklist = ({ doerId }) => {
       {/* FILTERS & DATE RANGE — collapsed behind Filters on phones */}
       <div className="mb-6">
         <MobileFilters
-          activeCount={[timeFilter && timeFilter !== 'All', !!startDate, !!endDate].filter(Boolean).length}
-          onClear={() => { setTimeFilter('All'); setStartDate(''); setEndDate(''); }}
+          activeCount={[timeFilter && timeFilter !== 'All', !!startDate, !!endDate, sortMode !== 'Default', !!givenFrom, !!givenTo].filter(Boolean).length}
+          onClear={() => { setTimeFilter('All'); setStartDate(''); setEndDate(''); setSortMode('Default'); setGivenFrom(''); setGivenTo(''); }}
           className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 bg-card/40 p-3 rounded-xl border border-border"
         >
           <div className="flex flex-wrap items-center gap-2">
@@ -486,7 +534,7 @@ const DoerChecklist = ({ doerId }) => {
           {/* Date Filter From - To */}
           <div className="flex flex-wrap items-center gap-2 min-w-0">
             <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">From:</span>
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Deadline from:</span>
               <input
                 type="date"
                 value={startDate}
@@ -495,7 +543,7 @@ const DoerChecklist = ({ doerId }) => {
               />
             </div>
             <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">To:</span>
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Deadline to:</span>
               <input
                 type="date"
                 value={endDate}
@@ -510,6 +558,31 @@ const DoerChecklist = ({ doerId }) => {
               >
                 Clear
               </button>
+            )}
+          </div>
+
+          {/* Date given to me + order of the list */}
+          <div className="flex flex-wrap items-center gap-2 min-w-0 basis-full">
+            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Given from:</span>
+              <input type="date" aria-label="Given from" value={givenFrom} onChange={(e) => setGivenFrom(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto" />
+            </div>
+            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Given to:</span>
+              <input type="date" aria-label="Given to" value={givenTo} onChange={(e) => setGivenTo(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto" />
+            </div>
+            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Order:</span>
+              <select aria-label="Order" value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0">
+                <option value="Default">Default (overdue first)</option>
+                <option value="Recent first">Recent first (newest given)</option>
+                <option value="Oldest first">Oldest given first</option>
+                <option value="Deadline earliest">Deadline: earliest first</option>
+                <option value="Deadline latest">Deadline: latest first</option>
+              </select>
+            </div>
+            {(givenFrom || givenTo || sortMode !== 'Default') && (
+              <button onClick={() => { setGivenFrom(''); setGivenTo(''); setSortMode('Default'); }} className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0">Reset</button>
             )}
           </div>
         </MobileFilters>
@@ -593,16 +666,24 @@ const DoerChecklist = ({ doerId }) => {
                 <div className="lg:hidden order-4 flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 w-full">
                   <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateText}</span>
                   <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{item.assignerName || '-'}</span></span>
+                  {item.dataType === 'Delegation' && item.originalDeadline && revisedForMe(item) && (
+                    <span className="basis-full text-[10px] font-black uppercase text-amber-600">Revised · was {new Date(item.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(item.deadlineDate) - new Date(item.originalDeadline)) / 86400000)}d)</span>
+                  )}
                 </div>
-                <div className="max-lg:hidden flex items-center justify-center gap-2 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
+                <div className="max-lg:hidden flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 w-full lg:w-auto mb-1 lg:mb-0 text-[9px] font-bold">
                   <Calendar size={12} className="text-primary/30 shrink-0" />
-                  <p className="uppercase tracking-tighter text-slate-500 truncate">
+                  <p className={`uppercase tracking-tighter truncate ${isPastDue && !item.isDone && !['Completed', 'Verified'].includes(item.status) ? 'text-red-500' : 'text-slate-500'}`}>
                     {dateText}
                   </p>
+                  {item.dataType === 'Delegation' && item.originalDeadline && revisedForMe(item) && (
+                    <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was revised">
+                      Revised &middot; was {new Date(item.originalDeadline).toLocaleDateString([], { day: '2-digit', month: 'short' })} (+{Math.round((new Date(item.deadlineDate) - new Date(item.originalDeadline)) / 86400000)}d)
+                    </span>
+                  )}
                 </div>
                 <div className="max-lg:hidden flex justify-center items-center gap-2 w-full lg:w-auto mb-1 lg:mb-0">
                   <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border text-primary border-primary/20 bg-primary/5">
-                    {item.priority || item.dataType}
+                    {item.dataType === 'Delegation' ? (item.priority || 'Standard') : (item.priority || item.dataType)}
                   </span>
                   <span className="text-[7px] text-slate-400 font-black uppercase">/ {item.statusLabel || item.status}</span>
                 </div>
@@ -612,7 +693,12 @@ const DoerChecklist = ({ doerId }) => {
                     <button onClick={() => openOnward(item)} className="px-3 py-1 bg-indigo-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Assign Onward</button>
                   )}
                   {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && !isPassedOn(item) && (
-                    <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                    <>
+                      {item.isRevisionAllowed && !isPastDue && !(item.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
+                        <button onClick={() => { setSelectedTask(item); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
+                      )}
+                      <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
+                    </>
                   )}
                   {item.dataType === 'Delegation' && !isPassedOn(item) && (
                     <>

@@ -797,51 +797,6 @@ const AddEmployee = ({
           </div>
         )}
 
-        {(formData.roles.includes("Coordinator") || formData.roles.includes("Admin")) && (
-          <div className="bg-primary/5 p-6 sm:p-8 rounded-[2rem] border border-primary/20 border-l-4 border-l-primary animate-in slide-in-from-left-4">
-            <h4 className="text-primary m-0 mb-6 text-[10px] flex items-center gap-2 font-black uppercase tracking-[0.2em]">
-              <ShieldCheck size={16} /> Oversight Tracking Scope
-            </h4>
-            <ScopeFilter filter={scopeFilter} onChange={setScopeFilter} pool={assignerPool} sectors={masters.sectors} locations={masters.locations} shown={assignerShown} />
-            <div className="max-h-[220px] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-2 custom-scrollbar">
-              {Array.isArray(allEmployees) &&
-                allEmployees
-                  .filter((e) => {
-                    const roles = Array.isArray(e.roles) ? e.roles : [e.role];
-                    return (
-                      roles.includes("Assigner") &&
-                      e._id !== (selectedEmployee?._id || formData._id)
-                    );
-                  })
-                  .filter((e) => matchesScope(e, scopeFilter))
-                  .map((assigner) => (
-                    <label
-                      key={assigner._id}
-                      className={`flex items-center justify-between gap-3 p-4 rounded-2xl cursor-pointer border transition-all shadow-sm ${(formData.managedAssigners || []).includes(assigner._id)
-                        ? "bg-card border-primary/40 text-foreground"
-                        : "bg-background border-border text-slate-400"
-                        }`}
-                    >
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-black truncate leading-tight uppercase tracking-tight">
-                          {assigner.name}
-                        </span>
-                        <span className="text-[9px] opacity-60 uppercase font-bold tracking-tighter mt-1">
-                          Sector: {assigner.department || 'N/A'}{assigner.location ? ` · ${assigner.location}` : ''}
-                        </span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded accent-primary shrink-0"
-                        checked={(formData.managedAssigners || []).includes(assigner._id)}
-                        onChange={() => handleCheckboxChange(assigner._id, "managedAssigners")}
-                      />
-                    </label>
-                  ))}
-            </div>
-          </div>
-        )}
-
         <button
           type="submit"
           disabled={loading}
