@@ -46,6 +46,7 @@ import {
   User
 } from "lucide-react";
 import MobileFilters from '../components/MobileFilters';
+import useCompanySettings from '../hooks/useCompanySettings';
 
 /**
  * DOER CHECKLIST: MISSION TERMINAL v3.5
@@ -58,6 +59,7 @@ const fmsDescription = (m) => {
 };
 
 const DoerChecklist = ({ doerId }) => {
+  const { isOn: companyAllows } = useCompanySettings(); // Settings > Functions on / off
   const { openTaskThread, chatEnabled } = useChat();
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
@@ -129,6 +131,7 @@ const DoerChecklist = ({ doerId }) => {
     idOf(t.doerId) !== String(currentDoerId) &&
     (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentDoerId));
   const canForward = (t) =>
+    companyAllows('delegation_assignOnward') &&
     myRoles.includes('Assigner') &&
     (t.status === 'Pending' || t.status === 'Accepted') &&
     idOf(t.doerId) === String(currentDoerId);
@@ -694,7 +697,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {item.dataType === 'Delegation' && (item.status === "Pending" || item.status === "Accepted") && !isPassedOn(item) && (
                     <>
-                      {item.isRevisionAllowed && !isPastDue && !(item.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
+                      {companyAllows('delegation_doerRevise') && item.isRevisionAllowed && !isPastDue && !(item.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
                         <button onClick={() => { setSelectedTask(item); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
                       <button onClick={() => { setActiveTask(item); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>
@@ -834,7 +837,7 @@ const DoerChecklist = ({ doerId }) => {
                   )}
                   {(task.status === "Pending" || task.status === "Accepted") && !isPassedOn(task) && (
                     <>
-                      {task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
+                      {companyAllows('delegation_doerRevise') && task.isRevisionAllowed && !isPastDue && !(task.history || []).some(h => h.action === 'Deadline Approved' || h.action === 'Deadline Revised') && (
                         <button onClick={() => { setSelectedTask(task); setShowRevisionModal(true); }} className="px-3 py-1 bg-yellow-500 text-white rounded font-black text-[8px]">Revise</button>
                       )}
                       <button onClick={() => { setActiveTask(task); setModalType("Delegation"); setDelegationFiles([]); setShowModal(true); }} className="px-3 py-1 bg-emerald-600 text-white rounded font-black text-[8px] uppercase tracking-widest shadow-md">Complete</button>

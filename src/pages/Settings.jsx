@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
 import AccessRolesPanel from '../components/AccessRolesPanel';
 import CustomFieldsManager from '../components/CustomFieldsManager';
+import FunctionSwitchesManager from '../components/FunctionSwitchesManager';
+import WhatsAppMessagesManager from '../components/WhatsAppMessagesManager';
 import { dialog } from '../components/Dialog';
 import { COUNTRIES as DEFAULT_PHONE_COUNTRIES } from '../utils/phoneNumber';
 import { 
@@ -428,7 +430,7 @@ const Settings = ({ tenantId }) => {
 
   // ---- Navigation: pick a category, or search. Every section stays mounted (only hidden), so
   // "Commit global updates" still saves everything on the page.
-  const SETTINGS_CATS = [['company', 'Company'], ['time', 'Working time'], ['performance', 'Performance and rewards'], ['access', 'Roles and access']];
+  const SETTINGS_CATS = [['company', 'Company'], ['time', 'Working time'], ['performance', 'Performance and rewards'], ['functions', 'Functions and messages'], ['access', 'Roles and access']];
   const SETTINGS_SECTIONS = [
     { id: 'identity', cat: 'company', title: 'Company name and logo', keywords: 'brand logo name organisation identity' },
     { id: 'masters', cat: 'company', title: 'Departments and locations', keywords: 'sector department location branch' },
@@ -440,6 +442,8 @@ const Settings = ({ tenantId }) => {
     { id: 'review', cat: 'performance', title: 'Review meeting', keywords: 'period weightage colour score limits' },
     { id: 'perf', cat: 'performance', title: 'Performance engine', keywords: 'points score rewards' },
     { id: 'badges', cat: 'performance', title: 'Achievements', keywords: 'badge medal award workshop' },
+    { id: 'switches', cat: 'functions', title: 'Functions on / off', keywords: 'switch turn off on disable enable function feature revise onward' },
+    { id: 'whatsappMessages', cat: 'functions', title: 'WhatsApp messages', keywords: 'whatsapp message template notification wording sender' },
     { id: 'access', cat: 'access', title: 'Roles and access', keywords: 'role permission admin attendance leave payroll custom' }
   ];
   const [settingsCat, setSettingsCat] = useState('company');
@@ -947,6 +951,10 @@ const Settings = ({ tenantId }) => {
       </div>
 
       <div data-settings-section="customFields" hidden={!showSection('customFields')} className="mt-8"><CustomFieldsManager /></div>
+
+      <div data-settings-section="switches" hidden={!showSection('switches')} className="mt-8"><FunctionSwitchesManager /></div>
+
+      <div data-settings-section="whatsappMessages" hidden={!showSection('whatsappMessages')} className="mt-8"><WhatsAppMessagesManager /></div>
 
       <div data-settings-section="access" hidden={!showSection('access')} className="mt-8"><AccessRolesPanel /></div>
 

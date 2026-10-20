@@ -209,6 +209,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const [pauseFrom,   setPauseFrom]     = useState('');
   const [pauseTo,     setPauseTo]       = useState('');
   const [logFilter, setLogFilter] = useState('');
+  const [switchAccess, setSwitchAccess] = useState([]); // [{key,label,group,value,visibleToAdmin}]
 
   useEffect(() => {
     SA.get(`/superadmin/tenants/${tenantId}`).then(r => {
@@ -228,6 +229,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
       setAiEnabled(!!sa.aiAssistant?.enabled);
       setAiMonthlyLimit(sa.aiAssistant?.monthlyLimit ?? 500);
     }).catch(()=>{});
+    SA.get(`/superadmin/tenants/${tenantId}/switch-access`).then(r => setSwitchAccess(r.data.switches || [])).catch(()=>{});
   }, [tenantId]);
 
   const api = async (fn) => {
@@ -759,6 +761,24 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/features`,{features}))}
                   disabled={saving} style={primaryBtn}>
                   <Save size={14}/>{saving?'Saving…':'Save features'}
+                </button>
+              </Section>
+
+              {/* Which function switches the company admin may see */}
+              <Section icon={ToggleRight} title="Admin function switches" color={C.purple} accent={C.purpleL}>
+                <p style={{ fontSize:12, color:C.muted, margin:'0 0 12px' }}>Tick a switch to let this company's admin see it in Settings. Unticked switches stay hidden and keep their current value.</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:8, marginBottom:14 }}>
+                  {switchAccess.map(sw => (
+                    <label key={sw.key} aria-label={'Admin can see ' + sw.label}
+                      style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', border:`1px solid ${sw.visibleToAdmin?C.blue:C.border}`, borderRadius:8, cursor:'pointer', background: sw.visibleToAdmin?C.blueL:C.card }}>
+                      <span style={{ fontSize:13, fontWeight:500, color: sw.visibleToAdmin?C.text:C.muted2 }}>{sw.label} <span style={{ color:C.muted2, fontSize:11 }}>(now {sw.value ? 'on' : 'off'})</span></span>
+                      <input type="checkbox" checked={sw.visibleToAdmin} onChange={() => setSwitchAccess(list => list.map(x => x.key === sw.key ? { ...x, visibleToAdmin: !x.visibleToAdmin } : x))} />
+                    </label>
+                  ))}
+                </div>
+                <button onClick={()=>api(()=>SA.put(`/superadmin/tenants/${tenantId}/switch-access`,{hidden: switchAccess.filter(x=>!x.visibleToAdmin).map(x=>x.key)}))}
+                  disabled={saving} style={primaryBtn}>
+                  <Save size={14}/>{saving?'Saving…':'Save admin access'}
                 </button>
               </Section>
 
