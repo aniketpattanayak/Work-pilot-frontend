@@ -3,6 +3,8 @@ import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
 import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import FormField, { FIELD_GRID } from '../components/FormField';
+import useFormLayout from '../hooks/useFormLayout';
 import useCustomFields from '../hooks/useCustomFields';
 import useCompanySettings from '../hooks/useCompanySettings';
 import DatePicker from "react-datepicker"; 
@@ -58,6 +60,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
   const [selectedFiles, setSelectedFiles] = useState([]);
   const { fields: customFieldDefs } = useCustomFields('delegation'); // company-defined extra fields (empty = form unchanged)
+  const L = useFormLayout('delegation'); // the company's own order / names / hidden fields (Settings > Form designer)
   const [customValues, setCustomValues] = useState({});
   const [employees, setEmployees] = useState(initialEmployees || []);
   const [loading, setLoading] = useState(!initialEmployees || initialEmployees.length === 0);
@@ -209,7 +212,9 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     if (!task.doerId) return dialog.alert("Please search and select who the task is assigned to.", { tone: 'error' });
     if (!task.deadline) return dialog.alert("Please select a completion deadline.", { tone: 'error' });
     const extDays = Number(task.maxExtensionDays);
-    if (task.isRevisionAllowed && (!Number.isInteger(extDays) || extDays < 1 || extDays > 90)) {
+    const missing = L.firstMissing({ priority: task.priority, description: task.description, attachments: selectedFiles, followers: selectedHelpers });
+    if (missing) return dialog.alert(missing, { tone: 'error' });
+    if (!L.hidden('revision') && task.isRevisionAllowed && (!Number.isInteger(extDays) || extDays < 1 || extDays > 90)) {
       return dialog.alert("Deadline change is allowed, so please enter how many days the doer may extend (1 to 90).", { tone: 'error', title: 'Extension days' });
     }
 
@@ -271,235 +276,236 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
           <form onSubmit={handleSubmit} className="space-y-6">
 
-            {/* TITLE + PRIORITY */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 relative group">
-                <label className="text-sm font-medium text-slate-600">Title</label>
-                <input
-                  type="text"
-                  required
-                  value={task.title}
-                  onChange={(e) => setTask({ ...task, title: e.target.value })}
-                  className="peer w-full px-4 pt-3 pb-2 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                  placeholder="Enter Title"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-600">Priority</label>
-                <select
-                  value={task.priority}
-                  onChange={(e) => setTask({ ...task, priority: e.target.value })}
-                  className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30"
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-            </div>
-
-            {/* DESCRIPTION */}
-            <div className="relative">
-              <label className="text-sm font-medium text-slate-600">Description</label>
-              <textarea
-                value={task.description}
-                onChange={(e) => setTask({ ...task, description: e.target.value })}
-                className="peer w-full px-4 pt-5 pb-2 rounded-lg border border-border bg-background/70 text-sm min-h-[110px] focus:ring-2 focus:ring-primary/30 outline-none"
-                placeholder="Enter Description"
-              />
-            </div>
-
-            {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
+            {/* ALL FIELDS: order, names and visibility come from Settings > Form designer */}
+            <div className={FIELD_GRID}>
+            <FormField L={L} id="title">
+                            <div className="relative group">
+                              <label className="text-sm font-medium text-slate-600">{L.label("title", "Title")}</label>
+                              <input
+                                type="text"
+                                required
+                                value={task.title}
+                                onChange={(e) => setTask({ ...task, title: e.target.value })}
+                                className="peer w-full px-4 pt-3 pb-2 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                                placeholder="Enter Title"
+                              />
+                            </div>
+            </FormField>
+            <FormField L={L} id="priority">
+                            <div>
+                              <label className="text-sm font-medium text-slate-600">{L.label("priority", "Priority")}</label>
+                              <select
+                                value={task.priority}
+                                onChange={(e) => setTask({ ...task, priority: e.target.value })}
+                                className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                              >
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                              </select>
+                            </div>
+            </FormField>
+            <FormField L={L} id="description" full>
+                          <div className="relative">
+                            <label className="text-sm font-medium text-slate-600">{L.label("description", "Description")}</label>
+                            <textarea
+                              value={task.description}
+                              onChange={(e) => setTask({ ...task, description: e.target.value })}
+                              className="peer w-full px-4 pt-5 pb-2 rounded-lg border border-border bg-background/70 text-sm min-h-[110px] focus:ring-2 focus:ring-primary/30 outline-none"
+                              placeholder="Enter Description"
+                            />
+                          </div>
+            </FormField>
             <DynamicFieldRenderer
+              layout={L}
+              entity="delegation"
               variant="plain"
               fields={customFieldDefs}
               values={customValues}
               requireOnCreate
               onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))}
             />
+            <FormField L={L} id="doer">
+                              <div ref={doerDropdownRef} className="relative">
+                                <label className="text-sm font-medium text-slate-600">{L.label("doer", "Assign To")}</label>
+                                <input
+                                  type="text"
+                                  value={doerSearch}
+                                  onFocus={() => setShowDoerDropdown(true)}
+                                  onChange={(e) => { setDoerSearch(e.target.value); setShowDoerDropdown(true); }}
+                                  placeholder="Search user"
+                                  className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
+                                />
+                                {showDoerDropdown && (
+                                  <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
+                                    {filteredDoers.map(emp => (
+                                      <div key={emp._id} onClick={() => handleSelectDoer(emp)}
+                                        className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer">
+                                        {emp.name}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+            </FormField>
+            <FormField L={L} id="deadline">
+                              <div>
+                                <label className="text-sm font-medium text-slate-600">
+                                  {L.label("deadline", "Deadline")}
+                                  <span className="ml-2 text-xs text-muted-foreground font-normal">
+                                    (defaults to 11:59 PM — change the time below if needed)
+                                  </span>
+                                </label>
 
-            {/* MAIN GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="space-y-5">
+                                <div className="flex gap-2 items-start mt-1">
+                                  <DatePicker
+                                    selected={task.deadline}
+                                    onChange={handleDateChange}
+                                    dateFormat="dd MMM yyyy"
+                                    placeholderText="Select deadline date"
+                                    minDate={new Date()}
+                                    isClearable
+                                    showYearDropdown
+                                    showMonthDropdown
+                                    dropdownMode="select"
+                                    scrollableYearDropdown
+                                    yearDropdownItemNumber={10}
+                                    filterDate={(date) => !isDisabledDate(date)}
+                                    dayClassName={(date) => {
+                                      const key = date.toDateString();
+                                      return holidayMap[key] ? "holiday-day" : "";
+                                    }}
+                                    renderDayContents={(day, date) => {
+                                      const key = date.toDateString();
+                                      const holidayName = holidayMap[key];
+                                      return <span title={holidayName || ""}>{day}</span>;
+                                    }}
+                                    className="flex-1 w-full px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                                  />
+                                  <input
+                                    type="time"
+                                    value={deadlineTime}
+                                    onChange={(e) => handleTimeChange(e.target.value)}
+                                    aria-label="Deadline time"
+                                    className="w-32 px-3 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={applyOfficeClosingTime}
+                                  className="mt-1.5 text-[11px] text-primary hover:underline"
+                                >
+                                  Use office closing time ({closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`}) instead
+                                </button>
 
-                {/* ASSIGN */}
-                <div ref={doerDropdownRef} className="relative">
-                  <label className="text-sm font-medium text-slate-600">Assign To</label>
+                                {/* Show the full selected date + time clearly */}
+                                {task.deadline && (
+                                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                    <CalendarDays size={11} />
+                                    Deadline set to:{" "}
+                                    <span className="font-semibold text-foreground">
+                                      {task.deadline.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}{" "}
+                                      at {task.deadline.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </p>
+                                )}
+                              </div>
+            </FormField>
+            <FormField L={L} id="attachments">
+                              <div>
+                                <label className="text-sm font-medium text-slate-600">{L.label("attachments", "Attachments")}</label>
+                                <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
+                                  <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                                  <p className="text-sm text-slate-500 group-hover:text-primary transition">Click to upload files</p>
+                                  <p className="text-xs text-slate-400">{uploadHint(maxFileMb)}</p>
+                                </div>
+                                {selectedFiles.length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {selectedFiles.map((f, i) => (
+                                      <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
+                                        {f.name}
+                                        <button type="button" onClick={() => removeFile(i)}>✕</button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+            </FormField>
+            <FormField L={L} id="followers">
+                            <div className="flex flex-col">
+                              <label className="text-sm font-medium text-slate-600">{L.label("followers", "Followers")}</label>
+                              {selectedHelpers.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {selectedHelpers.map((h) => (
+                                    <div key={h.helperId} className="flex items-center gap-2 px-3 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                                      {h.name}
+                                      <button type="button" onClick={() => setSelectedHelpers(selectedHelpers.filter(x => x.helperId !== h.helperId))}>✕</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <input
+                                type="text"
+                                value={followerSearch}
+                                onChange={(e) => setFollowerSearch(e.target.value)}
+                                placeholder="Search followers"
+                                className="w-full mt-2 px-4 py-2 rounded-lg border border-border text-sm bg-background/70 focus:ring-2 focus:ring-primary/30"
+                              />
+                              <div className="mt-2 h-40 overflow-y-auto border border-border rounded-lg p-1 space-y-1 custom-scrollbar">
+                                {filteredFollowers.map((emp) => (
+                                  <label key={emp._id} className="flex justify-between items-center px-3 py-2 text-sm hover:bg-primary/5 cursor-pointer rounded-md transition">
+                                    <span>{emp.name}</span>
+                                    <input
+                                      type="checkbox"
+                                      className="accent-primary"
+                                      checked={selectedHelpers.some(h => h.helperId === emp._id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
+                                        } else {
+                                          setSelectedHelpers(selectedHelpers.filter(h => h.helperId !== emp._id));
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                ))}
+                              </div>
+                              {selectedHelpers.length > 0 && followersMayChange && (
+                                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600" title="If ticked, followers can move the deadline. If not, they must ask you first.">
+                                  <input type="checkbox" className="accent-primary" checked={task.followersCanChangeDate !== false} onChange={(e) => setTask({ ...task, followersCanChangeDate: e.target.checked })} />
+                                  Followers can change the date
+                                </label>
+                              )}
+                            </div>
+            </FormField>
+            <FormField L={L} id="revision" full>
+              <div className="flex flex-wrap items-center gap-6 pt-2">
+                <label className="flex items-center gap-2 text-xl text-slate-600">
                   <input
-                    type="text"
-                    value={doerSearch}
-                    onFocus={() => setShowDoerDropdown(true)}
-                    onChange={(e) => { setDoerSearch(e.target.value); setShowDoerDropdown(true); }}
-                    placeholder="Search user"
-                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30"
+                    type="checkbox"
+                    className="accent-primary"
+                    checked={task.isRevisionAllowed}
+                    onChange={(e) => setTask({ ...task, isRevisionAllowed: e.target.checked })}
                   />
-                  {showDoerDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-lg shadow-md max-h-50 overflow-y-auto">
-                      {filteredDoers.map(emp => (
-                        <div key={emp._id} onClick={() => handleSelectDoer(emp)}
-                          className="px-4 py-2 text-sm hover:bg-primary/10 cursor-pointer">
-                          {emp.name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* DEADLINE — date + time; defaults to 11:59 PM of the picked date */}
-                <div>
-                  <label className="text-sm font-medium text-slate-600">
-                    Deadline
-                    <span className="ml-2 text-xs text-muted-foreground font-normal">
-                      (defaults to 11:59 PM — change the time below if needed)
-                    </span>
-                  </label>
-
-                  <div className="flex gap-2 items-start mt-1">
-                    <DatePicker
-                      selected={task.deadline}
-                      onChange={handleDateChange}
-                      dateFormat="dd MMM yyyy"
-                      placeholderText="Select deadline date"
-                      minDate={new Date()}
-                      isClearable
-                      showYearDropdown
-                      showMonthDropdown
-                      dropdownMode="select"
-                      scrollableYearDropdown
-                      yearDropdownItemNumber={10}
-                      filterDate={(date) => !isDisabledDate(date)}
-                      dayClassName={(date) => {
-                        const key = date.toDateString();
-                        return holidayMap[key] ? "holiday-day" : "";
-                      }}
-                      renderDayContents={(day, date) => {
-                        const key = date.toDateString();
-                        const holidayName = holidayMap[key];
-                        return <span title={holidayName || ""}>{day}</span>;
-                      }}
-                      className="flex-1 w-full px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
-                    />
+                  {L.label("revision", "Allow deadline change")}
+                </label>
+                {task.isRevisionAllowed && (
+                  <label className="flex items-center gap-2 text-sm text-slate-600" title="After the deadline you chose, the doer can move it by up to this many days">
+                    Extend up to
                     <input
-                      type="time"
-                      value={deadlineTime}
-                      onChange={(e) => handleTimeChange(e.target.value)}
-                      aria-label="Deadline time"
-                      className="w-32 px-3 py-2.5 rounded-lg border border-border bg-background/70 text-sm focus:ring-2 focus:ring-primary/30 outline-none"
+                      type="number" min="1" max="90" step="1"
+                      value={task.maxExtensionDays}
+                      onChange={(e) => setTask({ ...task, maxExtensionDays: e.target.value })}
+                      className="w-16 bg-background border border-border rounded-lg px-2 py-1 text-center font-bold text-foreground"
                     />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={applyOfficeClosingTime}
-                    className="mt-1.5 text-[11px] text-primary hover:underline"
-                  >
-                    Use office closing time ({closeHour > 12 ? `${closeHour - 12}:00 PM` : `${closeHour}:00 AM`}) instead
-                  </button>
-
-                  {/* Show the full selected date + time clearly */}
-                  {task.deadline && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <CalendarDays size={11} />
-                      Deadline set to:{" "}
-                      <span className="font-semibold text-foreground">
-                        {task.deadline.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}{" "}
-                        at {task.deadline.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </p>
-                  )}
-                </div>
-
-                {/* FILE */}
-                <div>
-                  <label className="text-sm font-medium text-slate-600">Attachments</label>
-                  <div className="mt-1 relative border border-dashed border-border rounded-lg p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer group">
-                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-                    <p className="text-sm text-slate-500 group-hover:text-primary transition">Click to upload files</p>
-                    <p className="text-xs text-slate-400">{uploadHint(maxFileMb)}</p>
-                  </div>
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedFiles.map((f, i) => (
-                        <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
-                          {f.name}
-                          <button type="button" onClick={() => removeFile(i)}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* FOLLOWERS */}
-              <div className="lg:col-span-2 flex flex-col">
-                <label className="text-sm font-medium text-slate-600">Followers</label>
-                {selectedHelpers.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedHelpers.map((h) => (
-                      <div key={h.helperId} className="flex items-center gap-2 px-3 py-1 text-xs bg-primary/10 text-primary rounded-full">
-                        {h.name}
-                        <button type="button" onClick={() => setSelectedHelpers(selectedHelpers.filter(x => x.helperId !== h.helperId))}>✕</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <input
-                  type="text"
-                  value={followerSearch}
-                  onChange={(e) => setFollowerSearch(e.target.value)}
-                  placeholder="Search followers"
-                  className="w-full mt-2 px-4 py-2 rounded-lg border border-border text-sm bg-background/70 focus:ring-2 focus:ring-primary/30"
-                />
-                <div className="mt-2 h-40 overflow-y-auto border border-border rounded-lg p-1 space-y-1 custom-scrollbar">
-                  {filteredFollowers.map((emp) => (
-                    <label key={emp._id} className="flex justify-between items-center px-3 py-2 text-sm hover:bg-primary/5 cursor-pointer rounded-md transition">
-                      <span>{emp.name}</span>
-                      <input
-                        type="checkbox"
-                        className="accent-primary"
-                        checked={selectedHelpers.some(h => h.helperId === emp._id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedHelpers([...selectedHelpers, { helperId: emp._id, name: emp.name }]);
-                          } else {
-                            setSelectedHelpers(selectedHelpers.filter(h => h.helperId !== emp._id));
-                          }
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-                {selectedHelpers.length > 0 && followersMayChange && (
-                  <label className="mt-2 flex items-center gap-2 text-sm text-slate-600" title="If ticked, followers can move the deadline. If not, they must ask you first.">
-                    <input type="checkbox" className="accent-primary" checked={task.followersCanChangeDate !== false} onChange={(e) => setTask({ ...task, followersCanChangeDate: e.target.checked })} />
-                    Followers can change the date
+                    day(s)
                   </label>
                 )}
               </div>
+            </FormField>
             </div>
 
-            {/* FOOTER */}
-            <div className="flex items-center justify-between pt-4 border-t border-border">
-              <label className="flex items-center gap-2 text-xl text-slate-600">
-                <input
-                  type="checkbox"
-                  className="accent-primary"
-                  checked={task.isRevisionAllowed}
-                  onChange={(e) => setTask({ ...task, isRevisionAllowed: e.target.checked })}
-                />
-                Allow deadline change
-              </label>
-              {task.isRevisionAllowed && (
-                <label className="flex items-center gap-2 text-sm text-slate-600" title="After the deadline you chose, the doer can move it by up to this many days">
-                  Extend up to
-                  <input
-                    type="number" min="1" max="90" step="1"
-                    value={task.maxExtensionDays}
-                    onChange={(e) => setTask({ ...task, maxExtensionDays: e.target.value })}
-                    className="w-16 bg-background border border-border rounded-lg px-2 py-1 text-center font-bold text-foreground"
-                  />
-                  day(s)
-                </label>
-              )}
+            <div className="flex items-center justify-end pt-4 border-t border-border">
               <button
                 type="submit"
                 disabled={isSubmitting}

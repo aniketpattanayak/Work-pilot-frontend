@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance
 import AccessRolesPanel from '../components/AccessRolesPanel';
-import CustomFieldsManager from '../components/CustomFieldsManager';
+import FormDesigner from '../components/FormDesigner';
 import FunctionSwitchesManager from '../components/FunctionSwitchesManager';
 import WhatsAppMessagesManager from '../components/WhatsAppMessagesManager';
 import DateReasonsManager from '../components/DateReasonsManager';
@@ -435,7 +435,7 @@ const Settings = ({ tenantId }) => {
   const SETTINGS_SECTIONS = [
     { id: 'identity', cat: 'company', title: 'Company name and logo', keywords: 'brand logo name organisation identity' },
     { id: 'masters', cat: 'company', title: 'Departments and locations', keywords: 'sector department location branch' },
-    { id: 'customFields', cat: 'company', title: 'Extra fields', keywords: 'custom field form column employee task extra additional' },
+    { id: 'customFields', cat: 'company', title: 'Form designer', keywords: 'custom field form column employee task extra additional design layout hide show rename order sequence dropdown file formula list ticket leave checklist sub task' },
     { id: 'phoneCountries', cat: 'company', title: 'Country codes', keywords: 'country code phone whatsapp dial international' },
     { id: 'weekend', cat: 'time', title: 'Weekly off', keywords: 'weekend weekly saturday sunday off days' },
     { id: 'hours', cat: 'time', title: 'Operational hours', keywords: 'opening closing office timing working hours attendance late' },
@@ -952,7 +952,7 @@ const Settings = ({ tenantId }) => {
         </div>
       </div>
 
-      <div data-settings-section="customFields" hidden={!showSection('customFields')} className="mt-8"><CustomFieldsManager /></div>
+      <div data-settings-section="customFields" hidden={!showSection('customFields')} className="mt-8"><FormDesigner /></div>
 
       <div data-settings-section="switches" hidden={!showSection('switches')} className="mt-8"><FunctionSwitchesManager /></div>
 

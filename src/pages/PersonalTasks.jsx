@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import API from '../api/axiosConfig';
 import { dialog } from '../components/Dialog';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import FormField, { FIELD_GRID } from '../components/FormField';
+import useFormLayout from '../hooks/useFormLayout';
 import {
   Plus, X, GripVertical, ArrowUpToLine, Share2, Pencil, Trash2, Check, Repeat,
   CalendarDays, Lock, RefreshCcw, ListChecks, Users,
@@ -39,6 +42,8 @@ const blankForm = () => ({
 /* ───────────────────────── Add / edit form ───────────────────────── */
 const ItemForm = ({ initial, onClose, onSaved }) => {
   const [f, setF] = useState(initial);
+  const L = useFormLayout('personal'); // company's own order / names / hidden fields (Settings > Form designer)
+  const [customValues, setCustomValues] = useState(initial.customFields || {});
   const [saving, setSaving] = useState(false);
   const editing = !!f.id;
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -46,7 +51,9 @@ const ItemForm = ({ initial, onClose, onSaved }) => {
 
   const save = async () => {
     if (!f.title.trim()) return dialog.alert('Please enter a title.', { title: 'Title needed', tone: 'error' });
-    const body = { title: f.title, notes: f.notes, priority: f.priority, today: todayStr() };
+    const missing = L.firstMissing({ notes: f.notes, priority: f.priority, ...(f.type === 'Task' ? { dueDate: f.dueDate } : {}) });
+    if (missing) return dialog.alert(missing, { title: 'Check the form', tone: 'error' });
+    const body = { title: f.title, notes: f.notes, priority: f.priority, today: todayStr(), customFields: customValues };
     if (f.type === 'Task') body.dueDate = f.dueDate || '';
     else {
       body.frequency = f.frequency; body.startDate = f.startDate;
@@ -87,41 +94,44 @@ const ItemForm = ({ initial, onClose, onSaved }) => {
           </div>
         )}
 
-        <div className="space-y-3">
-          <div><span className={label}>Title</span><input className={input} value={f.title} maxLength={200} onChange={(e) => set('title', e.target.value)} placeholder="What do you want to remember?" autoFocus /></div>
-          <div><span className={label}>Notes (optional)</span><textarea className={input} rows={2} value={f.notes} maxLength={2000} onChange={(e) => set('notes', e.target.value)} /></div>
-
-          <div>
-            <span className={label}>Priority</span>
+        <div className={FIELD_GRID}>
+          <FormField L={L} id="title" full><span className={label}>{L.label('title', 'Title')}</span><input className={input} value={f.title} maxLength={200} onChange={(e) => set('title', e.target.value)} placeholder="What do you want to remember?" autoFocus /></FormField>
+          <FormField L={L} id="notes" full><span className={label}>{L.label('notes', 'Notes')}{L.required('notes') ? '' : ' (optional)'}</span><textarea className={input} rows={2} value={f.notes} maxLength={2000} onChange={(e) => set('notes', e.target.value)} /></FormField>
+          <FormField L={L} id="priority" full>
+            <span className={label}>{L.label('priority', 'Priority')}</span>
             <div className="flex gap-2">{['Low', 'Medium', 'High'].map((p) => <button key={p} onClick={() => set('priority', p)} className={`flex-1 ${chip(f.priority === p)}`}>{p}</button>)}</div>
-          </div>
-
+          </FormField>
           {f.type === 'Task' ? (
-            <div><span className={label}>Due date (optional)</span><input type="date" className={input} value={f.dueDate} onChange={(e) => set('dueDate', e.target.value)} /></div>
+            <FormField L={L} id="dueDate" full>
+              <div><span className={label}>{L.label("dueDate", "Due date")}{L.required("dueDate") ? "" : " (optional)"}</span><input type="date" className={input} value={f.dueDate} onChange={(e) => set('dueDate', e.target.value)} /></div>
+            </FormField>
           ) : (
-            <>
+            <FormField L={L} id="schedule" full>
+              <div className="space-y-3">
               <div>
-                <span className={label}>How often</span>
-                <select className={input} value={f.frequency} onChange={(e) => set('frequency', e.target.value)}>
-                  {FREQS.map((x) => <option key={x} value={x}>{x === 'Interval' ? 'Every few days' : x}</option>)}
-                </select>
+                  <span className={label}>How often</span>
+                  <select className={input} value={f.frequency} onChange={(e) => set('frequency', e.target.value)}>
+                    {FREQS.map((x) => <option key={x} value={x}>{x === 'Interval' ? 'Every few days' : x}</option>)}
+                  </select>
+                </div>
+                {f.frequency === 'Weekly' && (
+                  <div><span className={label}>On these days</span>
+                    <div className="flex flex-wrap gap-1.5">{DOW.map((d, i) => <button key={d} onClick={() => toggle('daysOfWeek', i)} className={chip(f.daysOfWeek.includes(i))}>{d}</button>)}</div>
+                  </div>
+                )}
+                {f.frequency === 'Monthly' && (
+                  <div><span className={label}>On these dates</span>
+                    <div className="grid grid-cols-7 gap-1">{Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <button key={d} onClick={() => toggle('daysOfMonth', d)} className={`!px-0 ${chip(f.daysOfMonth.includes(d))}`}>{d}</button>)}</div>
+                  </div>
+                )}
+                {f.frequency === 'Interval' && (
+                  <div><span className={label}>Repeat every (days)</span><input type="number" min={1} max={365} className={input} value={f.intervalDays} onChange={(e) => set('intervalDays', e.target.value)} /></div>
+                )}
+                <div><span className={label}>Starts on</span><input type="date" className={input} value={f.startDate} onChange={(e) => set('startDate', e.target.value)} /></div>
               </div>
-              {f.frequency === 'Weekly' && (
-                <div><span className={label}>On these days</span>
-                  <div className="flex flex-wrap gap-1.5">{DOW.map((d, i) => <button key={d} onClick={() => toggle('daysOfWeek', i)} className={chip(f.daysOfWeek.includes(i))}>{d}</button>)}</div>
-                </div>
-              )}
-              {f.frequency === 'Monthly' && (
-                <div><span className={label}>On these dates</span>
-                  <div className="grid grid-cols-7 gap-1">{Array.from({ length: 31 }, (_, i) => i + 1).map((d) => <button key={d} onClick={() => toggle('daysOfMonth', d)} className={`!px-0 ${chip(f.daysOfMonth.includes(d))}`}>{d}</button>)}</div>
-                </div>
-              )}
-              {f.frequency === 'Interval' && (
-                <div><span className={label}>Repeat every (days)</span><input type="number" min={1} max={365} className={input} value={f.intervalDays} onChange={(e) => set('intervalDays', e.target.value)} /></div>
-              )}
-              <div><span className={label}>Starts on</span><input type="date" className={input} value={f.startDate} onChange={(e) => set('startDate', e.target.value)} /></div>
-            </>
+            </FormField>
           )}
+          <DynamicFieldRenderer variant="plain" fields={L.customFields} layout={L} entity="personal" values={customValues} requireOnCreate={!editing} onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))} />
         </div>
 
         <div className="flex gap-2 mt-5">
@@ -303,7 +313,7 @@ const PersonalTasks = () => {
     id: t._id, type: t.type, title: t.title, notes: t.notes || '', priority: t.priority || 'Medium', dueDate: t.dueDate || '',
     frequency: t.frequency || 'Daily', daysOfWeek: t.frequencyConfig?.daysOfWeek?.length ? t.frequencyConfig.daysOfWeek : [1],
     daysOfMonth: t.frequencyConfig?.daysOfMonth?.length ? t.frequencyConfig.daysOfMonth : [1],
-    intervalDays: t.frequencyConfig?.intervalDays || 2, startDate: t.startDate || todayStr(),
+    intervalDays: t.frequencyConfig?.intervalDays || 2, startDate: t.startDate || todayStr(), customFields: t.customFields || {},
   });
 
   const statusLine = (t) => {

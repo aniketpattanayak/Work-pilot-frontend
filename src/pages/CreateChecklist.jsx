@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, forwardRef, useRef } from 'react';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
-import useCustomFields from '../hooks/useCustomFields';
+import FormField, { FIELD_GRID } from '../components/FormField';
+import useFormLayout from '../hooks/useFormLayout';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import API from '../api/axiosConfig';
@@ -44,7 +45,7 @@ const CreateChecklist = ({ tenantId, onSuccess, hideHeader = false }) => {
   const dropdownRef = useRef(null);
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const { fields: customFieldDefs } = useCustomFields('task'); // company-defined extra fields (empty = form unchanged)
+  const L = useFormLayout('checklist'); // the company's own order / names / hidden fields (Settings > Form designer)
   const [customValues, setCustomValues] = useState({});
 
 
@@ -177,9 +178,12 @@ const isDisabledDate = (date) =>
     if (formData.frequency === 'Weekly' && formData.frequencyConfig.daysOfWeek.length === 0) return dialog.alert("Select at least one day.", { tone: 'error' });
     if (formData.frequency === 'Monthly' && formData.frequencyConfig.daysOfMonth.length === 0) return dialog.alert("Select at least one date.", { tone: 'error' });
 
+    const missing = L.firstMissing({ description: formData.description });
+    if (missing) return dialog.alert(missing, { tone: 'error' });
+
     setLoading(true);
     try {
-      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId, ...(customFieldDefs.length > 0 ? { customFields: customValues } : {}) });
+      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId, customFields: customValues });
       dialog.alert("The checklist task was created.", { tone: 'success' });
       setFormData({ 
         taskName: '', description: '', doerId: '', frequency: 'Daily',
@@ -228,259 +232,249 @@ const isDisabledDate = (date) =>
 
   <form onSubmit={handleSubmit} className="bg-card p-6 sm:p-8 lg:p-10 rounded-[2rem] border border-border shadow-2xl">
 
-    {/* 🔥 GRID LAYOUT */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-
-      {/* ================= LEFT ================= */}
-      <div className="space-y-6">
-
-        {/* TASK NAME */}
-        <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Task Name
-          </label>
-          <input
-            type="text"
-            required
-            value={formData.taskName}
-            onChange={(e) => setFormData({ ...formData, taskName: e.target.value })}
-            className="w-full bg-background border border-border px-4 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-base"
-            placeholder="Enter Task Name"
+    {/* ALL FIELDS: order, names and visibility come from Settings > Form designer */}
+    <div className={FIELD_GRID}>
+      <FormField L={L} id="taskName">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {L.label("taskName", "Task Name")}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.taskName}
+                    onChange={(e) => setFormData({ ...formData, taskName: e.target.value })}
+                    className="w-full bg-background border border-border px-4 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-base"
+                    placeholder="Enter Task Name"
+                  />
+                </div>
+      </FormField>
+      <FormField L={L} id="description" full>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {L.label("description", "Description")}
+                  </label>
+                  <textarea
+            required={L.required("description")}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full bg-background border border-border px-4 py-4 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold h-28 resize-none"
+                    placeholder="Task Description"
+                  />
+                </div>
+      </FormField>
+          <DynamicFieldRenderer
+            fields={L.customFields}
+          layout={L}
+            entity="task"
+            variant="plain"
+            values={customValues}
+            requireOnCreate
+            onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))}
           />
-        </div>
+      <FormField L={L} id="doer">
+                <div className="space-y-2 relative" ref={dropdownRef}>
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {L.label("doer", "Assign To")}
+                  </label>
 
-        {/* DESCRIPTION */}
-        <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Description
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full bg-background border border-border px-4 py-4 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold h-28 resize-none"
-            placeholder="Task Description"
-          />
-        </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onFocus={() => setShowDropdown(true)}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      className={`w-full bg-background border ${formData.doerId ? 'border-emerald-500/50' : 'border-border'} px-4 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold`}
+                      placeholder="    Search employee..."
+                    />
+                    {/*<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />*/}
 
-        {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
-        <DynamicFieldRenderer
-          variant="plain"
-          fields={customFieldDefs}
-          values={customValues}
-          requireOnCreate
-          onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))}
-        />
-
-        {/* DOER */}
-        <div className="space-y-2 relative" ref={dropdownRef}>
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Assign To
-          </label>
-
-          <div className="relative">
-            <input
-              type="text"
-              value={searchTerm}
-              onFocus={() => setShowDropdown(true)}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setShowDropdown(true);
-              }}
-              className={`w-full bg-background border ${formData.doerId ? 'border-emerald-500/50' : 'border-border'} px-4 py-2 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 font-bold`}
-              placeholder="    Search employee..."
-            />
-            {/*<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />*/}
-
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-
-          {showDropdown && (
-            <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-52 overflow-y-auto custom-scrollbar">
-              {employees
-                .filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                .map(emp => (
-                  <div
-                    key={emp._id}
-                    onClick={() => handleSelectEmployee(emp)}
-                    className="px-4 py-3 hover:bg-primary/10 cursor-pointer border-b border-border/50"
-                  >
-                    <p className="font-bold">{emp.name}</p>
-                    <p className="text-xs text-slate-500">{emp.department}</p>
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={clearSelection}
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
-                ))}
-            </div>
-          )}
-        </div>
 
-      </div>
+                  {showDropdown && (
+                    <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-52 overflow-y-auto custom-scrollbar">
+                      {employees
+                        .filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                        .map(emp => (
+                          <div
+                            key={emp._id}
+                            onClick={() => handleSelectEmployee(emp)}
+                            className="px-4 py-3 hover:bg-primary/10 cursor-pointer border-b border-border/50"
+                          >
+                            <p className="font-bold">{emp.name}</p>
+                            <p className="text-xs text-slate-500">{emp.department}</p>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+      </FormField>
+      <FormField L={L} id="startDate">
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {L.label("startDate", "Start Date")}
+                  </label>
+                  <DatePicker
+          selected={parseYmd(formData.startDate)}
+          onChange={(date) => {
+            if (!date) return;
+            const pad = (n) => String(n).padStart(2, '0');
+            setFormData({ ...formData, startDate: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` });
+          }}
+          dateFormat="dd MMM yyyy"
+          minDate={startOfToday()}
+          wrapperClassName="w-full"
+          popperPlacement="bottom-start"
+          showYearDropdown
+          showMonthDropdown
+          dropdownMode="select"
+          customInput={<CustomDateInput />}
 
-      {/* ================= RIGHT ================= */}
-      <div className="space-y-6">
+           filterDate={(date) => !isDisabledDate(date)}
+           highlightDates={[
+          {
+            "react-datepicker__day--holiday": holidayDates
+          }
+          ]}
+          dayClassName={(date) => {
+            const key = date.toDateString();
 
-        {/* START DATE */}
-        <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Start Date
-          </label>
-          <DatePicker
-  selected={parseYmd(formData.startDate)}
-  onChange={(date) => {
-    if (!date) return;
-    const pad = (n) => String(n).padStart(2, '0');
-    setFormData({ ...formData, startDate: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` });
-  }}
-  dateFormat="dd MMM yyyy"
-  minDate={startOfToday()}
-  wrapperClassName="w-full"
-  popperPlacement="bottom-start"
-  showYearDropdown
-  showMonthDropdown
-  dropdownMode="select"
-  customInput={<CustomDateInput />}
+            if (holidayMap[key]) {
+              return "holiday-day";
+            }
 
-   filterDate={(date) => !isDisabledDate(date)}
-   highlightDates={[
-  {
-    "react-datepicker__day--holiday": holidayDates
-  }
-  ]}
-  dayClassName={(date) => {
-    const key = date.toDateString();
+            return "";
+          }}
+          renderDayContents={(day, date) => {
+            const key = date.toDateString();
+            const holidayName = holidayMap[key];
 
-    if (holidayMap[key]) {
-      return "holiday-day";
-    }
+            return (
+              <span title={holidayName || ""}>
+                {day}
+              </span>
+            );
+          }}
 
-    return "";
-  }}
-  renderDayContents={(day, date) => {
-    const key = date.toDateString();
-    const holidayName = holidayMap[key];
+        />
+                </div>
+      </FormField>
+      <FormField L={L} id="frequency" full>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    {L.label("frequency", "Frequency")}
+                  </label>
 
-    return (
-      <span title={holidayName || ""}>
-        {day}
-      </span>
-    );
-  }}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map((freq) => (
+                      <button
+                        key={freq}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, frequency: freq })}
+                        className={`py-3 rounded-xl text-xs font-black uppercase border transition-all ${
+                          formData.frequency === freq
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-background border-border text-slate-500'
+                        }`}
+                      >
+                        {freq}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-/>
-        </div>
+                {/* 🔥 DYNAMIC CONFIG */}
+                {(formData.frequency === 'Weekly' || formData.frequency === 'Monthly') ? (
+                  <div className="bg-background p-4 rounded-xl border border-border space-y-4">
 
-        {/* FREQUENCY */}
-        <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest">
-            Frequency
-          </label>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'].map((freq) => (
-              <button
-                key={freq}
-                type="button"
-                onClick={() => setFormData({ ...formData, frequency: freq })}
-                className={`py-3 rounded-xl text-xs font-black uppercase border transition-all ${
-                  formData.frequency === freq
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-background border-border text-slate-500'
-                }`}
-              >
-                {freq}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 🔥 DYNAMIC CONFIG */}
-        {(formData.frequency === 'Weekly' || formData.frequency === 'Monthly') ? (
-          <div className="bg-background p-4 rounded-xl border border-border space-y-4">
-
-           {/* {formData.frequency === 'Weekly' && (
-              <div className="flex flex-wrap gap-2">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleDayOfWeek(i)}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold border ${
-                      formData.frequencyConfig.daysOfWeek.includes(i)
-                        ? 'bg-primary text-white'
-                        : 'bg-card border-border'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-            )}*/}
-
-
-            {formData.frequency === 'Weekly' && (
-              <div className="flex flex-wrap gap-2">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => {
-  const isSunday = i === 0;
-  const isDisabled = isSunday && selectedEmployee && !selectedEmployee.workOnSunday;
-
-  return (
-    <button
-      key={day}
-      type="button"
-      disabled={isDisabled} // ✅ disable click
-      onClick={() => !isDisabled && toggleDayOfWeek(i)}
-      className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all
-        ${formData.frequencyConfig.daysOfWeek.includes(i)
-          ? 'bg-primary text-white'
-          : 'bg-card border-border'}
-        ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
-      `}
-    >
-      {day}
-    </button>
-  );
-})}
-              </div>
-            )}
+                   {/* {formData.frequency === 'Weekly' && (
+                      <div className="flex flex-wrap gap-2">
+                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => toggleDayOfWeek(i)}
+                            className={`px-3 py-2 rounded-lg text-xs font-bold border ${
+                              formData.frequencyConfig.daysOfWeek.includes(i)
+                                ? 'bg-primary text-white'
+                                : 'bg-card border-border'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    )}*/}
 
 
-            {formData.frequency === 'Monthly' && (
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(date => (
-                  <button
-                    key={date}
-                    type="button"
-                    onClick={() => toggleDateOfMonth(date)}
-                    className={`text-xs p-2 rounded-lg border ${
-                      formData.frequencyConfig.daysOfMonth.includes(date)
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-card border-border'
-                    }`}
-                  >
-                    {date}
-                  </button>
-                ))}
-              </div>
-            )}
+                    {formData.frequency === 'Weekly' && (
+                      <div className="flex flex-wrap gap-2">
+                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, i) => {
+          const isSunday = i === 0;
+          const isDisabled = isSunday && selectedEmployee && !selectedEmployee.workOnSunday;
 
-          </div>
-        ) : (
-          <div className="bg-background p-4 rounded-xl border border-border text-xs font-bold text-slate-500">
-            Start Date {" "}
-            <span className="text-foreground">
-              {parseYmd(formData.startDate).toLocaleDateString()}
-            </span>
-          </div>
-        )}
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={isDisabled} // ✅ disable click
+              onClick={() => !isDisabled && toggleDayOfWeek(i)}
+              className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all
+                ${formData.frequencyConfig.daysOfWeek.includes(i)
+                  ? 'bg-primary text-white'
+                  : 'bg-card border-border'}
+                ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
+              `}
+            >
+              {day}
+            </button>
+          );
+        })}
+                      </div>
+                    )}
 
-      </div>
 
+                    {formData.frequency === 'Monthly' && (
+                      <div className="grid grid-cols-7 gap-2">
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(date => (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => toggleDateOfMonth(date)}
+                            className={`text-xs p-2 rounded-lg border ${
+                              formData.frequencyConfig.daysOfMonth.includes(date)
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-card border-border'
+                            }`}
+                          >
+                            {date}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                  </div>
+                ) : (
+                  <div className="bg-background p-4 rounded-xl border border-border text-xs font-bold text-slate-500">
+                    Start Date {" "}
+                    <span className="text-foreground">
+                      {parseYmd(formData.startDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+      </FormField>
     </div>
 
     {/* SUBMIT */}

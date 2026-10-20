@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import DynamicFieldRenderer from "../components/DynamicFieldRenderer";
+import FormField, { FIELD_GRID } from "../components/FormField";
+import useFormLayout from "../hooks/useFormLayout";
 import useCustomFields from "../hooks/useCustomFields";
 import BulkUpload from '../components/BulkUpload';
 import API from "../api/axiosConfig"; // Centralized API instance
@@ -184,6 +186,7 @@ const AddEmployee = ({
   });
 
   const { fields: customFieldDefs } = useCustomFields("employee"); // company-defined extra fields (empty = form unchanged)
+  const L = useFormLayout("employee"); // the company's own order / names / hidden fields (Settings > Form designer)
   const [allEmployees, setAllEmployees] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -371,8 +374,13 @@ const AddEmployee = ({
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (masters.sectors.length > 0 && !formData.department) {
-      await dialog.alert("Please select a Sector / Department.", { tone: "error", title: "Department needed" });
+    if (!L.hidden("department") && L.required("department", true) && masters.sectors.length > 0 && !formData.department) {
+      await dialog.alert(`Please select: ${L.label("department", "Sector / Department")}.`, { tone: "error", title: "Department needed" });
+      return;
+    }
+    const missing = L.firstMissing({ location: formData.location, joiningDate: formData.joiningDate });
+    if (missing) {
+      await dialog.alert(missing, { tone: "error", title: "Please fill this in" });
       return;
     }
     if (!whatsappCountryId) {
@@ -490,83 +498,84 @@ const AddEmployee = ({
 
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 flex flex-col gap-5">
 
-        {/* IDENTITY BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          <div className="flex flex-col">
-            <InputLabel icon={User} label="Full Name" />
-            <input
-              type="text"
-              placeholder="e.g. Rahul Sharma"
-              value={formData.name || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-col">
-            <InputLabel icon={Briefcase} label="Sector / Department" />
-            {masters.sectors.length > 0 ? (
-              <SearchableSelect
-                value={formData.department || ""}
-                onChange={(v) => setFormData({ ...formData, department: v })}
-                options={[
-                  ...(formData.department && !masters.sectors.includes(formData.department) ? [formData.department] : []),
-                  ...masters.sectors,
-                ].map((x) => ({ value: x, label: masters.sectors.includes(x) ? x : `${x} (current, not in list)` }))}
-                placeholder="Select sector / department"
-                ariaLabel="Sector / Department"
-                inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-              />
-            ) : (
-              <input
-              type="text"
-              placeholder="e.g. Operations Control"
-              value={formData.department || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-            />
-            )}
-          </div>
-        </div>
-
-        {(masters.locations.length > 0 || formData.location) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-            <div className="flex flex-col">
-              <InputLabel icon={MapPin} label="Location" />
-              <SearchableSelect
-                value={formData.location || ""}
-                onChange={(v) => setFormData({ ...formData, location: v })}
-                options={[
-                  ...(formData.location && !masters.locations.includes(formData.location) ? [formData.location] : []),
-                  ...masters.locations,
-                ].map((x) => ({ value: x, label: masters.locations.includes(x) ? x : `${x} (current, not in list)` }))}
-                clearLabel="Not assigned"
-                placeholder="Not assigned"
-                ariaLabel="Location"
-                inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          <div className="flex flex-col">
-            <InputLabel icon={CalendarDays} label="Joining date" />
-            <input
-              type="date"
-              max={new Date().toISOString().slice(0, 10)}
-              value={formData.joiningDate ? String(formData.joiningDate).slice(0, 10) : ""}
-              title="The real date this person started, used for leave accrual and payroll pro-ration. Cannot be in the future."
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
-              onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-            />
-            <span className="text-[10px] text-slate-400 mt-1 ml-1">Used for leave accrual and payroll pro-ration. Leave blank to default to today.</span>
-          </div>
-        </div>
-
-        {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
+        {/* ALL FIELDS: their order, names and visibility come from Settings > Form designer */}
+        <div className={FIELD_GRID}>
+  <FormField L={L} id="name">
+              <div className="flex flex-col">
+                <InputLabel icon={User} label={L.label("name", "Full Name")} />
+                <input
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  value={formData.name || ""} // Safe Fallback
+                  required
+                  className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+  </FormField>
+  <FormField L={L} id="department">
+              <div className="flex flex-col">
+                <InputLabel icon={Briefcase} label={L.label("department", "Sector / Department")} />
+                {masters.sectors.length > 0 ? (
+                  <SearchableSelect
+                    value={formData.department || ""}
+                    onChange={(v) => setFormData({ ...formData, department: v })}
+                    options={[
+                      ...(formData.department && !masters.sectors.includes(formData.department) ? [formData.department] : []),
+                      ...masters.sectors,
+                    ].map((x) => ({ value: x, label: masters.sectors.includes(x) ? x : `${x} (current, not in list)` }))}
+                    placeholder="Select sector / department"
+                    ariaLabel="Sector / Department"
+                    inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+                  />
+                ) : (
+                  <input
+                  type="text"
+                  placeholder="e.g. Operations Control"
+                  value={formData.department || ""} // Safe Fallback
+                  required={L.required("department", true)}
+                  className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                />
+                )}
+              </div>
+  </FormField>
+  {(masters.locations.length > 0 || formData.location) && (
+    <FormField L={L} id="location">
+                  <div className="flex flex-col">
+                    <InputLabel icon={MapPin} label={L.label("location", "Location")} />
+                    <SearchableSelect
+                      value={formData.location || ""}
+                      onChange={(v) => setFormData({ ...formData, location: v })}
+                      options={[
+                        ...(formData.location && !masters.locations.includes(formData.location) ? [formData.location] : []),
+                        ...masters.locations,
+                      ].map((x) => ({ value: x, label: masters.locations.includes(x) ? x : `${x} (current, not in list)` }))}
+                      clearLabel="Not assigned"
+                      placeholder="Not assigned"
+                      ariaLabel="Location"
+                      inputClass="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+                    />
+                  </div>
+    </FormField>
+  )}
+  <FormField L={L} id="joiningDate">
+              <div className="flex flex-col">
+                <InputLabel icon={CalendarDays} label={L.label("joiningDate", "Joining date")} />
+                <input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={formData.joiningDate ? String(formData.joiningDate).slice(0, 10) : ""}
+                  title="The real date this person started, used for leave accrual and payroll pro-ration. Cannot be in the future."
+                  className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner"
+                  onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
+                />
+                <span className="text-[10px] text-slate-400 mt-1 ml-1">Used for leave accrual and payroll pro-ration. Leave blank to default to today.</span>
+              </div>
+  </FormField>
         <DynamicFieldRenderer
+          layout={L}
+          entity="employee"
           fields={customFieldDefs}
           values={formData.customFields}
           requireOnCreate={!isEditing}
@@ -574,181 +583,182 @@ const AddEmployee = ({
             setFormData((f) => ({ ...f, customFields: { ...(f.customFields || {}), [name]: value } }))
           }
         />
-
-        {/* COMMUNICATION & WORK PREFERENCE BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 ">
-          <div className="flex flex-col">
-            <InputLabel icon={Mail} label="Email Address" />
-            <input
-              type="email"
-              placeholder="name@company.com"
-              value={formData.email || ""} // Safe Fallback
-              required
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-col">
-            <InputLabel icon={Phone} label="WhatsApp number" />
-            <div className="flex gap-2">
-              <select
-                value={whatsappCountryId || ""}
-                aria-label="Country code"
-                title="Country code"
-                className="px-2 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner shrink-0 max-w-[9.5rem]"
-                onChange={(e) => setWhatsappCountryId(e.target.value)}
-              >
-                {!whatsappCountryId && (
-                  <option value="" disabled>
-                    Select code
-                  </option>
-                )}
-                {effectiveCountries.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.flag} {c.name} (+{c.dialCode})
-                  </option>
-                ))}
-                <option value="OTHER">🌐 Other (type country code)</option>
-              </select>
-              {whatsappCountryId === "OTHER" && (
-                <div className="flex items-center shrink-0 w-20 bg-background border border-border rounded-2xl shadow-inner focus-within:ring-4 focus-within:ring-primary/10">
-                  <span className="pl-3 text-xs font-bold text-slate-400">+</span>
+  <FormField L={L} id="email">
+              <div className="flex flex-col">
+                <InputLabel icon={Mail} label={L.label("email", "Email Address")} />
+                <input
+                  type="email"
+                  placeholder="name@company.com"
+                  value={formData.email || ""} // Safe Fallback
+                  required
+                  className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+  </FormField>
+  <FormField L={L} id="whatsappNumber">
+              <div className="flex flex-col">
+                <InputLabel icon={Phone} label={L.label("whatsappNumber", "WhatsApp number")} />
+                <div className="flex gap-2">
+                  <select
+                    value={whatsappCountryId || ""}
+                    aria-label="Country code"
+                    title="Country code"
+                    className="px-2 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all shadow-inner shrink-0 max-w-[9.5rem]"
+                    onChange={(e) => setWhatsappCountryId(e.target.value)}
+                  >
+                    {!whatsappCountryId && (
+                      <option value="" disabled>
+                        Select code
+                      </option>
+                    )}
+                    {effectiveCountries.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.flag} {c.name} (+{c.dialCode})
+                      </option>
+                    ))}
+                    <option value="OTHER">🌐 Other (type country code)</option>
+                  </select>
+                  {whatsappCountryId === "OTHER" && (
+                    <div className="flex items-center shrink-0 w-20 bg-background border border-border rounded-2xl shadow-inner focus-within:ring-4 focus-within:ring-primary/10">
+                      <span className="pl-3 text-xs font-bold text-slate-400">+</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="Code"
+                        aria-label="Manual country code"
+                        title="Country code, 1-4 digits, no leading 0"
+                        value={whatsappManualCode}
+                        required
+                        className="w-full min-w-0 pl-1 pr-3 py-2.5 bg-transparent text-foreground rounded-2xl text-xs font-bold outline-none placeholder:text-slate-400 dark:placeholder:text-slate-700"
+                        onChange={(e) => {
+                          let digits = e.target.value.replace(/\D/g, "");
+                          digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
+                          digits = digits.slice(0, 4);
+                          setWhatsappManualCode(digits);
+                        }}
+                      />
+                    </div>
+                  )}
                   <input
                     type="tel"
                     inputMode="numeric"
-                    maxLength={4}
-                    placeholder="Code"
-                    aria-label="Manual country code"
-                    title="Country code, 1-4 digits, no leading 0"
-                    value={whatsappManualCode}
+                    maxLength={whatsappDialCode === INDIA_DIAL_CODE ? 10 : maxNationalLength(whatsappDialCode || "")}
+                    pattern={whatsappDialCode === INDIA_DIAL_CODE ? "[0-9]{10}" : undefined}
+                    title={
+                      whatsappDialCode === INDIA_DIAL_CODE
+                        ? "Enter the 10-digit mobile number"
+                        : "Enter the national mobile number, without the country code or a leading 0"
+                    }
+                    placeholder={whatsappDialCode === INDIA_DIAL_CODE ? "10-digit mobile number" : "National mobile number"}
+                    value={formData.whatsappNumber || ""} // Safe Fallback
                     required
-                    className="w-full min-w-0 pl-1 pr-3 py-2.5 bg-transparent text-foreground rounded-2xl text-xs font-bold outline-none placeholder:text-slate-400 dark:placeholder:text-slate-700"
+                    className="w-full min-w-0 px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
                     onChange={(e) => {
                       let digits = e.target.value.replace(/\D/g, "");
-                      digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
-                      digits = digits.slice(0, 4);
-                      setWhatsappManualCode(digits);
+                      if (whatsappDialCode === INDIA_DIAL_CODE) {
+                        digits = digits.slice(0, 10);
+                      } else {
+                        digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
+                        digits = digits.slice(0, maxNationalLength(whatsappDialCode || ""));
+                      }
+                      setFormData({ ...formData, whatsappNumber: digits });
                     }}
                   />
                 </div>
-              )}
-              <input
-                type="tel"
-                inputMode="numeric"
-                maxLength={whatsappDialCode === INDIA_DIAL_CODE ? 10 : maxNationalLength(whatsappDialCode || "")}
-                pattern={whatsappDialCode === INDIA_DIAL_CODE ? "[0-9]{10}" : undefined}
-                title={
-                  whatsappDialCode === INDIA_DIAL_CODE
-                    ? "Enter the 10-digit mobile number"
-                    : "Enter the national mobile number, without the country code or a leading 0"
-                }
-                placeholder={whatsappDialCode === INDIA_DIAL_CODE ? "10-digit mobile number" : "National mobile number"}
-                value={formData.whatsappNumber || ""} // Safe Fallback
-                required
-                className="w-full min-w-0 px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner"
-                onChange={(e) => {
-                  let digits = e.target.value.replace(/\D/g, "");
-                  if (whatsappDialCode === INDIA_DIAL_CODE) {
-                    digits = digits.slice(0, 10);
-                  } else {
-                    digits = digits.length > 1 && digits[0] === "0" ? digits.slice(1) : digits;
-                    digits = digits.slice(0, maxNationalLength(whatsappDialCode || ""));
-                  }
-                  setFormData({ ...formData, whatsappNumber: digits });
-                }}
-              />
-            </div>
-          </div>
-
-          {/* SUNDAY WORK PREFERENCE TOGGLE */}
-          <div className="md:col-span-2">
-              <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-border flex items-center justify-between gap-3 shadow-inner">
-
-                <div className="flex items-center gap-3 min-w-0">
-                     <div
-                        className={`p-2 rounded-lg transition-all duration-300 ${
-                        formData.workOnSunday
-                        ? "bg-amber-500/10 text-amber-600"
-                        : "bg-slate-200 text-slate-400"
-                       }`}
-                  >
-                  <CalendarDays
-                    size={16}
-                     className={formData.workOnSunday ? "animate-pulse" : ""}
-                  />
               </div>
+  </FormField>
+  <FormField L={L} id="workOnSunday" full>
+              <div className="md:col-span-2">
+                  <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-xl border border-border flex items-center justify-between gap-3 shadow-inner">
 
-      <div className="min-w-0">
-        <p className="text-[10px] font-black text-foreground uppercase leading-none truncate">
-          Sunday Working
-        </p>
-        <p className="text-[8px] text-slate-500 font-semibold mt-1 opacity-70 truncate">
-          Tasks enabled on Sundays
-        </p>
-      </div>
-    </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                         <div
+                            className={`p-2 rounded-lg transition-all duration-300 ${
+                            formData.workOnSunday
+                            ? "bg-amber-500/10 text-amber-600"
+                            : "bg-slate-200 text-slate-400"
+                           }`}
+                      >
+                      <CalendarDays
+                        size={16}
+                         className={formData.workOnSunday ? "animate-pulse" : ""}
+                      />
+                  </div>
 
-    <label className="relative inline-flex items-center cursor-pointer shrink-0">
-      <input
-        type="checkbox"
-        checked={!!formData.workOnSunday}
-        onChange={(e) =>
-          setFormData({ ...formData, workOnSunday: e.target.checked })
-        }
-        className="sr-only peer"
-      />
-      <div className="w-10 h-5 bg-slate-200 dark:bg-slate-800 rounded-full 
-        peer-checked:after:translate-x-5 
-        after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-        after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all 
-        peer-checked:bg-amber-500 shadow-inner">
-      </div>
-    </label>
-
-  </div>
-</div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-foreground uppercase leading-none truncate">
+              {L.label("workOnSunday", "Sunday Working")}
+            </p>
+            <p className="text-[8px] text-slate-500 font-semibold mt-1 opacity-70 truncate">
+              Tasks enabled on Sundays
+            </p>
+          </div>
         </div>
 
-        {/* SECURITY & PERMISSIONS BLOCK */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          <div className="flex flex-col">
-            <InputLabel
-              icon={Lock}
-              label={isEditing ? "Reset Password" : "system access password"}
-            />
-            <input
-              type="text"
-              autoComplete="new-password"
-              placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
-              value={formData.password || ""} // Safe Fallback
-              required={!isEditing}
-              className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
+        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+          <input
+            type="checkbox"
+            checked={!!formData.workOnSunday}
+            onChange={(e) =>
+              setFormData({ ...formData, workOnSunday: e.target.checked })
+            }
+            className="sr-only peer"
+          />
+          <div className="w-10 h-5 bg-slate-200 dark:bg-slate-800 rounded-full 
+            peer-checked:after:translate-x-5 
+            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
+            after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all 
+            peer-checked:bg-amber-500 shadow-inner">
           </div>
-          <div className="flex flex-col">
-            <InputLabel icon={Layers} label="Assigned Permissions" />
-            <div className="flex flex-wrap gap-2">
-              {availableRoles.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleRoleToggle(role)}
-                  className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${(formData.roles || []).includes(role)
-                    ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
-                    : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
-                    }`}
-                >
-                  {(formData.roles || []).includes(role) ? (
-                    <CheckSquare size={14} strokeWidth={3} />
-                  ) : (
-                    <Square size={14} strokeWidth={2} />
-                  )}{" "}
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
+        </label>
+
+      </div>
+    </div>
+  </FormField>
+  <FormField L={L} id="password">
+              <div className="flex flex-col">
+                <InputLabel
+                  icon={Lock}
+                  label={L.label("password", isEditing ? "Reset Password" : "system access password")}
+                />
+                <input
+                  type="text"
+                  autoComplete="new-password"
+                  placeholder={isEditing ? "Blank to maintain current" : "Minimum 8 characters"}
+                  value={formData.password || ""} // Safe Fallback
+                  required={!isEditing}
+                  className="w-full px-4 py-2.5 bg-background border border-border text-foreground rounded-2xl text-xs font-black outline-none focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-700 shadow-inner font-mono"
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
+              </div>
+  </FormField>
+  <FormField L={L} id="roles">
+              <div className="flex flex-col">
+                <InputLabel icon={Layers} label={L.label("roles", "Assigned Permissions")} />
+                <div className="flex flex-wrap gap-2">
+                  {availableRoles.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => handleRoleToggle(role)}
+                      className={`px-4 py-2.5 rounded-xl cursor-pointer text-[9px] flex items-center gap-2 font-black transition-all border uppercase tracking-widest ${(formData.roles || []).includes(role)
+                        ? "bg-primary/10 border-primary/50 text-primary shadow-lg shadow-primary/5"
+                        : "bg-background border-border text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
+                        }`}
+                    >
+                      {(formData.roles || []).includes(role) ? (
+                        <CheckSquare size={14} strokeWidth={3} />
+                      ) : (
+                        <Square size={14} strokeWidth={2} />
+                      )}{" "}
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+  </FormField>
         </div>
 
         {/* --- DYNAMIC HIERARCHY MAPPING --- */}

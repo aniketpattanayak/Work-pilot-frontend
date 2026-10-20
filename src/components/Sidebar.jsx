@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axiosConfig';
+import useCompanySettings from '../hooks/useCompanySettings';
 import { dialog } from './Dialog';
 import {
   LayoutDashboard,
@@ -65,6 +66,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
   const user = JSON.parse(localStorage.getItem('user')) || {};
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const { isOn: companyOn } = useCompanySettings();   // the company's own menu on/off switches
   const [tenantFeatures, setTenantFeatures] = useState({});
   const [hrModules, setHrModules] = useState({});
   const safeRoles = Array.isArray(roles) ? roles : [];
@@ -144,6 +146,9 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
       ],
     },
   ];
+
+  // Which menu items a company admin can switch off (Settings > Functions on / off > Menu)
+  const MENU_SWITCH = { 'Following': 'menu_following', 'My Flow Tasks': 'menu_myFlowTasks', 'Personal Tasks': 'menu_personalTasks', 'Attendance': 'menu_attendance', 'Leave': 'menu_leave', 'Payroll': 'menu_payroll', 'Tracking': 'menu_tracking', 'Chat': 'menu_chat', 'Order Forms': 'menu_orderForms', 'New Order': 'menu_newOrder', 'Flow Management': 'menu_flowManagement', 'Review Meeting': 'menu_reviewMeeting', 'Reports Hub': 'menu_reportsHub', 'Rewards Log': 'menu_rewardsLog', 'Raise Ticket': 'menu_raiseTicket' };
 
   const getRoute = (itemName) => {
     if (itemName === 'Dashboard')       return '';
@@ -267,7 +272,8 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
           const filteredItems = cat.items.filter(item =>
             (viewerOnly ? item.name === 'Global View' : item.roles.some(r => safeRoles.includes(r))) &&
             (!item.featureKey || tenantFeatures[item.featureKey] !== false) &&
-            (!item.hrKey || hrModules[item.hrKey] === true)
+            (!item.hrKey || hrModules[item.hrKey] === true) &&
+            (!MENU_SWITCH[item.name] || companyOn(MENU_SWITCH[item.name]))
           );
           if (filteredItems.length === 0) return null;
 

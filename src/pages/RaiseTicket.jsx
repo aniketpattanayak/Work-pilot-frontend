@@ -29,6 +29,9 @@ import {
   Search
 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import FormField, { FIELD_GRID } from '../components/FormField';
+import useFormLayout from '../hooks/useFormLayout';
 
 const EMPTY_FORM = { title: '', description: '', category: 'Technical', priority: 'Medium' };
 const PRIORITY_STYLE = {
@@ -46,6 +49,8 @@ const RaiseTicket = ({ userId, tenantId }) => {
   // --- UI STATES ---
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null); // null = raising a new ticket
+  const L = useFormLayout('ticket'); // company's own order / names / hidden fields (Settings > Form designer)
+  const [customValues, setCustomValues] = useState({});
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -90,7 +95,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
 
   const resetForm = () => {
     previews.forEach((p) => { if (p.url) URL.revokeObjectURL(p.url); });
-    setFormData(EMPTY_FORM); setFiles([]); setPreviews([]); setEditId(null);
+    setFormData(EMPTY_FORM); setCustomValues({}); setFiles([]); setPreviews([]); setEditId(null);
   };
   const closeForm = () => { setShowForm(false); resetForm(); };
   const openNew = () => { resetForm(); setShowForm(true); };
@@ -129,6 +134,8 @@ const RaiseTicket = ({ userId, tenantId }) => {
       await dialog.alert('Please fill the Subject and the Description. Fields marked with a red star are required.', { tone: 'error' });
       return;
     }
+    const missing = L.firstMissing({ priority: formData.priority, category: formData.category, ...(editId ? {} : { attachments: files }) });
+    if (missing) { await dialog.alert(missing, { tone: 'error' }); return; }
     setUploading(true);
     try {
       if (editId) {
@@ -142,6 +149,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
       } else {
         const data = new FormData();
         Object.keys(formData).forEach(key => data.append(key, key === 'title' || key === 'description' ? formData[key].trim() : formData[key]));
+        data.append('customFields', JSON.stringify(customValues));
         data.append('reporterId', userId);
         data.append('tenantId', tenantId);
         files.forEach(file => data.append('initialMedia', file));
@@ -343,22 +351,25 @@ const RaiseTicket = ({ userId, tenantId }) => {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div>
-                <label className={lblCls}>Subject<Req /></label>
-                <input type="text" placeholder="Short title of the problem" className={inputCls}
-                  value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-              </div>
-
-              <div>
-                <label className={lblCls}>Description<Req /></label>
-                <textarea placeholder="Tell us what went wrong, and where…" className={`${inputCls} h-32 resize-none`}
-                  value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} noValidate>
+              <div className={FIELD_GRID}>
+              <FormField L={L} id="subject" full>
                 <div>
-                  <label className={lblCls}>Priority<Req /></label>
+                  <label className={lblCls}>{L.label("subject", "Subject")}<Req /></label>
+                  <input type="text" placeholder="Short title of the problem" className={inputCls}
+                    value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                </div>
+              </FormField>
+              <FormField L={L} id="description" full>
+                <div>
+                  <label className={lblCls}>{L.label("description", "Description")}<Req /></label>
+                  <textarea placeholder="Tell us what went wrong, and where…" className={`${inputCls} h-32 resize-none`}
+                    value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                </div>
+              </FormField>
+              <FormField L={L} id="priority">
+                <div>
+                  <label className={lblCls}>{L.label("priority", "Priority")}{L.required("priority") && <Req />}</label>
                   <select className={`${inputCls} font-bold cursor-pointer`} value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
@@ -366,8 +377,10 @@ const RaiseTicket = ({ userId, tenantId }) => {
                     <option value="Urgent">Urgent</option>
                   </select>
                 </div>
+              </FormField>
+              <FormField L={L} id="category">
                 <div>
-                  <label className={lblCls}>Category<Req /></label>
+                  <label className={lblCls}>{L.label("category", "Category")}{L.required("category") && <Req />}</label>
                   <select className={`${inputCls} font-bold cursor-pointer`} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
                     <option value="Technical">Technical problem</option>
                     <option value="Access">Access / people mapping</option>
@@ -375,11 +388,14 @@ const RaiseTicket = ({ userId, tenantId }) => {
                     <option value="Feature">New feature request</option>
                   </select>
                 </div>
-              </div>
-
+              </FormField>
               {!editId && (
+                <DynamicFieldRenderer variant="plain" fields={L.customFields} layout={L} entity="ticket" values={customValues} requireOnCreate onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))} />
+              )}
+              {!editId && (
+                <FormField L={L} id="attachments" full>
                 <div>
-                  <label className={lblCls}>Photos / videos / files <span className="normal-case tracking-normal font-bold text-slate-400">(optional)</span></label>
+                  <label className={lblCls}>{L.label("attachments", "Photos / videos / files")} <span className="normal-case tracking-normal font-bold text-slate-400">(optional)</span></label>
                   <div className="border-2 border-dashed border-border p-5 rounded-2xl text-center relative hover:border-primary/40 transition-all bg-background/50">
                     <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     <div className="flex items-center justify-center gap-3 text-slate-400">
@@ -400,7 +416,10 @@ const RaiseTicket = ({ userId, tenantId }) => {
                     </div>
                   )}
                 </div>
+            
+                </FormField>
               )}
+              </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button type="button" onClick={closeForm} className="px-5 py-2.5 rounded-xl border border-border text-xs font-black uppercase tracking-widest text-slate-500 hover:text-foreground transition-all">Cancel</button>

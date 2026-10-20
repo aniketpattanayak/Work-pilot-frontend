@@ -4,6 +4,9 @@ import { CalendarDays, Send, X, Check } from 'lucide-react';
 import { dialog } from '../components/Dialog';
 import usePermissions from '../components/usePermissions';
 import LeaveSetup from '../components/LeaveSetup';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import FormField, { FIELD_GRID } from '../components/FormField';
+import useFormLayout from '../hooks/useFormLayout';
 
 /**
  * LEAVE: apply for leave and see balances, approve the team's requests, see who is off, and (for Admins) set up
@@ -32,6 +35,8 @@ const MyLeave = ({ tenantId, can }) => {
   const [mine, setMine] = useState([]);
   const [people, setPeople] = useState([]);
   const [busy, setBusy] = useState(false);
+  const L = useFormLayout('leave'); // company's own order / names / hidden fields (Settings > Form designer)
+  const [customValues, setCustomValues] = useState({});
   const [form, setForm] = useState({ leaveTypeId: '', fromDate: '', toDate: '', halfDay: 'none', reason: '', buddyId: '' });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const canApply = can('leave.apply');
@@ -55,12 +60,15 @@ const MyLeave = ({ tenantId, can }) => {
     e.preventDefault();
     if (!form.leaveTypeId) return dialog.alert('Choose the type of leave.', { tone: 'error', title: 'Check the form' });
     if (!form.fromDate) return dialog.alert('Choose the first day of leave.', { tone: 'error', title: 'Check the form' });
+    const missing = L.firstMissing({ to: form.toDate, dayPart: form.halfDay === 'none' ? '' : form.halfDay, reason: form.reason, buddy: form.buddyId });
+    if (missing) return dialog.alert(missing, { tone: 'error', title: 'Check the form' });
     setBusy(true);
     try {
-      const body = { ...form, toDate: form.toDate || form.fromDate, buddyId: form.buddyId || undefined };
+      const body = { ...form, toDate: form.toDate || form.fromDate, buddyId: form.buddyId || undefined, customFields: customValues };
       const res = await API.post('/tasks/leave/requests', body);
       await dialog.alert(`Your request for ${res.data?.request?.days ?? ''} day(s) was sent for approval.`, { tone: 'success', title: 'Sent' });
       setForm({ leaveTypeId: '', fromDate: '', toDate: '', halfDay: 'none', reason: '', buddyId: '' });
+      setCustomValues({});
       await load();
     } catch (er) { await dialog.alert(err(er, 'Could not send the request.'), { tone: 'error', title: 'Not sent' }); }
     finally { setBusy(false); }
@@ -93,28 +101,27 @@ const MyLeave = ({ tenantId, can }) => {
       {canApply && (
         <form onSubmit={submit} className={card}>
           <h3 className="text-foreground text-base font-black uppercase tracking-tight mb-4 flex items-center gap-2"><Send size={16} className="text-primary" /> Apply for leave</h3>
-          <div className="grid md:grid-cols-4 gap-3">
-            <div><label className={label}>Type</label>
+          <div className={FIELD_GRID}>
+            <FormField L={L} id="type"><label className={label}>{L.label('type', 'Type')}</label>
               <select aria-label="Leave type" className={input} value={form.leaveTypeId} onChange={(e) => set('leaveTypeId', e.target.value)}>
                 <option value="">Choose...</option>
                 {types.map((t) => <option key={t._id} value={t._id}>{t.name}</option>)}
-              </select></div>
-            <div><label className={label}>From</label><input aria-label="From date" type="date" className={input} value={form.fromDate} onChange={(e) => set('fromDate', e.target.value)} /></div>
-            <div><label className={label}>To (optional)</label><input aria-label="To date" type="date" className={input} min={form.fromDate || undefined} value={form.toDate} onChange={(e) => set('toDate', e.target.value)} /></div>
-            <div><label className={label}>Day part</label>
+              </select></FormField>
+            <FormField L={L} id="from"><label className={label}>{L.label('from', 'From')}</label><input aria-label="From date" type="date" className={input} value={form.fromDate} onChange={(e) => set('fromDate', e.target.value)} /></FormField>
+            <FormField L={L} id="to"><label className={label}>{L.label('to', 'To')}{L.required('to') ? '' : ' (optional)'}</label><input aria-label="To date" type="date" className={input} min={form.fromDate || undefined} value={form.toDate} onChange={(e) => set('toDate', e.target.value)} /></FormField>
+            <FormField L={L} id="dayPart"><label className={label}>{L.label('dayPart', 'Day part')}</label>
               <select aria-label="Day part" className={input} value={form.halfDay} onChange={(e) => set('halfDay', e.target.value)} disabled={type && !type.halfDayAllowed}>
                 <option value="none">Full day(s)</option>
                 <option value="first">First half</option>
                 <option value="second">Second half</option>
-              </select></div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-3 mt-3">
-            <div><label className={label}>Reason{type && !type.requiresReason ? ' (optional)' : ''}</label><input aria-label="Reason" className={input} maxLength={500} value={form.reason} onChange={(e) => set('reason', e.target.value)} placeholder="Why do you need leave?" /></div>
-            <div><label className={label}>Who covers your tasks? (optional)</label>
+              </select></FormField>
+            <FormField L={L} id="reason"><label className={label}>{L.label('reason', 'Reason')}{type && !type.requiresReason ? ' (optional)' : ''}</label><input aria-label="Reason" className={input} maxLength={500} value={form.reason} onChange={(e) => set('reason', e.target.value)} placeholder="Why do you need leave?" /></FormField>
+            <FormField L={L} id="buddy"><label className={label}>{L.label('buddy', 'Who covers your tasks?')}{L.required('buddy') ? '' : ' (optional)'}</label>
               <select aria-label="Buddy" className={input} value={form.buddyId} onChange={(e) => set('buddyId', e.target.value)}>
                 <option value="">No one in particular</option>
                 {people.map((p) => <option key={p._id} value={p._id}>{p.name}</option>)}
-              </select></div>
+              </select></FormField>
+            <DynamicFieldRenderer variant="plain" fields={L.customFields} layout={L} entity="leave" values={customValues} requireOnCreate onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))} />
           </div>
           {type && (
             <p className="text-[11px] font-bold text-muted-foreground mt-3">

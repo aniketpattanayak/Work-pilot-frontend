@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import API from "../api/axiosConfig";
+import useCompanySettings from "../hooks/useCompanySettings";
 
 // Component Imports
 import Sidebar from "../components/Sidebar";
@@ -98,6 +99,8 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   // gets a different (non-padded, non-scrolling) wrapper below. See
   // ChatPage.jsx for why this replaced its old position:fixed layout.
   const { chatEnabled } = useChat(); // false when SuperAdmin switched Chat off
+  const { isOn: companyOn } = useCompanySettings(); // the company's own menu switches
+  const guard = (key, el) => (companyOn(key) ? el : <Navigate to="/dashboard" replace />);
   const isChatRoute = location.pathname.replace(/\/+$/, '').endsWith('/chat');
   // Bumped by MobileDualLauncher (phones only) to tell FloatingChat /
   // AiAssistantPanel to open themselves - see each component's openTrigger effect.
@@ -482,7 +485,7 @@ useEffect(() => {
           <Routes>
             <Route path="/" element={<UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
 
-            <Route path="review-meeting" element={<ReviewMeeting tenantId={currentTenantId} />} />
+            <Route path="review-meeting" element={guard('menu_reviewMeeting', <ReviewMeeting tenantId={currentTenantId} />)} />
             <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
            {/* <Route path="employees" element={
                 <div className="flex flex-col gap-10">
@@ -547,7 +550,7 @@ useEffect(() => {
   </div>
 } /> 
 
-            <Route path="raise-ticket" element={ <RaiseTicket userId={userId} tenantId={currentTenantId} /> } />
+            <Route path="raise-ticket" element={guard('menu_raiseTicket', <RaiseTicket userId={userId} tenantId={currentTenantId} />)} />
             <Route path="factory-settings" element={<SettingsPage tenantId={currentTenantId} />} />
             <Route path="mapping" element={<CoordinatorMapping tenantId={currentTenantId} />} />
             <Route path="create-task" element={ <CreateTask tenantId={currentTenantId} assignerId={userId} /> } />
@@ -557,21 +560,21 @@ useEffect(() => {
             <Route path="checklist-monitor" element={<ChecklistMonitor tenantId={currentTenantId} />} />
             <Route path="my-tasks" element={<DoerChecklist doerId={userId} />} />
             <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
-            <Route path="following" element={<FollowingTasks employeeId={userId} />} />
-            <Route path="personal-tasks" element={<PersonalTasks />} />
-            <Route path="tracking" element={<CoordinatorDashboard coordinatorId={userId} />} />
-            <Route path="rewards-log" element={ <RewardsLog userId={userId} tenantId={currentTenantId} /> } />
+            <Route path="following" element={guard('menu_following', <FollowingTasks employeeId={userId} />)} />
+            <Route path="personal-tasks" element={guard('menu_personalTasks', <PersonalTasks />)} />
+            <Route path="tracking" element={guard('menu_tracking', <CoordinatorDashboard coordinatorId={userId} />)} />
+            <Route path="rewards-log" element={guard('menu_rewardsLog', <RewardsLog userId={userId} tenantId={currentTenantId} />)} />
             <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
-            <Route path="/reports" element={<ReportsTab tenantId={tenantId} />} />
+            <Route path="/reports" element={guard('menu_reportsHub', <ReportsTab tenantId={tenantId} />)} />
             <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
-            <Route path="chat" element={chatEnabled ? <ChatPage currentUser={user} /> : <Navigate to="/dashboard" replace />} />
-            <Route path="order-forms" element={<OrderFormsPage tenantId={tenantId} />} />
-            <Route path="new-order" element={<NewOrderPage tenantId={tenantId} />} />
-            <Route path="flow-management" element={<FlowManagement tenantId={tenantId} user={user} />} />
-            <Route path="flow-tasks" element={<FlowMyTasks employeeId={userId} />} />
-            <Route path="leave" element={<LeavePage tenantId={currentTenantId} />} />
-            <Route path="attendance" element={<AttendancePage />} />
-            <Route path="payroll" element={<PayrollPage />} />
+            <Route path="chat" element={chatEnabled && companyOn('menu_chat') ? <ChatPage currentUser={user} /> : <Navigate to="/dashboard" replace />} />
+            <Route path="order-forms" element={guard('menu_orderForms', <OrderFormsPage tenantId={tenantId} />)} />
+            <Route path="new-order" element={guard('menu_newOrder', <NewOrderPage tenantId={tenantId} />)} />
+            <Route path="flow-management" element={guard('menu_flowManagement', <FlowManagement tenantId={tenantId} user={user} />)} />
+            <Route path="flow-tasks" element={guard('menu_myFlowTasks', <FlowMyTasks employeeId={userId} />)} />
+            <Route path="leave" element={guard('menu_leave', <LeavePage tenantId={currentTenantId} />)} />
+            <Route path="attendance" element={guard('menu_attendance', <AttendancePage />)} />
+            <Route path="payroll" element={guard('menu_payroll', <PayrollPage />)} />
           </Routes>
           )}
           </ErrorBoundary>
