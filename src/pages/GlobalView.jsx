@@ -4,6 +4,7 @@ import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/re
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 import MobileFilters from '../components/MobileFilters';
+import DateChangesReport from '../components/DateChangesReport';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -303,6 +304,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           </div>
         )}
       </div>
+
+      <DateChangesReport from={range ? range.from : (periodInfo?.startDate ? String(periodInfo.startDate).slice(0, 10) : undefined)} to={range ? range.to : (periodInfo?.endDate ? String(periodInfo.endDate).slice(0, 10) : undefined)} />
 
       {/* FILTERS + LEGEND */}
       <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">

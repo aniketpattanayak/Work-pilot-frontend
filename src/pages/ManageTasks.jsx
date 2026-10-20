@@ -47,6 +47,9 @@ import ConfigurableTable from '../components/ConfigurableTable';
 import ColumnCustomizer from '../components/ColumnCustomizer';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
+import DateReasonFields from '../components/mytasks/DateReasonFields';
+import useDateReasons from '../hooks/useDateReasons';
+import { reasonError } from '../utils/dateReasonCheck';
 
 // Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back"
 const displayStatus = (t) => {
@@ -110,6 +113,22 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     priority: 'Medium',
     customFields: {}
   });
+
+  // Reason + warnings when the deadline is changed in the edit window
+  const { required: reasonRequired } = useDateReasons();
+  const [editReason, setEditReason] = useState({ reason: '', note: '' });
+  const [editWarn, setEditWarn] = useState([]);
+  const [editShowErr, setEditShowErr] = useState(false);
+
+  useEffect(() => {
+    if (!isEditOpen || !editingTask || !editFormData.deadline) { setEditWarn([]); return undefined; }
+    let live = true;
+    const t = setTimeout(() => {
+      API.post('/tasks/date-check', { taskId: editingTask._id, doerId: editFormData.doerId || undefined, date: new Date(editFormData.deadline).toISOString() })
+        .then((r) => { if (live) setEditWarn((r.data && r.data.warnings) || []); }).catch(() => { if (live) setEditWarn([]); });
+    }, 300);
+    return () => { live = false; clearTimeout(t); };
+  }, [isEditOpen, editingTask, editFormData.deadline, editFormData.doerId]);
 
   const user = JSON.parse(localStorage.getItem('user'));
   const currentAssignerId = assignerId || user?._id || user?.id;
@@ -271,6 +290,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  const decideDateRequest = async (task, decision) => {
+    try {
+      const r = await API.post(`/tasks/${task._id}/date-request`, { decision });
+      dialog.alert((r.data && r.data.message) || 'Done.', { tone: 'success' });
+      fetchData();
+    } catch (err) {
+      dialog.alert(err.response?.data?.message || 'Could not save your answer.', { tone: 'error' });
+    }
+  };
+
   const handleOpenEdit = (task) => {
     setEditingTask(task);
     setEditFormData({
@@ -281,18 +310,26 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       priority: task.priority || 'Medium',
       customFields: (task.customFields && typeof task.customFields === 'object') ? { ...task.customFields } : {}
     });
+    setEditReason({ reason: '', note: '' }); setEditWarn([]); setEditShowErr(false);
     setIsEditOpen(true);
   };
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingTask) return;
+    const dateMoved = !!editFormData.deadline && !!editingTask.deadline && editFormData.deadline.slice(0, 10) !== toDatetimeLocal(editingTask.deadline).slice(0, 10);
+    if (dateMoved) {
+      setEditShowErr(true);
+      const re = reasonError(editReason, reasonRequired);
+      if (re) { dialog.alert(re, { tone: 'error', title: 'Reason needed' }); return; }
+    }
     try {
-      await API.put(`/tasks/${editingTask._id}`, editFormData);
+      const res = await API.put(`/tasks/${editingTask._id}`, dateMoved ? { ...editFormData, reason: editReason.reason, reasonNote: editReason.note.trim() } : editFormData);
       setIsEditOpen(false);
       setEditingTask(null);
       fetchData();
-      dialog.alert("The task was updated.", { tone: 'success' });
+      const warns = (res.data && res.data.warnings) || [];
+      dialog.alert(`The task was updated.${warns.length ? '\n\n' + warns.join('\n') : ''}`, { tone: warns.length ? 'warning' : 'success' });
     } catch (err) {
       console.error("Update error:", err);
       dialog.alert(err.response?.data?.message || "The task could not be updated. Please try again.", { tone: 'error' });
@@ -377,9 +414,28 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             </span>
                           </>
                         ) : 'AWAITING'}
-                        {task.originalDeadline && (
-                          <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The doer revised the deadline within the allowed days">
-                            Revised &middot; was {new Date(task.originalDeadline).toLocaleDateString()} (+{Math.round((new Date(task.deadline) - new Date(task.originalDeadline)) / 86400000)}d)
+                        {(() => {
+                          const ch = (task.dateChanges || []).filter((c) => c.byRole !== 'hold');
+                          const was = (ch[0] && ch[0].oldDeadline) || (!(task.dateChanges || []).length && task.originalDeadline);
+                          if (!was) return null;
+                          const d = Math.round((new Date(task.deadline) - new Date(was)) / 86400000);
+                          return (
+                            <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The deadline was changed">
+                              Revised &middot; was {new Date(was).toLocaleDateString()} ({d >= 0 ? '+' : ''}{d}d){ch.length > 1 ? ` · changed ${ch.length} times` : ''}
+                            </span>
+                          );
+                        })()}
+                        {task.onHold && task.onHold.isOn && (
+                          <span className="block text-[9px] font-black uppercase text-amber-700 mt-1" title={[task.onHold.reason, task.onHold.reasonNote].filter(Boolean).join(' - ')}>On hold &middot; clock paused</span>
+                        )}
+                        {task.pendingDateRequest && task.pendingDateRequest.byId && (
+                          <span className="block mt-1.5 p-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-bold text-amber-700 normal-case" data-testid="date-request">
+                            {task.pendingDateRequest.byName || 'A follower'} asks for {new Date(task.pendingDateRequest.proposedDeadline).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            {task.pendingDateRequest.reason ? ` (${task.pendingDateRequest.reason})` : ''}
+                            <span className="flex gap-2 mt-1.5">
+                              <button type="button" onClick={() => decideDateRequest(task, 'approve')} className="px-2 py-1 rounded bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest">Approve</button>
+                              <button type="button" onClick={() => decideDateRequest(task, 'reject')} className="px-2 py-1 rounded bg-red-600 text-white text-[9px] font-black uppercase tracking-widest">Reject</button>
+                            </span>
                           </span>
                         )}
         </>
@@ -852,6 +908,14 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   />
                 </div>
               </div>
+              {editingTask && editFormData.deadline && editingTask.deadline && editFormData.deadline.slice(0, 10) !== toDatetimeLocal(editingTask.deadline).slice(0, 10) && (
+                <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-2" data-testid="edit-date-reason">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">You are changing the deadline</p>
+                  {editWarn.map((w, i) => <p key={i} role="status" className="text-xs text-amber-600 font-bold">{w}</p>)}
+                  <DateReasonFields value={editReason} onChange={setEditReason} invalid={editShowErr} />
+                  <p className="text-[10px] text-muted-foreground">The doer is told and the change is saved in the task history.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Priority</label>
                 <select

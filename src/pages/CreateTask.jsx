@@ -4,6 +4,7 @@ import { dialog } from '../components/Dialog';
 import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 import useCustomFields from '../hooks/useCustomFields';
+import useCompanySettings from '../hooks/useCompanySettings';
 import DatePicker from "react-datepicker"; 
 import "react-datepicker/dist/react-datepicker.css"; 
 import {
@@ -45,6 +46,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     priority: "Medium",
     deadline: null, 
     isRevisionAllowed: true,
+    followersCanChangeDate: true,
     maxExtensionDays: "3",
     coworkers: [],
   });
@@ -61,6 +63,8 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
   const [loading, setLoading] = useState(!initialEmployees || initialEmployees.length === 0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedHelpers, setSelectedHelpers] = useState([]);
+  const { isOn: companyAllows } = useCompanySettings();
+  const followersMayChange = companyAllows('dates_followersChange');
 
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
   const sessionUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -219,6 +223,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     formData.append("priority", task.priority);
     formData.append("deadline", task.deadline.toISOString()); 
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
+    formData.append("followersCanChangeDate", task.followersCanChangeDate !== false);
     formData.append("maxExtensionDays", task.isRevisionAllowed ? String(Number(task.maxExtensionDays)) : "0");
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
     if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
@@ -230,7 +235,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
         headers: { "Content-Type": "multipart/form-data" },
       });
       dialog.alert("The task was assigned.", { tone: 'success' });
-      setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, maxExtensionDays: "3", coworkers: [] });
+      setTask({ title: "", description: "", doerId: "", coordinatorId: "", priority: "Medium", deadline: null, isRevisionAllowed: true, followersCanChangeDate: true, maxExtensionDays: "3", coworkers: [] });
       setSelectedFiles([]);
       setCustomValues({});
       setSelectedHelpers([]);
@@ -463,6 +468,12 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                     </label>
                   ))}
                 </div>
+                {selectedHelpers.length > 0 && followersMayChange && (
+                  <label className="mt-2 flex items-center gap-2 text-sm text-slate-600" title="If ticked, followers can move the deadline. If not, they must ask you first.">
+                    <input type="checkbox" className="accent-primary" checked={task.followersCanChangeDate !== false} onChange={(e) => setTask({ ...task, followersCanChangeDate: e.target.checked })} />
+                    Followers can change the date
+                  </label>
+                )}
               </div>
             </div>
 

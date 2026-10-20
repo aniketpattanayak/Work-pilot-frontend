@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, forwardRef, useRef } from 'react';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import useCustomFields from '../hooks/useCustomFields';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import API from '../api/axiosConfig';
@@ -42,6 +44,8 @@ const CreateChecklist = ({ tenantId, onSuccess, hideHeader = false }) => {
   const dropdownRef = useRef(null);
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const { fields: customFieldDefs } = useCustomFields('task'); // company-defined extra fields (empty = form unchanged)
+  const [customValues, setCustomValues] = useState({});
 
 
 
@@ -175,7 +179,7 @@ const isDisabledDate = (date) =>
 
     setLoading(true);
     try {
-      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId });
+      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId, ...(customFieldDefs.length > 0 ? { customFields: customValues } : {}) });
       dialog.alert("The checklist task was created.", { tone: 'success' });
       setFormData({ 
         taskName: '', description: '', doerId: '', frequency: 'Daily',
@@ -183,6 +187,7 @@ const isDisabledDate = (date) =>
         frequencyConfig: { daysOfWeek: [], daysOfMonth: [], month: 0 }
       });
       setSearchTerm('');
+      setCustomValues({});
       if (onSuccess) onSuccess();
     } catch (err) {
       dialog.alert(err.response?.data?.message || err.message || "The checklist task could not be created.", { tone: 'error' });
@@ -256,6 +261,15 @@ const isDisabledDate = (date) =>
             placeholder="Task Description"
           />
         </div>
+
+        {/* COMPANY-DEFINED EXTRA FIELDS (renders nothing when the company has none) */}
+        <DynamicFieldRenderer
+          variant="plain"
+          fields={customFieldDefs}
+          values={customValues}
+          requireOnCreate
+          onChange={(name, value) => setCustomValues((v) => ({ ...v, [name]: value }))}
+        />
 
         {/* DOER */}
         <div className="space-y-2 relative" ref={dropdownRef}>

@@ -28,6 +28,10 @@ import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
+import ConfigurableTable from '../components/ConfigurableTable';
+import ColumnCustomizer from '../components/ColumnCustomizer';
+import useConfigurableColumns from '../hooks/useConfigurableColumns';
+import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 
 const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const todayYmd = () => ymd(new Date());
@@ -212,6 +216,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       frequency: item.frequency,
       frequencyConfig: { ...(item.frequencyConfig || {}), daysOfWeek: Array.isArray(item.frequencyConfig?.daysOfWeek) ? item.frequencyConfig.daysOfWeek : [], daysOfMonth: Array.isArray(item.frequencyConfig?.daysOfMonth) ? item.frequencyConfig.daysOfMonth : [] },
       createdAt: item.createdAt,
+      customFields: (item.customFields && typeof item.customFields === 'object') ? { ...item.customFields } : {},
       // shown in Frequency Tuning; only sent to the server if the admin changes it
       startDate: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
       origStart: item.nextDueDate ? ymd(new Date(item.nextDueDate)) : todayYmd(),
@@ -246,6 +251,34 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     catch (err) { dialog.alert(err.response?.data?.message || 'The checklist task could not be deleted.', { tone: 'error' }); }
   };
 
+  // Built-in columns (company custom fields and the saved layout are added by useConfigurableColumns)
+  const checklistColumns = [
+    { key: 'sno', label: 'S no.', width: '60px', headerClassName: 'text-center', cellClassName: 'text-center text-xs font-black text-slate-400', render: (item, index) => index + 1 },
+    { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span> },
+    { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span> },
+    { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
+    { key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span> },
+    { key: 'schedule', label: 'Schedule', width: 'minmax(0,1fr)', cellClassName: 'min-w-0', render: (item) => {
+      const schedule = getNextFiveDates(item);
+      return (
+        <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
+          {schedule.length > 0 ? schedule.map((obj, i) => (<option key={i}>{obj.label} → {obj.date}</option>)) : <option>Synced</option>}
+        </select>
+      );
+    } },
+    { key: 'actions', label: 'Actions', width: '120px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
+      <>
+        {!isViewer && (
+          <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
+        )}
+        {!isViewer && (
+          <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist"><Trash2 size={14} /></button>
+        )}
+      </>
+    ) },
+  ];
+  const checklistCtl = useConfigurableColumns({ tableKey: 'checklist_table', columns: checklistColumns, customFieldEntity: 'task', phoneUsesDefaults: true });
+
   if (loading) return (
     <div className="flex flex-col justify-center items-center h-[400px] gap-6">
       <RefreshCcw className="animate-spin text-primary" size={50} />
@@ -263,6 +296,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
+          <div className="hidden md:block"><ColumnCustomizer ctl={checklistCtl} /></div>
           <button
             onClick={fetchData}
             className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
@@ -351,70 +385,27 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         {/* SCROLL AREA */}
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
           <ResponsiveGrid className="w-[1000px] sm:w-full text-sm">
-            {/* HEADER */}
-            <div className="mobile-grid-head grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10">
-              <span className="text-center">S no.</span>
-              <span>Title</span>
-              <span>Assigned to</span>
-              <span>Description</span>
-              <span className="text-center">Cycle</span>
-              <span>Schedule</span>
-              <span className="text-right">Actions</span>
-            </div>
-
-            {/* ROWS */}
-            {filteredChecklists.length === 0 && (
-              <div className="py-16 text-center text-sm text-muted-foreground font-medium">No checklist tasks found</div>
-            )}
-            {filteredChecklists.map((item, index) => {
-              const schedule = getNextFiveDates(item);
-              return (
-                <div
-                  key={item._id}
-                  data-tone="chk"
-                  className="mobile-grid-row mgr-card mgr-card--chk grid grid-cols-[60px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_120px] items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
-                >
-                  <span className="text-center text-xs font-black text-slate-400">{index + 1}</span>
-
-                  <div className="min-w-0 pr-2">
-                    <span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>
-                  </div>
-
-                  <div className="min-w-0 pr-2">
-                    <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span>
-                  </div>
-
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p>
-                  </div>
-
-                  <div className="text-center min-w-0">
-                    <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span>
-                  </div>
-
-                  <div className="min-w-0">
-                    <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
-                      {schedule.length > 0 ? schedule.map((obj, i) => (
-                        <option key={i}>{obj.label} → {obj.date}</option>
-                      )) : <option>Synced</option>}
-                    </select>
-                  </div>
-
-                  <div className="flex justify-end gap-2 min-w-0">
-                    {!isViewer && (
-                      <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist">
-                        <Edit3 size={14} />
-                      </button>
-                    )}
-                    {!isViewer && (
-                      <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist">
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
+            <ConfigurableTable
+              controller={checklistCtl}
+              minWidthClass="md:min-w-[var(--cfg-min)]"
+              rows={filteredChecklists}
+              rowKey={(item) => item._id}
+              renderHeader={({ cells, style }) => (
+                <div className="mobile-grid-head grid px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10" style={style}>
+                  {cells}
                 </div>
-              );
-            })}
+              )}
+              empty={<div className="py-16 text-center text-sm text-muted-foreground font-medium">No checklist tasks found</div>}
+              renderRow={({ row: item, cells, style }) => (
+                <div
+                  data-tone="chk"
+                  style={style}
+                  className="mobile-grid-row mgr-card mgr-card--chk grid items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
+                >
+                  {cells}
+                </div>
+              )}
+            />
           </ResponsiveGrid>
         </div>
       </div>
@@ -467,6 +458,13 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                   className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
                 />
               </div>
+              {/* Company-defined extra fields (renders nothing when the company has none) */}
+              <DynamicFieldRenderer
+                variant="plain"
+                fields={checklistCtl.customFields}
+                values={editData.customFields}
+                onChange={(name, value) => setEditData((f) => ({ ...f, customFields: { ...(f.customFields || {}), [name]: value } }))}
+              />
 
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Frequency</label>

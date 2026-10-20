@@ -34,6 +34,7 @@ import ReportsTab from './ReportsTab';
 import CreateTask from "./CreateTask";
 import ManageTasks from "./ManageTasks";
 import DoerChecklist from "./DoerChecklist";
+import FollowingTasks from "./FollowingTasks";
 import PersonalTasks from "./PersonalTasks";
 import CoordinatorDashboard from "./CoordinatorDashboard";
 import CreateChecklist from "./CreateChecklist";
@@ -556,6 +557,7 @@ useEffect(() => {
             <Route path="checklist-monitor" element={<ChecklistMonitor tenantId={currentTenantId} />} />
             <Route path="my-tasks" element={<DoerChecklist doerId={userId} />} />
             <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
+            <Route path="following" element={<FollowingTasks employeeId={userId} />} />
             <Route path="personal-tasks" element={<PersonalTasks />} />
             <Route path="tracking" element={<CoordinatorDashboard coordinatorId={userId} />} />
             <Route path="rewards-log" element={ <RewardsLog userId={userId} tenantId={currentTenantId} /> } />

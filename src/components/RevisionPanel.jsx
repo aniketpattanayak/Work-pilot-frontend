@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import API from '../api/axiosConfig'; // Centralized API instance for AWS/Prod
 import { dialog } from './Dialog';
+import DateReasonFields from './mytasks/DateReasonFields';
+import useDateReasons from '../hooks/useDateReasons';
+import { reasonError } from '../utils/dateReasonCheck';
 import {
   UserPlus,
   CheckCircle,
@@ -51,7 +54,9 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const [approveDate, setApproveDate] = useState(doerProposedYmd);
 
 
-  const [doerRemarks, setDoerRemarks] = useState('');
+  const { required: reasonRequired } = useDateReasons();
+  const [rs, setRs] = useState({ reason: '', note: '' });
+  const [showErr, setShowErr] = useState(false);
   const [proposedDeadline, setProposedDeadline] = useState(() => {
     if (!task?.deadline) return '';
     const d = new Date(task.deadline);
@@ -70,7 +75,11 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const extOptions = limited ? Array.from({ length: maxExt }, (_, i) => ({ k: i + 1, date: new Date(new Date(task.deadline).getTime() + (i + 1) * 86400000) })) : [];
 
   const handleLimitedRevision = async () => {
-    if (!doerRemarks.trim() || !extDays) return dialog.alert("Please write the reason and choose the new date.");
+    setShowErr(true);
+    const re = reasonError(rs, reasonRequired);
+    if (re) return dialog.alert(re);
+    if (!extDays) return dialog.alert("Please choose the new date.");
+    if (!rs.reason && !rs.note.trim()) return dialog.alert("Please write the reason.");
     const pickedDay = extOptions.find((o) => String(o.k) === String(extDays));
     const okLimited = await dialog.confirm("Move the deadline to " + fmtDay(pickedDay.date) + "? This is applied straight away and your assigner is informed.", { title: 'Change deadline?' });
     if (!okLimited) return;
@@ -80,7 +89,9 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
       await API.post('/tasks/handle-revision', {
         taskId: task._id,
         action: 'Request',
-        remarks: doerRemarks.trim(),
+        remarks: [rs.reason, rs.note.trim()].filter(Boolean).join(' - '),
+        reason: rs.reason,
+        reasonNote: rs.note.trim(),
         proposedDeadline: picked.date.toISOString()
       });
       dialog.alert("Done. The deadline is now " + fmtDay(picked.date) + ". Your assigner has been informed.");
@@ -94,21 +105,25 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
   const handleRequestRevision = async () => {
     if (limited) return handleLimitedRevision();
-    if (!doerRemarks || !proposedDeadline) {
-      return dialog.alert("Fill all fields");
-    }
+    setShowErr(true);
+    const re = reasonError(rs, reasonRequired);
+    if (re) return dialog.alert(re);
+    if (!proposedDeadline) return dialog.alert("Please choose the proposed deadline.");
+    if (!rs.reason && !rs.note.trim()) return dialog.alert("Please write the reason.");
     const okReq = await dialog.confirm("Send this revision request to your assigner?", { title: 'Request revision?' });
     if (!okReq) return;
 
     try {
       setIsProcessing(true);
 
-      const finalRemarks = `${doerRemarks}. Proposed Deadline: ${proposedDeadline}`;
+      const finalRemarks = `${[rs.reason, rs.note.trim()].filter(Boolean).join(' - ')}. Proposed Deadline: ${proposedDeadline}`;
 
       await API.post('/tasks/handle-revision', {
         taskId: task._id,
         action: 'Request',
         remarks: finalRemarks,
+        reason: rs.reason,
+        reasonNote: rs.note.trim(),
         proposedDeadline: new Date(proposedDeadline)
       });
 
@@ -192,12 +207,7 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
 
           <h4 className="text-xs font-black uppercase">Request Revision</h4>
 
-          <textarea
-            placeholder="Reason for revision..."
-            value={doerRemarks}
-            onChange={(e) => setDoerRemarks(e.target.value)}
-            className="w-full p-4 border rounded-xl"
-          />
+          <DateReasonFields value={rs} onChange={setRs} invalid={showErr} />
 
           {limited ? (
             <>

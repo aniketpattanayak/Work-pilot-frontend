@@ -4,6 +4,7 @@ import AccessRolesPanel from '../components/AccessRolesPanel';
 import CustomFieldsManager from '../components/CustomFieldsManager';
 import FunctionSwitchesManager from '../components/FunctionSwitchesManager';
 import WhatsAppMessagesManager from '../components/WhatsAppMessagesManager';
+import DateReasonsManager from '../components/DateReasonsManager';
 import { dialog } from '../components/Dialog';
 import { COUNTRIES as DEFAULT_PHONE_COUNTRIES } from '../utils/phoneNumber';
 import { 
@@ -443,6 +444,7 @@ const Settings = ({ tenantId }) => {
     { id: 'perf', cat: 'performance', title: 'Performance engine', keywords: 'points score rewards' },
     { id: 'badges', cat: 'performance', title: 'Achievements', keywords: 'badge medal award workshop' },
     { id: 'switches', cat: 'functions', title: 'Functions on / off', keywords: 'switch turn off on disable enable function feature revise onward' },
+    { id: 'dateReasons', cat: 'functions', title: 'Deadline change reasons', keywords: 'date deadline change reason list revise postpone' },
     { id: 'whatsappMessages', cat: 'functions', title: 'WhatsApp messages', keywords: 'whatsapp message template notification wording sender' },
     { id: 'access', cat: 'access', title: 'Roles and access', keywords: 'role permission admin attendance leave payroll custom' }
   ];
@@ -953,6 +955,8 @@ const Settings = ({ tenantId }) => {
       <div data-settings-section="customFields" hidden={!showSection('customFields')} className="mt-8"><CustomFieldsManager /></div>
 
       <div data-settings-section="switches" hidden={!showSection('switches')} className="mt-8"><FunctionSwitchesManager /></div>
+
+      <div data-settings-section="dateReasons" hidden={!showSection('dateReasons')} className="mt-8"><DateReasonsManager /></div>
 
       <div data-settings-section="whatsappMessages" hidden={!showSection('whatsappMessages')} className="mt-8"><WhatsAppMessagesManager /></div>
 
