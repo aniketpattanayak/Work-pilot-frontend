@@ -25,7 +25,7 @@ export default function ConfigurableTable({
   const style = { gridTemplateColumns: ctl.gridTemplate };
   const list = Array.isArray(rows) ? rows : [];
 
-  const headCells = ctl.columns.map((c) => <div key={c.key} className={c.headerClassName || ''}>{c.label}</div>);
+  const headCells = ctl.columns.map((c) => <div key={c.key} className={`min-w-0 pr-2 ${c.headerClassName || ''}`}>{c.label}</div>);
   const header = renderHeader
     ? renderHeader({ cells: headCells, style })
     : <div className={`grid items-center ${headerClassName}`} style={style}>{headCells}</div>;

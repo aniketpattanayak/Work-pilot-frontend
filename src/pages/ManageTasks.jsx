@@ -402,7 +402,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
-      key: 'deadline', label: 'Deadline', width: '1fr',
+      key: 'deadline', label: 'Deadline', width: 'minmax(120px,1fr)',
       cellClassName: 'text-xs font-bold min-w-0',
       render: (task, index) => (
         <>
@@ -442,7 +442,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
-      key: 'status', label: 'Status', width: '1fr',
+      key: 'status', label: 'Status', width: 'minmax(100px,1fr)',
       cellClassName: 'min-w-0',
       render: (task, index) => (
         <>
@@ -451,7 +451,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
-      key: 'followers', label: 'Followers', width: '1fr',
+      key: 'followers', label: 'Followers', width: 'minmax(110px,1fr)',
       cellClassName: 'text-xs font-bold min-w-0 pr-2',
       render: (task) => {
         const names = (task.followers || []).map((f) => f && f.name).filter(Boolean);
@@ -636,7 +636,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               rows={filteredTasks}
               rowKey={(task) => task._id}
               renderHeader={({ cells, style }) => (
-                <div className="mobile-grid-head grid px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.2em] items-center sticky top-0 z-20" style={style}>
+                <div className="mobile-grid-head grid px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.14em] items-center sticky top-0 z-20" style={style}>
                   {cells}
                 </div>
               )}

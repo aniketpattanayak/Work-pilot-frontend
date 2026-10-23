@@ -433,11 +433,11 @@ const DoerChecklist = ({ doerId }) => {
             {photoLink(it)}
           </>
         ) },
-      { key: 'assigner', label: 'Assigned By', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignerName || '-' },
-      { key: 'assignedTo', label: 'Assigned To', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignedToName || '-' },
-      { key: 'followers', label: 'Followers', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
-      { key: 'description', label: 'Description', width: 'minmax(100px,1.6fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
-      { key: 'date', label: 'Deadline', width: 'minmax(120px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
+      { key: 'assigner', label: 'Assigned By', width: 'minmax(96px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignerName || '-' },
+      { key: 'assignedTo', label: 'Assigned To', width: 'minmax(96px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignedToName || '-' },
+      { key: 'followers', label: 'Followers', width: 'minmax(96px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
+      { key: 'description', label: 'Description', width: 'minmax(130px,1.6fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
+      { key: 'date', label: 'Deadline', width: 'minmax(125px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
       { key: 'status', label: 'Priority / Status', width: 'minmax(95px,0.8fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
       { key: 'actions', label: 'Actions', width: '175px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-2', render: (it) => actionsFor(it) },
     );
@@ -922,9 +922,9 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* GRID HEADER (columns follow the saved layout) */}
-      <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.25em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
+      <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
         {ctl.columns.map((c) => (
-          <div key={c.key} className={c.headerClassName || ''}>
+          <div key={c.key} className={`min-w-0 break-words ${c.headerClassName || ''}`}>
             {c.key === 'select'
               ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
               : c.label}
