@@ -819,6 +819,16 @@
     font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px;
   }
   .mgr-card--task > :nth-child(5) { display: block !important; }
+  /* Delegation: followers under the description (hidden when there are none) */
+  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions) {
+    grid-column: 1 / -1; display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.45rem;
+    margin-top: 0.4rem !important; order: 4 !important;
+  }
+  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions)::before {
+    content: "Followers" !important; font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: hsl(var(--muted-foreground));
+  }
+  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions):has(.follow-none) { display: none !important; }
   /* Checklist: cycle chip on top, next dates under the description */
   .mgr-card--chk > :nth-child(5) { grid-column: 1 / -1; grid-row: 1; }
   .mgr-card--chk > :nth-child(5) span {

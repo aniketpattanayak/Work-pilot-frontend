@@ -667,6 +667,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                             <span className="ml-2 px-2 py-0.5 bg-primary/5 text-primary text-[8px] rounded border border-primary/10 shadow-sm font-black tracking-widest">Mapped</span>
                           </div>
                           <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div>
+                          {(task.followers || []).length > 0 && <div className="text-[9px] text-indigo-600 dark:text-indigo-300 font-bold uppercase ml-5 tracking-tighter whitespace-normal break-words">Followers: {task.followers.map((f) => f.name).filter(Boolean).join(', ')}</div>}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-600">

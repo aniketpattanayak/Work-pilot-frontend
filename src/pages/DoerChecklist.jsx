@@ -43,7 +43,8 @@ import {
   FileSearch,
   Hash,
   CalendarClock,
-  User
+  User,
+  Eye
 } from "lucide-react";
 import MobileFilters from '../components/MobileFilters';
 import useCompanySettings from '../hooks/useCompanySettings';
@@ -68,8 +69,8 @@ const fmsDescription = (m) => {
 };
 
 // One shape for every kind of task, so one row renderer serves all four tabs.
-const toChecklistItem = (i) => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin' });
-const toDelegationItem = (i) => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-' });
+const toChecklistItem = (i) => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin', assignedToName: i.doerId?.name || 'You', followerNames: [] });
+const toDelegationItem = (i) => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-', assignedToName: i.doerId?.name || '-', followerNames: (i.followers || []).map((f) => f && f.name).filter(Boolean) });
 const toFmsItem = (i) => ({
   ...i,
   dataType: 'FMS',
@@ -79,6 +80,8 @@ const toFmsItem = (i) => ({
   deadlineDate: i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline,
   statusLabel: i.isOverdue ? 'Delayed' : 'On track',
   assignerName: i.activeStep?.assignedToName || i.assignerName || 'System',
+  assignedToName: i.activeStep?.assignedToName || 'You',
+  followerNames: [],
 });
 
 const DoerChecklist = ({ doerId }) => {
@@ -184,6 +187,9 @@ const DoerChecklist = ({ doerId }) => {
   const isPassedOn = (t) =>
     idOf(t.doerId) !== String(currentDoerId) &&
     (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentDoerId));
+  // A task I only FOLLOW (the doer is someone else): I can watch it, chat with the doer and read its history, nothing else
+  const isFollowerRow = (t) => t.dataType === 'Delegation' && t.myRole === 'follower';
+  const followerWhy = (t) => `You only follow this task. Only ${(t.doerId && t.doerId.name) || 'the doer'} can do this.`;
   const canForward = (t) =>
     companyAllows('delegation_assignOnward') &&
     myRoles.includes('Assigner') &&
@@ -416,21 +422,24 @@ const DoerChecklist = ({ doerId }) => {
         render: (it) => <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" /> });
     }
     cols.push(
-      { key: 'sno', label: 'S. no.', width: '44px', cellClassName: 'text-xs font-black text-slate-400', render: (it, i) => i + 1 },
-      { key: 'title', label: 'Task', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2',
+      { key: 'sno', label: 'S. no.', width: '40px', cellClassName: 'text-xs font-black text-slate-400', render: (it, i) => i + 1 },
+      { key: 'title', label: 'Task', width: 'minmax(150px,1.4fr)', locked: true, cellClassName: 'min-w-0 pr-2',
         render: (it) => (
           <>
             <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">{it.title}</span>
             {activeCategory === 'All Data' && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">Type: {it.dataType}</span>}
+            {it.dataType === 'Delegation' && roleChip(it)}
             {tagsOf(it)}
             {photoLink(it)}
           </>
         ) },
-      { key: 'assigner', label: 'Assigned By', width: 'minmax(110px,1fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignerName || '-' },
-      { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
-      { key: 'date', label: 'Deadline', width: 'minmax(150px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
-      { key: 'status', label: 'Priority / Status', width: 'minmax(110px,1fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
-      { key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-2', render: (it) => actionsFor(it) },
+      { key: 'assigner', label: 'Assigned By', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignerName || '-' },
+      { key: 'assignedTo', label: 'Assigned To', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 truncate px-1', render: (it) => it.assignedToName || '-' },
+      { key: 'followers', label: 'Followers', width: 'minmax(76px,0.7fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
+      { key: 'description', label: 'Description', width: 'minmax(100px,1.6fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
+      { key: 'date', label: 'Deadline', width: 'minmax(120px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
+      { key: 'status', label: 'Priority / Status', width: 'minmax(95px,0.8fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
+      { key: 'actions', label: 'Actions', width: '175px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-2', render: (it) => actionsFor(it) },
     );
     return cols;
   };
@@ -471,7 +480,7 @@ const DoerChecklist = ({ doerId }) => {
     return target.getTime() <= now.getTime();
   }).length;
 
-  const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t)).length;
+  const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
 
   const maxFileMb = useUploadLimit();
   const addDelegationFiles = (list) => {
@@ -562,6 +571,7 @@ const DoerChecklist = ({ doerId }) => {
     if (isDoneItem(it)) return { ok: false, why: 'Already done.' };
     if (it.dataType === 'FMS') return { ok: false, why: 'Flow (FMS) steps have their own form, so complete them one at a time from Actions.' };
     if (it.dataType === 'Delegation') {
+      if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
       return { ok: true };
@@ -573,6 +583,7 @@ const DoerChecklist = ({ doerId }) => {
     if (it.dataType !== 'Delegation') return { ok: false, why: 'Only delegation tasks can get a new date here.' };
     if (!companyAllows('delegation_doerRevise')) return { ok: false, why: 'Your company has switched off date changes by doers.' };
     if (isDoneItem(it)) return { ok: false, why: 'Already done.' };
+    if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
     if (isPassedOn(it)) return { ok: false, why: 'You passed this task to someone else.' };
     if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so the date cannot be changed now.` };
     if (it.isRevisionAllowed === false) return { ok: false, why: 'The person who gave the task did not allow date changes.' };
@@ -585,6 +596,7 @@ const DoerChecklist = ({ doerId }) => {
     if (!companyAllows('delegation_assignOnward')) return { ok: false, why: 'Your company has switched off passing tasks on.' };
     if (!myRoles.includes('Assigner')) return { ok: false, why: 'Only an Assigner can pass tasks on.' };
     if (isDoneItem(it)) return { ok: false, why: 'Already done.' };
+    if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
     if (isPassedOn(it)) return { ok: false, why: 'You already passed this task on.' };
     if (!canForward(it)) return { ok: false, why: 'This task cannot be passed on now.' };
     return { ok: true };
@@ -617,9 +629,10 @@ const DoerChecklist = ({ doerId }) => {
   const actionsFor = (item, cls = '') => {
     const done = isDoneItem(item);
     const passed = item.dataType === 'Delegation' && isPassedOn(item);
+    const follower = isFollowerRow(item);
     const held = isHeld(item);
     const menu = [];
-    if (!done && !passed) {
+    if (!done && !passed && !follower) {
       if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
       else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
@@ -632,7 +645,8 @@ const DoerChecklist = ({ doerId }) => {
     return (
       <>
         {passed && <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 text-[8px] font-black uppercase tracking-widest">Passed to {(item.doerId && item.doerId.name) || 'someone'}</span>}
-        <ActionsMenu items={menu} disabled={done || passed || menu.length === 0} disabledTitle={done ? 'This task is done' : passed ? 'You passed this task on' : 'No actions available'} className={cls} />
+        {follower && <span className="px-2 py-1 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-[8px] font-black uppercase tracking-widest" title={followerWhy(item)}>Following</span>}
+        <ActionsMenu items={menu} disabled={done || passed || follower || menu.length === 0} disabledTitle={done ? 'This task is done' : passed ? 'You passed this task on' : follower ? followerWhy(item) : 'No actions available'} className={cls} />
         {!passed && (
           <>
             {chatEnabled && (
@@ -656,6 +670,14 @@ const DoerChecklist = ({ doerId }) => {
       </button>
     );
   };
+
+  // "I do this" (green) or "I follow this" (indigo): the two kinds of task look different
+  const roleChip = (it) => it.myRole === 'follower'
+    ? <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30 w-fit" title="Someone else does this task. You follow it.">Follower</span>
+    : <span className="inline-block mt-1 ml-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 w-fit" title="This task is yours to do.">Doer</span>;
+  const rowTone = (it) => it.dataType === 'Delegation' && it.myRole === 'follower'
+    ? 'border-l-4 border-l-indigo-500 bg-indigo-500/[0.07]'
+    : 'border-l-4 border-l-emerald-500/60';
 
   const tagsOf = (item) => {
     const s = subsOf(item);
@@ -869,6 +891,11 @@ const DoerChecklist = ({ doerId }) => {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-3 mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" /> Doer: you do this task</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-indigo-500" /> Follower: you only follow this task</span>
+      </div>
+
       {/* TOOLBAR: bulk actions (when ticked) + choose columns */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -925,16 +952,19 @@ const DoerChecklist = ({ doerId }) => {
                 </div>
               )}
               {/* Computer row */}
-              <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
+              <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
                 {ctl.columns.map((c) => (
                   <div key={c.key} className={c.cellClassName || 'min-w-0 text-xs font-semibold'} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
                 ))}
               </div>
               {/* Phone card */}
-              <div data-card={k} className={`lg:hidden relative overflow-hidden bg-card border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
+              <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
                 <div className="flex items-center gap-1.5 mb-2">
                   {bulkOn && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
                   <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf(item.dataType)}`}>{item.dataType}</span>
+                  {item.dataType === 'Delegation' && (item.myRole === 'follower'
+                    ? <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30">Follower</span>
+                    : <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Doer</span>)}
                   <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${held ? 'text-amber-600' : item.dataType === 'FMS' && isFmsDelayed(item) && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{held ? 'On hold' : item.dataType === 'FMS' && ci.group !== 'Completed' && isFmsDelayed(item) ? 'Delayed' : ci.text}</span>
                 </div>
                 <span className={`font-extrabold text-[15px] leading-snug text-foreground block [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.title}</span>
@@ -945,7 +975,9 @@ const DoerChecklist = ({ doerId }) => {
                 )}
                 <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
-                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">{who}</span></span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
+                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
+                  {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
                   {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
                   {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
                 </div>

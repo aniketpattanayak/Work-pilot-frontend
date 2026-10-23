@@ -1,18 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Eye, RefreshCcw, CalendarClock } from 'lucide-react';
+import { Eye, RefreshCcw } from 'lucide-react';
 import API from '../api/axiosConfig';
-import { dialog } from '../components/Dialog';
-import ChangeDateModal from '../components/mytasks/ChangeDateModal';
-import useCompanySettings from '../hooks/useCompanySettings';
 
 const when = (d) => (d ? new Date(d).toLocaleString([], { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-');
 
-/** Tasks I follow (read only), where I may also change the date, or ask the assigner to change it. */
+/** Tasks I follow: read only. Followers follow up with the doer; they do not complete the task or change its date. */
 export default function FollowingTasks({ employeeId }) {
-  const { isOn } = useCompanySettings();
   const [rows, setRows] = useState(null);
   const [err, setErr] = useState('');
-  const [pick, setPick] = useState(null);
 
   const load = useCallback(async () => {
     if (!employeeId) { setRows([]); return; }
@@ -22,8 +17,7 @@ export default function FollowingTasks({ employeeId }) {
   useEffect(() => { load(); }, [load]);
 
   const done = (t) => ['Completed', 'Verified'].includes(t.status);
-  const allowed = isOn('dates_followersChange');
-
+  
   return (
     <div className="w-full max-w-[1200px] mx-auto pb-20 px-2 sm:px-6">
       <div className="flex items-center justify-between gap-3 mb-4 py-2 border-b border-border">
@@ -42,7 +36,6 @@ export default function FollowingTasks({ employeeId }) {
       <ul className="space-y-3">
         {(rows || []).map((t) => {
           const pr = t.pendingDateRequest && t.pendingDateRequest.byId ? t.pendingDateRequest : null;
-          const direct = t.followersCanChangeDate === true;
           return (
             <li key={t._id} data-follow={t._id} className="p-4 rounded-2xl border border-border bg-card">
               <div className="flex items-start justify-between gap-3">
@@ -53,24 +46,17 @@ export default function FollowingTasks({ employeeId }) {
                 <span className="shrink-0 px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest text-slate-500 border-border">{t.status}</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-2">Doer <b>{(t.doerId && t.doerId.name) || '-'}</b> · Given by {(t.assignerId && t.assignerId.name) || '-'} · Due <b>{when(t.deadline)}</b></p>
+              {(t.followers || []).length > 0 && <p className="text-[11px] text-indigo-600 dark:text-indigo-300 mt-1">Followers: <b>{t.followers.map((f) => f.name).filter(Boolean).join(', ')}</b></p>}
+              <p className="text-[10px] text-slate-500 mt-1">You only follow this task. Only {(t.doerId && t.doerId.name) || 'the doer'} can complete it or change its date. Use Chat on My Tasks to follow up.</p>
               {t.onHold && t.onHold.isOn && <p className="text-[10px] font-black uppercase text-amber-600 mt-1">On hold · the clock is paused</p>}
               {pr && <p className="text-xs text-amber-600 font-bold mt-2">Waiting for the assigner: {pr.byName || 'someone'} asked for {when(pr.proposedDeadline)}.</p>}
               <div className="flex flex-wrap gap-2 mt-3">
-                {allowed && !done(t) && !pr && (
-                  <button type="button" onClick={() => setPick(t)} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                    <CalendarClock size={12} /> {direct ? 'Change date' : 'Ask for a new date'}
-                  </button>
-                )}
                 {done(t) && <span className="text-[10px] font-black uppercase text-emerald-600">Done · the date is locked</span>}
               </div>
             </li>
           );
         })}
       </ul>
-      {pick && (
-        <ChangeDateModal task={pick} directly={pick.followersCanChangeDate === true} onClose={() => setPick(null)}
-          onDone={async (res) => { setPick(null); await dialog.alert((res && res.message) || 'Done.', { tone: 'success' }); load(); }} />
-      )}
     </div>
   );
 }

@@ -451,6 +451,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
+      key: 'followers', label: 'Followers', width: '1fr',
+      cellClassName: 'text-xs font-bold min-w-0 pr-2',
+      render: (task) => {
+        const names = (task.followers || []).map((f) => f && f.name).filter(Boolean);
+        return names.length
+          ? <span className="block text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-300 whitespace-normal break-words" title="Followers only follow up with the doer">{names.join(', ')}</span>
+          : <span className="follow-none text-slate-400">-</span>;
+      },
+    },
+    {
       key: 'actions', label: 'Action', width: '160px', pinEnd: true, headerClassName: 'text-right pr-4',
       cellClassName: 'flex gap-1.5 justify-end items-center min-w-0',
       render: (task, index) => (

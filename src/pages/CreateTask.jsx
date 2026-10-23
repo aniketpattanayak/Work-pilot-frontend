@@ -228,7 +228,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
     formData.append("priority", task.priority);
     formData.append("deadline", task.deadline.toISOString()); 
     formData.append("isRevisionAllowed", task.isRevisionAllowed);
-    formData.append("followersCanChangeDate", task.followersCanChangeDate !== false);
+    formData.append("followersCanChangeDate", "false");
     formData.append("maxExtensionDays", task.isRevisionAllowed ? String(Number(task.maxExtensionDays)) : "0");
     formData.append("helperDoers", JSON.stringify(selectedHelpers));
     if (task.coordinatorId) formData.append("coordinatorId", task.coordinatorId);
@@ -470,12 +470,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                                   </label>
                                 ))}
                               </div>
-                              {selectedHelpers.length > 0 && followersMayChange && (
-                                <label className="mt-2 flex items-center gap-2 text-sm text-slate-600" title="If ticked, followers can move the deadline. If not, they must ask you first.">
-                                  <input type="checkbox" className="accent-primary" checked={task.followersCanChangeDate !== false} onChange={(e) => setTask({ ...task, followersCanChangeDate: e.target.checked })} />
-                                  Followers can change the date
-                                </label>
-                              )}
+                              <p className="mt-1.5 text-[11px] text-slate-500">Followers can only watch and follow up with the doer. They cannot complete the task or change its date.</p>
                             </div>
             </FormField>
             <FormField L={L} id="revision" full>
