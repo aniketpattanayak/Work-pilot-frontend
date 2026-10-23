@@ -37,6 +37,7 @@ import ManageTasks from "./ManageTasks";
 import DoerChecklist from "./DoerChecklist";
 import FollowingTasks from "./FollowingTasks";
 import PersonalTasks from "./PersonalTasks";
+import Planner from "./Planner";
 import CoordinatorDashboard from "./CoordinatorDashboard";
 import CreateChecklist from "./CreateChecklist";
 import RewardsLog from "./RewardsLog";
@@ -87,7 +88,7 @@ import { Plus } from "lucide-react";
  */
 const PAGE_TITLES = {
   'manage-tasks': 'Manage Delegation', 'manage-checklist': 'Manage Checklist', 'my-tasks': 'My Tasks', 'my-flow-tasks': 'My Flow Tasks',
-  'following': 'Following', 'personal-tasks': 'Personal Tasks', 'employees': 'Manage Employee', 'mapping': 'PC Mapping', 'tracking': 'Tracking',
+  'following': 'Following', 'personal-tasks': 'Personal Tasks', 'planner': 'Planner', 'employees': 'Manage Employee', 'mapping': 'PC Mapping', 'tracking': 'Tracking',
   'chat': 'Chat', 'order-forms': 'Order Forms', 'new-order': 'New Order', 'flow-management': 'Flow Management', 'review-meeting': 'Review Meeting',
   'reports': 'Reports Hub', 'rewards-log': 'Rewards Log', 'settings': 'Settings', 'raise-ticket': 'Raise Ticket', 'global-view': 'Global View',
 };
@@ -570,6 +571,7 @@ useEffect(() => {
             <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
             <Route path="following" element={guard('menu_following', <FollowingTasks employeeId={userId} />)} />
             <Route path="personal-tasks" element={guard('menu_personalTasks', <PersonalTasks />)} />
+            <Route path="planner" element={<Planner />} />
             <Route path="tracking" element={guard('menu_tracking', <CoordinatorDashboard coordinatorId={userId} />)} />
             <Route path="rewards-log" element={guard('menu_rewardsLog', <RewardsLog userId={userId} tenantId={currentTenantId} />)} />
             <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />

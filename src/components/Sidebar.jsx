@@ -42,6 +42,7 @@ import {
   CalendarDays,
   Clock,
   Wallet,
+  ListOrdered,
 } from 'lucide-react';
 
 /**
@@ -118,6 +119,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
         { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Following',        icon: <Eye />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
         { name: 'Personal Tasks',   icon: <NotebookPen />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], featureKey: 'personalTasks' },
+        { name: 'Planner',          icon: <ListOrdered />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], onlyIfOn: 'planner' },
         { name: 'Attendance',       icon: <Clock />,           roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'attendance' },
         { name: 'Leave',            icon: <CalendarDays />,    roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
         { name: 'Payroll',          icon: <Wallet />,          roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'payroll' },
@@ -273,6 +275,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
           const filteredItems = cat.items.filter(item =>
             (viewerOnly ? item.name === 'Global View' : item.roles.some(r => safeRoles.includes(r))) &&
             (!item.featureKey || tenantFeatures[item.featureKey] !== false) &&
+            (!item.onlyIfOn || tenantFeatures[item.onlyIfOn] === true) &&
             (!item.hrKey || hrModules[item.hrKey] === true) &&
             (!MENU_SWITCH[item.name] || companyOn(MENU_SWITCH[item.name]))
           );

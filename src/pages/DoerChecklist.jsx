@@ -44,7 +44,8 @@ import {
   Hash,
   CalendarClock,
   User,
-  Eye
+  Eye,
+  ListOrdered,
 } from "lucide-react";
 import MobileFilters from '../components/MobileFilters';
 import useCompanySettings from '../hooks/useCompanySettings';
@@ -374,7 +375,7 @@ const DoerChecklist = ({ doerId }) => {
     const assignmentsKept = delegatedTasks.filter(item => {
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
-      return givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
+      return !item.planId && givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
     });
     const filteredAssignments = orderBy(assignmentsKept, 'Delegation', (i) => i.deadline,
       sortSeq(assignmentsKept, (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified', (i) => !!(i.onHold && i.onHold.isOn)));
@@ -382,7 +383,7 @@ const DoerChecklist = ({ doerId }) => {
     const checklistKept = checklist.filter(item => {
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
-      return givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
+      return !item.planId && givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
     });
     const filteredChecklist = orderBy(checklistKept, 'Checklist', (i) => i.instanceDate || i.nextDueDate,
       sortSeq(checklistKept, (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone));
@@ -396,6 +397,12 @@ const DoerChecklist = ({ doerId }) => {
     const filteredFms = orderBy(fmsKept, 'FMS', (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline,
       sortSeq(fmsKept, (i) => i.activeStep?.plannedDeadline || i.completedAt || i.plannedDeadline, (i) => i.status === 'completed'));
 
+    // Tasks made from a Planner step live on their own "Planner" tab, not in the lists above
+    const planKept = [
+      ...delegatedTasks.filter((i) => i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
+      ...checklist.filter((i) => i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
+    ];
+    const planN = sortSeq(planKept, (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : (i.status === 'Completed' || i.status === 'Verified')), (i) => !!(i.onHold && i.onHold.isOn));
     const routinesN = filteredChecklist.map(toChecklistItem);
     const assignmentsN = filteredAssignments.map(toDelegationItem);
     const fmsN = filteredFms.map(toFmsItem);
@@ -409,7 +416,7 @@ const DoerChecklist = ({ doerId }) => {
       const dir = (sortMode === 'Recent first' || sortMode === 'Deadline latest') ? -1 : 1;
       all = combined.sort((a, b) => { const ka = keyOf(a), kb = keyOf(b); if (ka === null && kb === null) return 0; if (ka === null) return 1; if (kb === null) return -1; return (ka - kb) * dir; });
     }
-    return { routines: filteredChecklist, assignments: filteredAssignments, fms: filteredFms, routinesN, assignmentsN, fmsN, all };
+    return { routines: filteredChecklist, assignments: filteredAssignments, fms: filteredFms, routinesN, assignmentsN, fmsN, planN, all };
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate, sortMode, givenFrom, givenTo]);
 
   // Built-in columns of My Tasks (company custom fields and the saved layout are added by useConfigurableColumns)
@@ -429,7 +436,7 @@ const DoerChecklist = ({ doerId }) => {
           <>
             <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">{it.title}</span>
             {givenLine(it)}
-            {activeCategory === 'All Data' && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">Type: {it.dataType}</span>}
+            {(activeCategory === 'All Data' || activeCategory === 'Planner') && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">Type: {it.dataType}</span>}
             {it.dataType === 'Delegation' && roleChip(it)}
             {tagsOf(it)}
             {photoLink(it)}
@@ -474,7 +481,7 @@ const DoerChecklist = ({ doerId }) => {
   };
 
   const pendingRoutinesCount = checklist.filter(item => {
-    if (item.isDone) return false;
+    if (item.isDone || item.planId) return false;
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const target = new Date(item.instanceDate || item.nextDueDate);
@@ -482,7 +489,10 @@ const DoerChecklist = ({ doerId }) => {
     return target.getTime() <= now.getTime();
   }).length;
 
-  const pendingDelegationsCount = delegatedTasks.filter(t => t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
+  const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
+  // Tasks made from a Planner step get their own tab
+  const hasPlanTasks = delegatedTasks.some((t) => t.planId) || checklist.some((t) => t.planId);
+  const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && t.myRole !== 'follower').length + checklist.filter((t) => t.planId && !t.isDone).length;
 
   const maxFileMb = useUploadLimit();
   const addDelegationFiles = (list) => {
@@ -606,7 +616,7 @@ const DoerChecklist = ({ doerId }) => {
     return { ok: true };
   };
 
-  const rowsNow = activeCategory === 'All Data' ? filteredData.all : activeCategory === 'Checklist' ? filteredData.routinesN : activeCategory === 'Delegation' ? filteredData.assignmentsN : filteredData.fmsN;
+  const rowsNow = activeCategory === 'Planner' ? filteredData.planN : activeCategory === 'All Data' ? filteredData.all : activeCategory === 'Checklist' ? filteredData.routinesN : activeCategory === 'Delegation' ? filteredData.assignmentsN : filteredData.fmsN;
   const selectedItems = filteredData.all.filter((i) => selected[i.uniqueKey]);
   const allTicked = rowsNow.length > 0 && rowsNow.every((i) => selected[i.uniqueKey]);
   const toggleOne = (k) => setSelected((s) => { const n = { ...s }; if (n[k]) delete n[k]; else n[k] = true; return n; });
@@ -762,7 +772,7 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* CATEGORY TABS SEQUENCE */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+      <div className={`grid grid-cols-2 gap-2 mb-4 ${hasPlanTasks ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
         <button
           onClick={() => { setActiveCategory('All Data'); setTimeFilter('All'); }}
           className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'All Data' ? 'bg-slate-800 text-white border-slate-800 shadow-slate-800/20' : 'bg-card text-slate-500 border-border'}`}
@@ -809,6 +819,22 @@ const DoerChecklist = ({ doerId }) => {
             </span>
           )}
         </button>
+
+        {hasPlanTasks && (
+          <button
+            data-testid="tab-planner"
+            onClick={() => { setActiveCategory('Planner'); setTimeFilter('All'); }}
+            className={`relative flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 min-h-[44px] rounded-xl border transition-all active:scale-95 shadow-sm ${activeCategory === 'Planner' ? 'bg-violet-600 text-white border-violet-600 shadow-violet-600/20' : 'bg-card text-slate-500 border-border'}`}
+          >
+            <ListOrdered size={16} className="shrink-0" />
+            <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">Planner</span>
+            {pendingPlanCount > 0 && (
+              <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black leading-none rounded-full shadow-md ring-2 ring-background">
+                {pendingPlanCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* FILTERS & DATE RANGE — collapsed behind Filters on phones */}
