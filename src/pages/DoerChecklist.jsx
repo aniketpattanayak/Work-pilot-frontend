@@ -447,7 +447,7 @@ const DoerChecklist = ({ doerId }) => {
       { key: 'followers', label: 'Followers', width: 'minmax(96px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
       { key: 'description', label: 'Description', width: 'minmax(130px,1.6fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
       { key: 'date', label: 'Deadline', width: 'minmax(125px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
-      { key: 'status', label: 'Priority / Status', width: 'minmax(95px,0.8fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
+      { key: 'status', label: 'Priority / Status', width: 'minmax(120px,0.9fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
       { key: 'actions', label: 'Actions', width: '175px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-2', render: (it) => actionsFor(it) },
     );
     return cols;
@@ -652,7 +652,8 @@ const DoerChecklist = ({ doerId }) => {
       else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
       if (reviseCheck(item).ok) menu.push({ key: 'revise', label: 'Revise date', onClick: () => { setSelectedTask(item); setShowRevisionModal(true); } });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
-      if (canHold(item)) menu.push(held ? { key: 'resume', label: 'Resume work', hint: 'The deadline moves by the waiting time', onClick: () => resumeTask(item) } : { key: 'hold', label: 'Put On hold', hint: 'Waiting for someone else', onClick: () => setHoldTask(item) });
+      // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
+      if (held && mineDelegation(item)) menu.push({ key: 'resume', label: 'Resume work', hint: 'The deadline moves by the waiting time', onClick: () => resumeTask(item) });
       if (canSplit(item)) menu.push({ key: 'addsub', label: 'Add sub task', onClick: () => setSubCreateFor(item) });
       if (subsOf(item).total > 0) menu.push({ key: 'viewsub', label: `View sub tasks (${subsOf(item).done}/${subsOf(item).total})`, onClick: () => setSubListFor(item) });
     }
@@ -957,7 +958,7 @@ const DoerChecklist = ({ doerId }) => {
       {/* GRID HEADER (columns follow the saved layout) */}
       <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
         {ctl.columns.map((c) => (
-          <div key={c.key} className={`min-w-0 break-words ${c.headerClassName || ''} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-slate-900 dark:bg-slate-950' : ''}`}>
+          <div key={c.key} className={`min-w-0 break-words leading-[1.4] py-0.5 ${c.headerClassName || ''} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-slate-900 dark:bg-slate-950' : ''}`}>
             {c.key === 'select'
               ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
               : c.label}
