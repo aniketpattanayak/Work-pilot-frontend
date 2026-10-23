@@ -921,10 +921,13 @@ const DoerChecklist = ({ doerId }) => {
         <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
       </div>
 
+      {/* The table scrolls sideways when the columns are wider than the screen; Actions stays in view */}
+      <div className="lg:overflow-x-auto lg:pb-2" data-testid="mytasks-scroll">
+      <div className="lg:min-w-[var(--cfg-min)]" style={{ '--cfg-min': `${ctl.minWidth + 120}px` }}>
       {/* GRID HEADER (columns follow the saved layout) */}
       <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
         {ctl.columns.map((c) => (
-          <div key={c.key} className={`min-w-0 break-words ${c.headerClassName || ''}`}>
+          <div key={c.key} className={`min-w-0 break-words ${c.headerClassName || ''} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-slate-900 dark:bg-slate-950' : ''}`}>
             {c.key === 'select'
               ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
               : c.label}
@@ -933,7 +936,7 @@ const DoerChecklist = ({ doerId }) => {
       </div>
 
       {/* DATA TERMINAL */}
-      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg overflow-hidden shadow-xl w-full max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible">
+      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg shadow-xl w-full max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible">
         {rowsNow.length === 0 ? (
           <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Nothing here</p></div>
         ) : rowsNow.map((item, index) => {
@@ -954,7 +957,7 @@ const DoerChecklist = ({ doerId }) => {
               {/* Computer row */}
               <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
                 {ctl.columns.map((c) => (
-                  <div key={c.key} className={c.cellClassName || 'min-w-0 text-xs font-semibold'} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
+                  <div key={c.key} className={`${c.cellClassName || 'min-w-0 text-xs font-semibold'} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-card pl-2 -my-3 py-3' : ''}`} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
                 ))}
               </div>
               {/* Phone card */}
@@ -989,6 +992,8 @@ const DoerChecklist = ({ doerId }) => {
             </React.Fragment>
           );
         })}
+      </div>
+      </div>
       </div>
 
       {/* MISSION MODAL */}

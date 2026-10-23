@@ -16,7 +16,7 @@ export default function ColumnCustomizer({ ctl, className = '' }) {
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
     const w = Math.min(320, window.innerWidth - 16);
-    setPos({ top: Math.min(r.bottom + 6, window.innerHeight - 120), left: Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)), w });
+    setPos({ top: Math.max(8, Math.min(r.bottom + 6, window.innerHeight - 300)), left: Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)), w });
   }, [open]);
 
   useEffect(() => {
@@ -39,11 +39,11 @@ export default function ColumnCustomizer({ ctl, className = '' }) {
       </button>
       {open && createPortal(
         <div ref={panel} role="dialog" aria-label="Customize columns" data-testid="customize-panel"
-          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.w || 320, zIndex: 1000000 }}
-          className="bg-card border border-border rounded-2xl shadow-2xl p-4 text-foreground">
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.w || 320, maxHeight: `calc(100vh - ${pos.top + 12}px)`, zIndex: 1000000 }}
+          className="bg-card border border-border rounded-2xl shadow-2xl p-4 text-foreground flex flex-col">
           <p className="text-[11px] font-black uppercase tracking-widest mb-1">Customize columns</p>
           <p className="text-[10px] text-slate-500 mb-3">Tick what to show; use the arrows to change the order.</p>
-          <ul className="max-h-[50vh] overflow-y-auto space-y-1 pr-1">
+          <ul className="flex-1 min-h-[120px] overflow-y-auto space-y-1 pr-1">
             {movable.map((c, i) => (
               <li key={c.key} className="flex items-center gap-2 bg-background border border-border rounded-xl px-2.5 py-1.5">
                 <input type="checkbox" id={`cc-${c.key}`} checked={c.isVisible !== false} disabled={!!c.locked}
@@ -55,7 +55,7 @@ export default function ColumnCustomizer({ ctl, className = '' }) {
             ))}
           </ul>
           {ctl.error && <p className="text-[10px] text-red-500 mt-2">{ctl.error}</p>}
-          <div className="flex flex-wrap items-center gap-2 mt-3">
+          <div className="flex flex-wrap items-center gap-2 mt-3 shrink-0">
             <button type="button" disabled={ctl.busy} onClick={() => ctl.save('user')} className={`${btnCls} bg-primary text-primary-foreground`}>Save</button>
             {ctl.isAdmin && <button type="button" disabled={ctl.busy} onClick={() => ctl.save('company')} className={`${btnCls} bg-card border border-border`} title="Everyone without their own layout will see this">Save for everyone</button>}
             <button type="button" disabled={ctl.busy} onClick={() => ctl.reset('user')} className={`${btnCls} text-slate-500 flex items-center gap-1`} title="Back to the default columns"><RotateCcw size={11} /> Reset</button>

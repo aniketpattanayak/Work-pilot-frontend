@@ -141,6 +141,10 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     !myRoles.includes('Admin') &&
     idOf(t.assignerId) !== String(currentAssignerId) &&
     (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId));
+  // Only the person who gave the task (or an Admin, or someone it was passed on through) may verify it.
+  const canVerifyTask = (t) =>
+    myRoles.includes('Admin') || idOf(t.assignerId) === String(currentAssignerId) ||
+    (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId));
   const chainText = (t) =>
     [t.assignerId?.name, ...(t.forwardChain || []).map(c => c.employeeId?.name), t.doerId?.name].filter(Boolean).join(' → ');
 
@@ -481,7 +485,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                             <AlertTriangle size={14} />
                           </button>
                         )}
-                        {!isViewer && task.status === 'Completed' && (<>
+                        {!isViewer && task.status === 'Completed' && canVerifyTask(task) && (<>
                           <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, true); }}
                             className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
                             <CheckCircle size={14} />
