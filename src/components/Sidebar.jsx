@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import useCompanySettings from '../hooks/useCompanySettings';
 import { dialog } from './Dialog';
+import InstallAppButton from './InstallAppButton';
 import {
   LayoutDashboard,
   Users,
@@ -335,6 +336,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
       {/* ── LOGOUT ────────────────────────────────────────────── */}
       <div className="border-t border-border/50 px-2 py-3 flex-shrink-0">
+        <InstallAppButton collapsed={collapsed} />
         <button
           onClick={confirmLogout}
           title="Logout"

@@ -50,6 +50,7 @@ import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import DateReasonFields from '../components/mytasks/DateReasonFields';
 import useDateReasons from '../hooks/useDateReasons';
 import { reasonError } from '../utils/dateReasonCheck';
+import { fmtIST, fmtISTDate, fmtISTTime, fmtISTShort } from '../utils/istTime';
 
 // Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back"
 const displayStatus = (t) => {
@@ -357,6 +358,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       render: (task, index) => (
         <>
                         <span className="font-black text-sm whitespace-normal break-words block">{task.title}</span>
+                        {task.createdAt && <span className="block mt-0.5 text-[9px] font-bold text-slate-400" data-testid="given-at">Given: {fmtIST(task.createdAt)}</span>}
                         {(task.files || []).length > 0 && (() => {
                           // So anyone looking at the list — not just whoever opens
                           // History & files — can see at a glance that a photo was
@@ -412,9 +414,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         <>
                         {task.deadline ? (
                           <>
-                            {new Date(task.deadline).toLocaleDateString()}{' '}
+                            {fmtISTDate(task.deadline)}{' '}
                             <span className="text-muted-foreground font-semibold">
-                              {new Date(task.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {fmtISTTime(task.deadline)}
                             </span>
                           </>
                         ) : 'AWAITING'}
@@ -425,7 +427,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                           const d = Math.round((new Date(task.deadline) - new Date(was)) / 86400000);
                           return (
                             <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The deadline was changed">
-                              Revised &middot; was {new Date(was).toLocaleDateString()} ({d >= 0 ? '+' : ''}{d}d){ch.length > 1 ? ` · changed ${ch.length} times` : ''}
+                              Revised &middot; was {fmtISTDate(was)} ({d >= 0 ? '+' : ''}{d}d){ch.length > 1 ? ` · changed ${ch.length} times` : ''}
                             </span>
                           );
                         })()}
@@ -434,7 +436,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                         )}
                         {task.pendingDateRequest && task.pendingDateRequest.byId && (
                           <span className="block mt-1.5 p-2 rounded-lg border border-amber-500/40 bg-amber-500/10 text-[10px] font-bold text-amber-700 normal-case" data-testid="date-request">
-                            {task.pendingDateRequest.byName || 'A follower'} asks for {new Date(task.pendingDateRequest.proposedDeadline).toLocaleString([], { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            {task.pendingDateRequest.byName || 'A follower'} asks for {fmtISTShort(task.pendingDateRequest.proposedDeadline)}
                             {task.pendingDateRequest.reason ? ` (${task.pendingDateRequest.reason})` : ''}
                             <span className="flex gap-2 mt-1.5">
                               <button type="button" onClick={() => decideDateRequest(task, 'approve')} className="px-2 py-1 rounded bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest">Approve</button>
@@ -781,7 +783,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                       <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
                         <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
                         {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
-                        <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? fmtIST(h.timestamp) : ''}</div>
                         {h.photos.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {h.photos.slice(0, MAX_THUMBS).map((f, fi) => (

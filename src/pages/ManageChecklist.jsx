@@ -32,6 +32,7 @@ import { useChat } from '../components/useChat';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
+import { fmtIST } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
@@ -265,7 +266,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   // Built-in columns (company custom fields and the saved layout are added by useConfigurableColumns)
   const checklistColumns = [
     { key: 'sno', label: 'S no.', width: '60px', headerClassName: 'text-center', cellClassName: 'text-center text-xs font-black text-slate-400', render: (item, index) => index + 1 },
-    { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span> },
+    { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <><span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>{item.createdAt && <span className="block mt-0.5 text-[9px] font-bold text-slate-400" data-testid="given-at">Given: {fmtIST(item.createdAt)}</span>}</> },
     { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span> },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
     { key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span> },
@@ -316,7 +317,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
                   <div className="font-bold text-foreground">{h.action}</div>
                   {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
                   {h.attachmentUrl && <a href={h.attachmentUrl} target="_blank" rel="noreferrer" className="text-primary font-bold">Open attached file</a>}
-                  <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}{h.instanceDate ? ` · for ${new Date(h.instanceDate).toLocaleDateString()}` : ''}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? fmtIST(h.timestamp) : ''}{h.instanceDate ? ` · for ${new Date(h.instanceDate).toLocaleDateString()}` : ''}</div>
                 </div>
               ))}
             </div>

@@ -1,3 +1,4 @@
+import { fmtIST } from './istTime';
 // Shared helpers for showing a delegation task's uploaded photos, used by
 // BOTH the assigner side (ManageTasks.jsx) and the doer side
 // (DoerChecklist.jsx) so there is exactly one implementation of "which
@@ -145,6 +146,6 @@ export function allTaskPhotos(task) {
 export function photoCaption(photo, task) {
   const who = photo?.uploadedBy?.name || task?.assignerId?.name || 'Someone';
   const stage = photo?.stage || photo?._historyAction || 'Task Created';
-  const when = photo?.uploadedAt ? new Date(photo.uploadedAt).toLocaleString() : '';
+  const when = photo?.uploadedAt ? fmtIST(photo.uploadedAt) : '';
   return `${stage} — ${who}${when ? ` · ${when}` : ''}`;
 }

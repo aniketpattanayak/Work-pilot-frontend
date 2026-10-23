@@ -49,6 +49,7 @@ import {
 import MobileFilters from '../components/MobileFilters';
 import useCompanySettings from '../hooks/useCompanySettings';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
+import { fmtIST, fmtISTDate, fmtISTTime } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
 import ActionsMenu from '../components/mytasks/ActionsMenu';
 import HoldModal from '../components/mytasks/HoldModal';
@@ -427,6 +428,7 @@ const DoerChecklist = ({ doerId }) => {
         render: (it) => (
           <>
             <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">{it.title}</span>
+            {givenLine(it)}
             {activeCategory === 'All Data' && <span className="inline-block mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 w-fit">Type: {it.dataType}</span>}
             {it.dataType === 'Delegation' && roleChip(it)}
             {tagsOf(it)}
@@ -545,10 +547,12 @@ const DoerChecklist = ({ doerId }) => {
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
   const dateTextOf = (it) => {
     if (!it.deadlineDate) return 'N/A';
-    const d = new Date(it.deadlineDate);
-    const day = d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
-    return it.dataType === 'Checklist' ? day : `${day} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    const day = fmtISTDate(it.deadlineDate);
+    return it.dataType === 'Checklist' ? day : `${day} ${fmtISTTime(it.deadlineDate)}`;
   };
+  // When the task was given to the person (Indian time, AM/PM)
+  const givenOf = (it) => it.createdAt || it.startedAt || (it.activeStep && it.activeStep.activatedAt) || null;
+  const givenLine = (it) => (givenOf(it) ? <span className="block mt-0.5 text-[9px] font-bold text-slate-400 normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(givenOf(it))}</span> : null);
   // Mark for ANY date change (not only a doer's own revision). The pause after "On hold" is not a revision.
   const revisedNote = (it) => {
     if (it.dataType !== 'Delegation') return '';
@@ -978,6 +982,7 @@ const DoerChecklist = ({ doerId }) => {
                 )}
                 <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
+                  {givenOf(item) && <span className="basis-full text-[10px] text-slate-400">Given: {fmtIST(givenOf(item))}</span>}
                   <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
                   <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
                   {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
@@ -1151,7 +1156,7 @@ const DoerChecklist = ({ doerId }) => {
                       <div key={i} className="text-xs border-l-2 border-border pl-3 pb-1">
                         <div className="font-bold text-foreground">{h.action} <span className="text-muted-foreground font-normal">— {h.performedBy?.name || 'System'}</span></div>
                         {h.remarks && <div className="text-muted-foreground mt-0.5">{h.remarks}</div>}
-                        <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">{h.timestamp ? fmtIST(h.timestamp) : ''}</div>
                         {h.photos.length > 0 && (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {h.photos.slice(0, MAX_THUMBS).map((f, fi) => (
