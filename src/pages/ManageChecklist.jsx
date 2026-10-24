@@ -194,7 +194,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     try {
       setLoading(true);
       const [checkRes, empRes, settingsRes] = await Promise.all([
-        API.get(`/tasks/checklist-all/${currentTenantId}`).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { _: Date.now() } }).catch(() => ({ data: [] })),
         API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
@@ -206,6 +206,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
     } catch (err) { console.error("Fetch error:", err); } finally { setLoading(false); }
   }, [currentTenantId]);
+
+  // Refresh button: same as Manage Delegation - clear the filters and reload everything.
+  const handleRefresh = () => { setSearchTerm(''); setSelectedDate(''); setActiveTab('All'); fetchData(); };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -334,7 +337,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
           <div className="hidden md:block"><ColumnCustomizer ctl={checklistCtl} /></div>
           <button
-            onClick={fetchData}
+            onClick={handleRefresh}
             className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />

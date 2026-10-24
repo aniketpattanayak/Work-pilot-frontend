@@ -38,7 +38,7 @@ API.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('isSuperAdmin');
         localStorage.removeItem('user');
-        localStorage.removeItem('tenantId');
+        localStorage.removeItem('tenantId'); localStorage.removeItem('lastActiveAt');
         setTimeout(() => {
           redirecting = false;
           // SuperAdmin goes to root (shows login), regular users go to /login
