@@ -449,17 +449,6 @@ useEffect(() => {
                     </div>
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">DEL</span>
                   </div>
-                  
-                  <div className="h-6 w-px bg-border" />
-                  
-                  {/* Points Ledger */}
-                  <div className="flex items-center gap-2">
-                    <Trophy size={14} className="text-amber-500" />
-                    <div className="flex flex-col">
-                       <span className="text-xs font-black text-foreground leading-none">{userScore.totalPoints || currentUserData?.totalPoints || 0}</span>
-                       <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Points</span>
-                    </div>
-                  </div>
                </div>
             </div>
 

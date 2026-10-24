@@ -98,7 +98,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let pointer = new Date(today);
-    const weekends = tenantSettings?.weekends || [0];
+    // A person who works on Sundays keeps Sunday as a working day; everyone else has it off.
+    const doerEmp = employees.find(e => String(e._id) === String(item.doerId?._id || item.doerId));
+    const weekends = (tenantSettings?.weekends || [0]).filter(d => !(d === 0 && (doerEmp?.workOnSunday || item.doerId?.workOnSunday)));
     const holidays = tenantSettings?.holidays || [];
 
     const normalizeDate = (d) => {
@@ -156,15 +158,21 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       return dates;
     }
 
+    // A scheduled day that is a day off (Sunday off, weekly off, holiday) moves to the next working day,
+    // e.g. Sunday 8 Nov for someone who has Sunday off shows on Monday 9 Nov.
+    const fmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    let lastShown = 0;
     let loopSafety = 0;
     while (dates.length < 5 && loopSafety < 1000) {
       loopSafety++;
-      if (pointer.getDay() === 0 && weekends.includes(0)) {
-        pointer.setDate(pointer.getDate() + 1);
-        continue;
-      }
-      if (matchesConfig(pointer) && !isNonWorkingDay(pointer)) {
-        dates.push({ label: dates.length === 0 ? "NEXT" : "FOLLOWING", date: new Date(pointer).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) });
+      if (matchesConfig(pointer)) {
+        const shown = new Date(pointer);
+        let guard = 0;
+        while (isNonWorkingDay(shown) && guard++ < 60) shown.setDate(shown.getDate() + 1);
+        if (shown.getTime() > lastShown) {
+          lastShown = shown.getTime();
+          dates.push({ label: dates.length === 0 ? "NEXT" : "FOLLOWING", date: fmt(shown) });
+        }
       }
       pointer.setDate(pointer.getDate() + 1);
     }

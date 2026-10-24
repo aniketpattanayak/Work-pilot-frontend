@@ -420,7 +420,8 @@ const DoerChecklist = ({ doerId }) => {
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate, sortMode, givenFrom, givenTo]);
 
   // Built-in columns of My Tasks (company custom fields and the saved layout are added by useConfigurableColumns)
-  const bulkOn = companyAllows('tasks_bulkActions');
+  // Tick boxes (and the bulk bar) are not shown on the Completed tab
+  const bulkOn = companyAllows('tasks_bulkActions') && timeFilter !== 'Completed';
   const subOn = companyAllows('tasks_subTasks');
   const holdOn = companyAllows('tasks_onHold');
   const buildColumns = () => {
@@ -551,7 +552,7 @@ const DoerChecklist = ({ doerId }) => {
   // ───────── My Tasks helpers: selection, hold, sub tasks, one Actions button ─────────
   const isDoneItem = (it) => it.dataType === 'Checklist' ? !!it.isDone : it.dataType === 'Delegation' ? ['Completed', 'Verified'].includes(it.status) : it.status === 'completed';
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
-  const notDueYet = (it) => { if (it.dataType !== 'Checklist') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
+  const notDueYet = (it) => { if (it.dataType !== 'Checklist' && it.dataType !== 'Delegation') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
   const isPastDueItem = (it) => !!it.deadlineDate && new Date(it.deadlineDate) < new Date() && !isDoneItem(it) && !isHeld(it);
   const isFmsDelayed = (it) => !!it.isOverdue || (!!it.deadlineDate && it.status !== 'completed' && new Date() > new Date(it.deadlineDate));
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
@@ -577,7 +578,9 @@ const DoerChecklist = ({ doerId }) => {
   const subIdOf = (it) => String(it.dataType === 'FMS' ? (it.instanceId || it._id) : it._id);
   const subsOf = (it) => ((subSummary[it.dataType] || {})[subIdOf(it)]) || { total: 0, done: 0 };
   const mineDelegation = (it) => it.dataType === 'Delegation' && idOf(it.doerId) === String(currentDoerId);
-  const canSplit = (it) => subOn && myRoles.includes('Doer') && myRoles.includes('Assigner') && !isDoneItem(it) && !(it.dataType === 'Delegation' && (!mineDelegation(it) || !['Pending', 'Accepted'].includes(it.status)));
+  // Sub tasks only for tasks scheduled today or later
+  const isPastDay = (it) => { if (!it.deadlineDate) return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const n = new Date(); n.setHours(0, 0, 0, 0); return d.getTime() < n.getTime(); };
+  const canSplit = (it) => subOn && !isPastDay(it) && myRoles.includes('Doer') && myRoles.includes('Assigner') && !isDoneItem(it) && !(it.dataType === 'Delegation' && (!mineDelegation(it) || !['Pending', 'Accepted'].includes(it.status)));
   const canHold = (it) => holdOn && mineDelegation(it) && ['Pending', 'Accepted'].includes(it.status);
 
   // Why a task can / cannot be completed in bulk (FMS steps have their own form)
@@ -588,6 +591,7 @@ const DoerChecklist = ({ doerId }) => {
       if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
+      if (notDueYet(it)) return { ok: false, why: 'It is scheduled for a later date.' };
       return { ok: true };
     }
     if (notDueYet(it)) return { ok: false, why: 'It is not due yet.' };
@@ -617,6 +621,7 @@ const DoerChecklist = ({ doerId }) => {
   };
 
   const rowsNow = activeCategory === 'Planner' ? filteredData.planN : activeCategory === 'All Data' ? filteredData.all : activeCategory === 'Checklist' ? filteredData.routinesN : activeCategory === 'Delegation' ? filteredData.assignmentsN : filteredData.fmsN;
+  useEffect(() => { if (timeFilter === 'Completed') setSelected({}); }, [timeFilter]);
   const selectedItems = filteredData.all.filter((i) => selected[i.uniqueKey]);
   const allTicked = rowsNow.length > 0 && rowsNow.every((i) => selected[i.uniqueKey]);
   const toggleOne = (k) => setSelected((s) => { const n = { ...s }; if (n[k]) delete n[k]; else n[k] = true; return n; });
@@ -649,7 +654,7 @@ const DoerChecklist = ({ doerId }) => {
     if (!done && !passed && !follower) {
       if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
-      else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
+      else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       if (reviseCheck(item).ok) menu.push({ key: 'revise', label: 'Revise date', onClick: () => { setSelectedTask(item); setShowRevisionModal(true); } });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
       // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
