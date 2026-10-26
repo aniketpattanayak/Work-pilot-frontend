@@ -16,7 +16,7 @@ export default function BulkOnwardModal({ items, eligible, currentDoerId, onClos
 
   useEffect(() => {
     let live = true;
-    API.get(`/tasks/authorized-staff/${currentDoerId}`).then((r) => { if (live) setStaff((r.data && r.data.doers) || []); }).catch(() => { if (live) { setStaff([]); setErr('Could not load your team.'); } });
+    API.get(`/tasks/authorized-staff/${currentDoerId}?mappedOnly=1`).then((r) => { if (live) setStaff((r.data && r.data.doers) || []); }).catch(() => { if (live) { setStaff([]); setErr('Could not load your team.'); } });
     return () => { live = false; };
   }, [currentDoerId]);
 

@@ -200,7 +200,7 @@ const DoerChecklist = ({ doerId }) => {
   const openOnward = async (t) => {
     setOnwardTask(t); setOnwardPick(''); setOnwardNote(''); setOnwardErr(''); setOnwardStaff([]);
     try {
-      const r = await API.get(`/tasks/authorized-staff/${currentDoerId}`);
+      const r = await API.get(`/tasks/authorized-staff/${currentDoerId}?mappedOnly=1`);
       const taken = new Set([String(currentDoerId), idOf(t.assignerId), ...(t.forwardChain || []).map(c => idOf(c.employeeId))]);
       setOnwardStaff((r.data?.doers || []).filter(d => !taken.has(String(d._id))));
     } catch {
