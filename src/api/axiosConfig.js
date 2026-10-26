@@ -26,8 +26,8 @@ API.interceptors.response.use(
     if (redirecting) return Promise.reject(error);
 
     const status = error.response?.status;
-    const code   = error.response?.data?.code;
-    const path   = window.location.pathname;
+    const code = error.response?.data?.code;
+    const path = window.location.pathname;
     const isSuperAdmin = localStorage.getItem('isSuperAdmin') === 'true';
 
     // 401 handling — clear token and redirect, never reload (reload causes blink loop)
@@ -38,7 +38,7 @@ API.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('isSuperAdmin');
         localStorage.removeItem('user');
-        localStorage.removeItem('tenantId');
+        localStorage.removeItem('tenantId'); localStorage.removeItem('lastActiveAt');
         setTimeout(() => {
           redirecting = false;
           // SuperAdmin goes to root (shows login), regular users go to /login
@@ -51,7 +51,7 @@ API.interceptors.response.use(
     // Subscription paused
     if (status === 403 && code === 'SUBSCRIPTION_PAUSED' && path !== '/suspended') {
       redirecting = true;
-      sessionStorage.setItem('suspendedReason',   error.response.data.reason   || '');
+      sessionStorage.setItem('suspendedReason', error.response.data.reason || '');
       sessionStorage.setItem('suspendedPausedAt', error.response.data.pausedAt || '');
       setTimeout(() => {
         redirecting = false;

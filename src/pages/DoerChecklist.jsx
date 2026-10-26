@@ -5,6 +5,7 @@ import RevisionPanel from '../components/RevisionPanel';
 import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import { useChat } from '../components/useChat';
+import { openChatPopup } from '../utils/openChatPopup';
 import ImageLightbox from '../components/ImageLightbox';
 import LocalFileThumb from '../components/LocalFileThumb';
 import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
@@ -92,7 +93,7 @@ const DoerChecklist = ({ doerId }) => {
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
-    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+    if (conv?._id && !openChatPopup(conv._id)) navigate(`/dashboard/chat?conv=${conv._id}`);
   }, [openTaskThread, navigate]);
   // History/files details modal: mirrors the assigner-side one in
   // ManageTasks.jsx so the doer can see every uploaded photo and the full
@@ -200,7 +201,7 @@ const DoerChecklist = ({ doerId }) => {
   const openOnward = async (t) => {
     setOnwardTask(t); setOnwardPick(''); setOnwardNote(''); setOnwardErr(''); setOnwardStaff([]);
     try {
-      const r = await API.get(`/tasks/authorized-staff/${currentDoerId}`);
+      const r = await API.get(`/tasks/authorized-staff/${currentDoerId}?mappedOnly=1`);
       const taken = new Set([String(currentDoerId), idOf(t.assignerId), ...(t.forwardChain || []).map(c => idOf(c.employeeId))]);
       setOnwardStaff((r.data?.doers || []).filter(d => !taken.has(String(d._id))));
     } catch {
@@ -420,18 +421,22 @@ const DoerChecklist = ({ doerId }) => {
   }, [checklist, delegatedTasks, fmsMissions, timeFilter, startDate, endDate, sortMode, givenFrom, givenTo]);
 
   // Built-in columns of My Tasks (company custom fields and the saved layout are added by useConfigurableColumns)
-  const bulkOn = companyAllows('tasks_bulkActions');
+  // Tick boxes (and the bulk bar) are not shown on the Completed tab
+  const bulkOn = companyAllows('tasks_bulkActions') && timeFilter !== 'Completed';
   const subOn = companyAllows('tasks_subTasks');
   const holdOn = companyAllows('tasks_onHold');
   const buildColumns = () => {
     const cols = [];
     if (bulkOn) {
-      cols.push({ key: 'select', label: 'Select', width: '28px', locked: true, cellClassName: 'min-w-0',
-        render: (it) => <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" /> });
+      cols.push({
+        key: 'select', label: 'Select', width: '28px', locked: true, cellClassName: 'min-w-0',
+        render: (it) => <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
+      });
     }
     cols.push(
       { key: 'sno', label: 'S. no.', width: '40px', cellClassName: 'text-xs font-black text-slate-400', render: (it, i) => i + 1 },
-      { key: 'title', label: 'Task', width: 'minmax(130px,1.4fr)', locked: true, cellClassName: 'min-w-0 pr-2',
+      {
+        key: 'title', label: 'Task', width: 'minmax(130px,1.4fr)', locked: true, cellClassName: 'min-w-0 pr-2',
         render: (it) => (
           <>
             <span className="font-black text-sm text-foreground whitespace-normal break-words block leading-tight">{it.title}</span>
@@ -441,7 +446,8 @@ const DoerChecklist = ({ doerId }) => {
             {tagsOf(it)}
             {photoLink(it)}
           </>
-        ) },
+        )
+      },
       { key: 'assigner', label: 'Assigned By', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 whitespace-normal break-words leading-tight px-1', render: (it) => it.assignerName || '-' },
       { key: 'assignedTo', label: 'Assigned To', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 whitespace-normal break-words leading-tight px-1', render: (it) => it.assignedToName || '-' },
       { key: 'followers', label: 'Followers', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
@@ -466,7 +472,7 @@ const DoerChecklist = ({ doerId }) => {
   const cardInfo = (item) => {
     const done = item.dataType === 'Checklist' ? !!item.isDone
       : item.dataType === 'Delegation' ? (item.status === 'Completed' || item.status === 'Verified')
-      : item.status === 'completed';
+        : item.status === 'completed';
     if (done) return { group: 'Completed', text: 'Completed', stripe: 'before:bg-emerald-500', dot: 'text-emerald-500' };
     if (item.onHold && item.onHold.isOn) return { group: 'On hold', text: 'On hold', stripe: 'before:bg-amber-500', dot: 'text-amber-600' };
     const raw = item.deadlineDate;
@@ -551,7 +557,7 @@ const DoerChecklist = ({ doerId }) => {
   // ───────── My Tasks helpers: selection, hold, sub tasks, one Actions button ─────────
   const isDoneItem = (it) => it.dataType === 'Checklist' ? !!it.isDone : it.dataType === 'Delegation' ? ['Completed', 'Verified'].includes(it.status) : it.status === 'completed';
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
-  const notDueYet = (it) => { if (it.dataType !== 'Checklist') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
+  const notDueYet = (it) => { if (it.dataType !== 'Checklist' && it.dataType !== 'Delegation') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
   const isPastDueItem = (it) => !!it.deadlineDate && new Date(it.deadlineDate) < new Date() && !isDoneItem(it) && !isHeld(it);
   const isFmsDelayed = (it) => !!it.isOverdue || (!!it.deadlineDate && it.status !== 'completed' && new Date() > new Date(it.deadlineDate));
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
@@ -577,7 +583,9 @@ const DoerChecklist = ({ doerId }) => {
   const subIdOf = (it) => String(it.dataType === 'FMS' ? (it.instanceId || it._id) : it._id);
   const subsOf = (it) => ((subSummary[it.dataType] || {})[subIdOf(it)]) || { total: 0, done: 0 };
   const mineDelegation = (it) => it.dataType === 'Delegation' && idOf(it.doerId) === String(currentDoerId);
-  const canSplit = (it) => subOn && myRoles.includes('Doer') && myRoles.includes('Assigner') && !isDoneItem(it) && !(it.dataType === 'Delegation' && (!mineDelegation(it) || !['Pending', 'Accepted'].includes(it.status)));
+  // Sub tasks only for tasks scheduled today or later
+  const isPastDay = (it) => { if (!it.deadlineDate) return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const n = new Date(); n.setHours(0, 0, 0, 0); return d.getTime() < n.getTime(); };
+  const canSplit = (it) => subOn && !isPastDay(it) && myRoles.includes('Doer') && myRoles.includes('Assigner') && !isDoneItem(it) && !(it.dataType === 'Delegation' && (!mineDelegation(it) || !['Pending', 'Accepted'].includes(it.status)));
   const canHold = (it) => holdOn && mineDelegation(it) && ['Pending', 'Accepted'].includes(it.status);
 
   // Why a task can / cannot be completed in bulk (FMS steps have their own form)
@@ -588,6 +596,7 @@ const DoerChecklist = ({ doerId }) => {
       if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
+      if (notDueYet(it)) return { ok: false, why: 'It is scheduled for a later date.' };
       return { ok: true };
     }
     if (notDueYet(it)) return { ok: false, why: 'It is not due yet.' };
@@ -617,6 +626,7 @@ const DoerChecklist = ({ doerId }) => {
   };
 
   const rowsNow = activeCategory === 'Planner' ? filteredData.planN : activeCategory === 'All Data' ? filteredData.all : activeCategory === 'Checklist' ? filteredData.routinesN : activeCategory === 'Delegation' ? filteredData.assignmentsN : filteredData.fmsN;
+  useEffect(() => { if (timeFilter === 'Completed') setSelected({}); }, [timeFilter]);
   const selectedItems = filteredData.all.filter((i) => selected[i.uniqueKey]);
   const allTicked = rowsNow.length > 0 && rowsNow.every((i) => selected[i.uniqueKey]);
   const toggleOne = (k) => setSelected((s) => { const n = { ...s }; if (n[k]) delete n[k]; else n[k] = true; return n; });
@@ -649,7 +659,7 @@ const DoerChecklist = ({ doerId }) => {
     if (!done && !passed && !follower) {
       if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
-      else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
+      else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       if (reviseCheck(item).ok) menu.push({ key: 'revise', label: 'Revise date', onClick: () => { setSelectedTask(item); setShowRevisionModal(true); } });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
       // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
@@ -954,78 +964,78 @@ const DoerChecklist = ({ doerId }) => {
 
       {/* The table scrolls sideways when the columns are wider than the screen; Actions stays in view */}
       <div className="lg:overflow-x-auto lg:pb-2" data-testid="mytasks-scroll">
-      <div className="lg:min-w-[var(--cfg-min)]" style={{ '--cfg-min': `${ctl.minWidth + 120}px` }}>
-      {/* GRID HEADER (columns follow the saved layout) */}
-      <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
-        {ctl.columns.map((c) => (
-          <div key={c.key} className={`min-w-0 break-words leading-[1.4] py-0.5 ${c.headerClassName || ''} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-slate-900 dark:bg-slate-950 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.45)]' : ''}`}>
-            {c.key === 'select'
-              ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
-              : c.label}
+        <div className="lg:min-w-[var(--cfg-min)]" style={{ '--cfg-min': `${ctl.minWidth + 120}px` }}>
+          {/* GRID HEADER (columns follow the saved layout) */}
+          <div className="hidden lg:grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2" style={{ gridTemplateColumns: ctl.gridTemplate }}>
+            {ctl.columns.map((c) => (
+              <div key={c.key} className={`min-w-0 break-words leading-[1.4] py-0.5 ${c.headerClassName || ''} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-slate-900 dark:bg-slate-950 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.45)]' : ''}`}>
+                {c.key === 'select'
+                  ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
+                  : c.label}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* DATA TERMINAL */}
-      <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg shadow-xl w-full max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible">
-        {rowsNow.length === 0 ? (
-          <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Nothing here</p></div>
-        ) : rowsNow.map((item, index) => {
-          const ci = cardInfo(item);
-          const k = item.uniqueKey;
-          const prevGroup = index > 0 ? cardInfo(rowsNow[index - 1]).group : null;
-          const groupCount = ci.group !== prevGroup ? rowsNow.filter((x) => cardInfo(x).group === ci.group).length : 0;
-          const ticked = !!selected[k];
-          const held = isHeld(item);
-          const who = item.assignerName || '-';
-          return (
-            <React.Fragment key={k}>
-              {groupCount > 0 && (
-                <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
-                  <span>{ci.group} · {groupCount}</span><span className="flex-1 h-px bg-border" />
-                </div>
-              )}
-              {/* Computer row */}
-              <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
-                {ctl.columns.map((c) => (
-                  <div key={c.key} className={`${c.cellClassName || 'min-w-0 text-xs font-semibold'} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-card pl-2 -my-3 py-3 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}`} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
-                ))}
-              </div>
-              {/* Phone card */}
-              <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
-                <div className="flex items-center gap-1.5 mb-2">
-                  {bulkOn && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
-                  <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf(item.dataType)}`}>{item.dataType}</span>
-                  {item.dataType === 'Delegation' && (item.myRole === 'follower'
-                    ? <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30">Follower</span>
-                    : <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Doer</span>)}
-                  <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${held ? 'text-amber-600' : item.dataType === 'FMS' && isFmsDelayed(item) && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{held ? 'On hold' : item.dataType === 'FMS' && ci.group !== 'Completed' && isFmsDelayed(item) ? 'Delayed' : ci.text}</span>
-                </div>
-                <span className={`font-extrabold text-[15px] leading-snug text-foreground block [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.title}</span>
-                {tagsOf(item)}
-                <p className={`text-xs text-muted-foreground mt-1 leading-snug [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.description || 'No description provided.'}</p>
-                {(String(item.title || '').length > 55 || String(item.description || '').length > 70) && (
-                  <button type="button" onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))} className="mt-1 text-[10px] font-black uppercase tracking-widest text-primary">{openCards[k] ? 'Show less' : 'Read full'}</button>
-                )}
-                <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                  <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
-                  {givenOf(item) && <span className="basis-full text-[10px] text-slate-400">Given: {fmtIST(givenOf(item))}</span>}
-                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
-                  <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
-                  {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
-                  {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
-                  {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
-                </div>
-                {photoLink(item)}
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                  {actionsFor(item, 'min-h-10 flex-1 rounded-xl text-[11px] tracking-[0.14em]')}
-                </div>
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
-      </div>
+          {/* DATA TERMINAL */}
+          <div className="flex flex-col bg-background lg:bg-card border border-border rounded-lg shadow-xl w-full max-lg:gap-2.5 max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none max-lg:overflow-visible">
+            {rowsNow.length === 0 ? (
+              <div className="py-20 text-center opacity-30 grayscale"><Activity size={32} className="mx-auto mb-4" /><p className="font-black uppercase text-[8px] tracking-[0.4em]">Nothing here</p></div>
+            ) : rowsNow.map((item, index) => {
+              const ci = cardInfo(item);
+              const k = item.uniqueKey;
+              const prevGroup = index > 0 ? cardInfo(rowsNow[index - 1]).group : null;
+              const groupCount = ci.group !== prevGroup ? rowsNow.filter((x) => cardInfo(x).group === ci.group).length : 0;
+              const ticked = !!selected[k];
+              const held = isHeld(item);
+              const who = item.assignerName || '-';
+              return (
+                <React.Fragment key={k}>
+                  {groupCount > 0 && (
+                    <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
+                      <span>{ci.group} · {groupCount}</span><span className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+                  {/* Computer row */}
+                  <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
+                    {ctl.columns.map((c) => (
+                      <div key={c.key} className={`${c.cellClassName || 'min-w-0 text-xs font-semibold'} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-card pl-2 -my-3 py-3 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}`} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
+                    ))}
+                  </div>
+                  {/* Phone card */}
+                  <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      {bulkOn && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
+                      <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf(item.dataType)}`}>{item.dataType}</span>
+                      {item.dataType === 'Delegation' && (item.myRole === 'follower'
+                        ? <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30">Follower</span>
+                        : <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Doer</span>)}
+                      <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${held ? 'text-amber-600' : item.dataType === 'FMS' && isFmsDelayed(item) && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{held ? 'On hold' : item.dataType === 'FMS' && ci.group !== 'Completed' && isFmsDelayed(item) ? 'Delayed' : ci.text}</span>
+                    </div>
+                    <span className={`font-extrabold text-[15px] leading-snug text-foreground block [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.title}</span>
+                    {tagsOf(item)}
+                    <p className={`text-xs text-muted-foreground mt-1 leading-snug [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.description || 'No description provided.'}</p>
+                    {(String(item.title || '').length > 55 || String(item.description || '').length > 70) && (
+                      <button type="button" onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))} className="mt-1 text-[10px] font-black uppercase tracking-widest text-primary">{openCards[k] ? 'Show less' : 'Read full'}</button>
+                    )}
+                    <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
+                      {givenOf(item) && <span className="basis-full text-[10px] text-slate-400">Given: {fmtIST(givenOf(item))}</span>}
+                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
+                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
+                      {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
+                      {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
+                      {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
+                    </div>
+                    {photoLink(item)}
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                      {actionsFor(item, 'min-h-10 flex-1 rounded-xl text-[11px] tracking-[0.14em]')}
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* MISSION MODAL */}
@@ -1042,59 +1052,59 @@ const DoerChecklist = ({ doerId }) => {
                 />
               </div>
             ) : (
-            <form onSubmit={handleFinalSubmit} className="space-y-6">
-              <div className="text-center">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border mx-auto mb-4 ${modalType === 'FMS' ? 'bg-slate-900 border-slate-700 text-white' : activeTask?.isBacklog ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' : 'bg-primary/10 border-primary/20 text-primary'}`}><Send size={24} /></div>
-                <h3 className="text-foreground text-xl font-black uppercase tracking-tight">
-                  {modalType === 'FMS' ? 'FMS Mission Sync' : activeTask?.isBacklog ? 'Backlog Sync' : 'Update Task'}
-                </h3>
-                <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest px-4 whitespace-normal break-words">
-                  {activeTask?.title || activeTask?.taskName || activeTask?.nodeName}
-                </p>
-              </div>
-              <textarea required placeholder="Mission remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-32 bg-background border border-border text-foreground p-4 rounded-2xl outline-none font-bold text-[10px] uppercase shadow-inner" />
-              {modalType === "Delegation" ? (
-                // Delegation completion: the doer must be able to choose
-                // storage or a live camera photo, and attach more than one.
-                <div>
-                  <div className="flex gap-2">
-                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
-                      <Upload size={16} /> From storage
-                      <input
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
-                      />
-                    </label>
-                    <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
-                      <Camera size={16} /> Take photo
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
-                      />
-                    </label>
-                  </div>
-                  {delegationFiles.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {delegationFiles.map((f, i) => (
-                        <LocalFileThumb key={i} file={f} onRemove={() => setDelegationFiles((prev) => prev.filter((_, j) => j !== i))} />
-                      ))}
+              <form onSubmit={handleFinalSubmit} className="space-y-6">
+                <div className="text-center">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border mx-auto mb-4 ${modalType === 'FMS' ? 'bg-slate-900 border-slate-700 text-white' : activeTask?.isBacklog ? 'bg-amber-500/10 border-amber-500/20 text-amber-600' : 'bg-primary/10 border-primary/20 text-primary'}`}><Send size={24} /></div>
+                  <h3 className="text-foreground text-xl font-black uppercase tracking-tight">
+                    {modalType === 'FMS' ? 'FMS Mission Sync' : activeTask?.isBacklog ? 'Backlog Sync' : 'Update Task'}
+                  </h3>
+                  <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest px-4 whitespace-normal break-words">
+                    {activeTask?.title || activeTask?.taskName || activeTask?.nodeName}
+                  </p>
+                </div>
+                <textarea required placeholder="Mission remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-32 bg-background border border-border text-foreground p-4 rounded-2xl outline-none font-bold text-[10px] uppercase shadow-inner" />
+                {modalType === "Delegation" ? (
+                  // Delegation completion: the doer must be able to choose
+                  // storage or a live camera photo, and attach more than one.
+                  <div>
+                    <div className="flex gap-2">
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                        <Upload size={16} /> From storage
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
+                        />
+                      </label>
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-2xl border-2 border-dashed border-border text-[9px] font-black uppercase text-slate-400 hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
+                        <Camera size={16} /> Take photo
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
+                        />
+                      </label>
                     </div>
-                  )}
-                  <p className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}</p>
-                </div>
-              ) : (
-                <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
-                  <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                  <Upload size={20} className="mx-auto text-slate-400 mb-2" />
-                  <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
-                  <p className="mt-1 text-[8px] font-bold text-slate-400 normal-case">{uploadHint(maxFileMb)}</p>
-                </div>
-              )}
+                    {delegationFiles.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {delegationFiles.map((f, i) => (
+                          <LocalFileThumb key={i} file={f} onRemove={() => setDelegationFiles((prev) => prev.filter((_, j) => j !== i))} />
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}</p>
+                  </div>
+                ) : (
+                  <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
+                    <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <Upload size={20} className="mx-auto text-slate-400 mb-2" />
+                    <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
+                    <p className="mt-1 text-[8px] font-bold text-slate-400 normal-case">{uploadHint(maxFileMb)}</p>
+                  </div>
+                )}
 
                 <button
                   disabled={uploading}
@@ -1102,7 +1112,7 @@ const DoerChecklist = ({ doerId }) => {
                 >
                   Finalize Result
                 </button>
-            </form>
+              </form>
             )}
           </div>
         </div>

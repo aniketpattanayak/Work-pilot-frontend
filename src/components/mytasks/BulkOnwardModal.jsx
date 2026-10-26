@@ -16,7 +16,7 @@ export default function BulkOnwardModal({ items, eligible, currentDoerId, onClos
 
   useEffect(() => {
     let live = true;
-    API.get(`/tasks/authorized-staff/${currentDoerId}`).then((r) => { if (live) setStaff((r.data && r.data.doers) || []); }).catch(() => { if (live) { setStaff([]); setErr('Could not load your team.'); } });
+    API.get(`/tasks/authorized-staff/${currentDoerId}?mappedOnly=1`).then((r) => { if (live) setStaff((r.data && r.data.doers) || []); }).catch(() => { if (live) { setStaff([]); setErr('Could not load your team.'); } });
     return () => { live = false; };
   }, [currentDoerId]);
 
@@ -54,10 +54,12 @@ export default function BulkOnwardModal({ items, eligible, currentDoerId, onClos
         </div>
       )}
       <ul className="mb-4 space-y-1">
-        {todo.map((t) => { const r = result[t.uniqueKey]; return (
-          <li key={t.uniqueKey} className={`text-xs px-3 py-2 rounded-xl border ${r && r.ok ? 'border-emerald-500/40 text-emerald-600' : r ? 'border-red-500 text-red-600' : 'border-border'}`}>
-            <b>{t.title}</b>{r && r.ok && ' — assigned'}{r && !r.ok && ` — ${r.message}`}
-          </li>); })}
+        {todo.map((t) => {
+          const r = result[t.uniqueKey]; return (
+            <li key={t.uniqueKey} className={`text-xs px-3 py-2 rounded-xl border ${r && r.ok ? 'border-emerald-500/40 text-emerald-600' : r ? 'border-red-500 text-red-600' : 'border-border'}`}>
+              <b>{t.title}</b>{r && r.ok && ' — assigned'}{r && !r.ok && ` — ${r.message}`}
+            </li>);
+        })}
       </ul>
       {pending.length > 0 && (
         <>

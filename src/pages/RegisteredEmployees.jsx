@@ -8,6 +8,12 @@ import ColumnCustomizer from '../components/ColumnCustomizer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { customSummary } from '../utils/customFieldsConfig';
 
+// 26/10/2026 style date, and the saved leave range as "26/10/2026 to 29/10/2026".
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtDMY = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
+const toInputDate = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const leaveRangeText = (ls) => (ls && ls.startDate && ls.endDate ? `${fmtDMY(ls.startDate)} to ${fmtDMY(ls.endDate)}` : '');
+
 // On leave only while today is inside the saved date range (same rule as the server).
 const isOnLeaveNow = (ls) => {
   if (!ls || !ls.onLeave) return false;
@@ -79,11 +85,13 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
   const openLeaveManager = (emp) => {
     setSelectedEmp(emp);
     setBuddySearchQuery('');
+    // Show the person's real state: On Leave (with the saved dates) or At Work.
+    const nowOnLeave = isOnLeaveNow(emp.leaveStatus);
     setLeaveData({
-      onLeave: true,
-      startDate: '',
-      endDate: '',
-      buddyId: ''
+      onLeave: nowOnLeave,
+      startDate: nowOnLeave ? toInputDate(emp.leaveStatus && emp.leaveStatus.startDate) : '',
+      endDate: nowOnLeave ? toInputDate(emp.leaveStatus && emp.leaveStatus.endDate) : '',
+      buddyId: nowOnLeave && emp.leaveStatus && emp.leaveStatus.buddyId ? emp.leaveStatus.buddyId : ''
     });
     setShowLeaveModal(true);
   };
@@ -224,20 +232,20 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
-                          {emp.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
-                          <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase tracking-tight">
-                            <Briefcase size={9} className="text-primary/50 flex-shrink-0" />
-                            <span className="truncate">{emp.department || 'General'}</span>
-                          </div>
-                        </div>
-                      </div>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
+              {emp.name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
+              <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase tracking-tight">
+                <Briefcase size={9} className="text-primary/50 flex-shrink-0" />
+                <span className="truncate">{emp.department || 'General'}</span>
+              </div>
+            </div>
+          </div>
 
-                  
+
         );
       },
     },
@@ -246,18 +254,18 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <MapPin size={11} className="text-primary/40 flex-shrink-0" />
-                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.location || '—'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Briefcase size={11} className="text-primary/40 flex-shrink-0" />
-                          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.department || '—'}</span>
-                        </div>
-                      </div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <MapPin size={11} className="text-primary/40 flex-shrink-0" />
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.location || '—'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Briefcase size={11} className="text-primary/40 flex-shrink-0" />
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{emp.department || '—'}</span>
+            </div>
+          </div>
 
-                  
+
         );
       },
     },
@@ -266,15 +274,15 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="flex flex-wrap gap-1">
-                        {roles.map((r, i) => (
-                          <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
-                            {r}
-                          </span>
-                        ))}
-                      </div>
+          <div className="flex flex-wrap gap-1">
+            {roles.map((r, i) => (
+              <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
+                {r}
+              </span>
+            ))}
+          </div>
 
-                  
+
         );
       },
     },
@@ -283,14 +291,14 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Mail size={11} className="text-primary/40 flex-shrink-0" />
-                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
-                          {emp.email || '—'}
-                        </span>
-                      </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Mail size={11} className="text-primary/40 flex-shrink-0" />
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
+              {emp.email || '—'}
+            </span>
+          </div>
 
-                  
+
         );
       },
     },
@@ -299,14 +307,14 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Phone size={11} className="text-primary/40 flex-shrink-0" />
-                        <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400 truncate">
-                          {emp.whatsappNumber || '—'}
-                        </span>
-                      </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Phone size={11} className="text-primary/40 flex-shrink-0" />
+            <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400 truncate">
+              {emp.whatsappNumber || '—'}
+            </span>
+          </div>
 
-                  
+
         );
       },
     },
@@ -315,9 +323,9 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div>{renderTeamLinks(emp)}</div>
+          <div>{renderTeamLinks(emp)}</div>
 
-                  
+
         );
       },
     },
@@ -326,21 +334,24 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div>
-                        {isOnLeave ? (
-                          <div className="flex items-center gap-1.5">
-                            <Plane size={11} className="text-amber-500 flex-shrink-0" />
-                            <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">On Leave</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tight">Active</span>
-                          </div>
-                        )}
-                      </div>
+          <div>
+            {isOnLeave ? (
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <Plane size={11} className="text-amber-500 flex-shrink-0" />
+                  <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">On Leave</span>
+                </div>
+                {leaveRangeText(emp.leaveStatus) && <div className="mt-0.5 text-[9px] font-bold text-slate-500 whitespace-nowrap" data-testid="leave-range">{leaveRangeText(emp.leaveStatus)}</div>}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tight">Active</span>
+              </div>
+            )}
+          </div>
 
-                  
+
         );
       },
     },
@@ -349,26 +360,26 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
       render: (emp) => {
         const { isOnLeave, roles, avatarColor } = rowInfo(emp);
         return (
-                      <div className="flex justify-center gap-1.5">
-                        <button
-                          onClick={() => openLeaveManager(emp)}
-                          className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest active:scale-90 whitespace-nowrap"
-                        >
-                          Leave
-                        </button>
-                        <button
-                          onClick={() => onEdit(emp)}
-                          className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90 flex items-center justify-center"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(emp._id, emp.name)}
-                          className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90 flex items-center justify-center"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+          <div className="flex justify-center gap-1.5">
+            <button
+              onClick={() => openLeaveManager(emp)}
+              className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest active:scale-90 whitespace-nowrap"
+            >
+              Leave
+            </button>
+            <button
+              onClick={() => onEdit(emp)}
+              className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all active:scale-90 flex items-center justify-center"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              onClick={() => handleDelete(emp._id, emp.name)}
+              className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90 flex items-center justify-center"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         );
       },
     },
@@ -458,9 +469,8 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                 <button
                   key={role}
                   onClick={() => setSelectedRole(role)}
-                  className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                    selectedRole === role ? 'bg-primary text-primary-foreground shadow-sm' : 'text-slate-500 hover:text-foreground hover:bg-muted'
-                  }`}
+                  className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${selectedRole === role ? 'bg-primary text-primary-foreground shadow-sm' : 'text-slate-500 hover:text-foreground hover:bg-muted'
+                    }`}
                 >
                   {role}
                 </button>
@@ -471,136 +481,139 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
 
         {/* ── COLUMN LABELS (desktop) ─────────────────────────────── */}
         <div className="max-h-[calc(100dvh-26rem)] lg:max-h-[calc(100vh-17rem)] min-h-[240px] overflow-y-auto custom-scrollbar pr-1">
-        {/* ── EMPLOYEE ROWS ───────────────────────────────────────── */}
-        <div className="space-y-2">
-          <ConfigurableTable
-            controller={colCtl}
-            rowsClassName="space-y-2"
-            rows={filteredEmployees}
-            rowKey={(emp) => emp._id}
-            renderHeader={({ cells, style }) => (
-              <div className="hidden xl:grid gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border text-[9px] font-black text-slate-400 uppercase tracking-widest" style={style}>{cells}</div>
-            )}
-            renderRow={({ row: emp, cells, style }) => {
-            const isOnLeave = isOnLeaveNow(emp.leaveStatus);
-            const roles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
-            const avatarColor = getAvatarColor(emp.name);
-            const buddyName = safeEmployees.find(e => e._id === emp.leaveStatus?.buddyId)?.name;
+          {/* ── EMPLOYEE ROWS ───────────────────────────────────────── */}
+          <div className="space-y-2">
+            <ConfigurableTable
+              controller={colCtl}
+              rowsClassName="space-y-2"
+              rows={filteredEmployees}
+              rowKey={(emp) => emp._id}
+              renderHeader={({ cells, style }) => (
+                <div className="hidden xl:grid gap-x-4 px-5 py-2 mb-1 sticky top-0 z-10 bg-background border-b border-border text-[9px] font-black text-slate-400 uppercase tracking-widest" style={style}>{cells}</div>
+              )}
+              renderRow={({ row: emp, cells, style }) => {
+                const isOnLeave = isOnLeaveNow(emp.leaveStatus);
+                const roles = Array.isArray(emp.roles) ? emp.roles : (emp.role ? [emp.role] : []);
+                const avatarColor = getAvatarColor(emp.name);
+                const buddyName = safeEmployees.find(e => e._id === emp.leaveStatus?.buddyId)?.name;
 
-            return (
-              <div
-                className="bg-card border border-border rounded-xl px-5 py-4 hover:border-primary/20 hover:shadow-sm transition-all duration-200"
-              >
-                {/* ── DESKTOP ──────────────────────────────────────── */}
-                <div className="hidden xl:grid gap-x-4 items-center" style={style}>
-                  {cells}
-                </div>
+                return (
+                  <div
+                    className="bg-card border border-border rounded-xl px-5 py-4 hover:border-primary/20 hover:shadow-sm transition-all duration-200"
+                  >
+                    {/* ── DESKTOP ──────────────────────────────────────── */}
+                    <div className="hidden xl:grid gap-x-4 items-center" style={style}>
+                      {cells}
+                    </div>
 
-                {/* ── MOBILE / TABLET ───────────────────────────────── */}
-                <div className="xl:hidden space-y-3">
-                  {/* Row 1: avatar + name + actions */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
-                        {emp.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
-                        <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase">
-                          <Briefcase size={9} className="text-primary/50" />
-                          <span className="truncate">{[emp.department || 'General', emp.location].filter(Boolean).join(' · ')}</span>
+                    {/* ── MOBILE / TABLET ───────────────────────────────── */}
+                    <div className="xl:hidden space-y-3">
+                      {/* Row 1: avatar + name + actions */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-sm`}>
+                            {emp.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-foreground text-sm truncate leading-none mb-1">{emp.name}</p>
+                            <div className="flex items-center gap-1 text-[9px] text-slate-500 font-semibold uppercase">
+                              <Briefcase size={9} className="text-primary/50" />
+                              <span className="truncate">{[emp.department || 'General', emp.location].filter(Boolean).join(' · ')}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <button onClick={() => openLeaveManager(emp)}
+                            className="px-2.5 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest">
+                            Leave
+                          </button>
+                          <button onClick={() => onEdit(emp)}
+                            className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all flex items-center justify-center">
+                            <Pencil size={13} />
+                          </button>
+                          <button onClick={() => handleDelete(emp._id, emp.name)}
+                            className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-1.5 flex-shrink-0">
-                      <button onClick={() => openLeaveManager(emp)}
-                        className="px-2.5 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all text-[8px] font-black uppercase tracking-widest">
-                        Leave
-                      </button>
-                      <button onClick={() => onEdit(emp)}
-                        className="w-8 h-8 bg-primary/10 text-primary rounded-lg border border-primary/20 hover:bg-primary hover:text-white transition-all flex items-center justify-center">
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={() => handleDelete(emp._id, emp.name)}
-                        className="w-8 h-8 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Row 2: roles */}
-                  <div className="flex flex-wrap gap-1">
-                    {roles.map((r, i) => (
-                      <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
-                        {r}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Row 3: email + phone */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Mail size={11} className="text-primary/40 flex-shrink-0" />
-                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
-                        {emp.email || '—'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone size={11} className="text-primary/40 flex-shrink-0" />
-                      <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400">
-                        {emp.whatsappNumber || '—'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Row 4: linkage + status */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div>{renderTeamLinks(emp)}</div>
-                    {isOnLeave ? (
-                      <div className="flex items-center gap-1.5">
-                        <Plane size={11} className="text-amber-500" />
-                        <span className="text-[9px] font-black text-amber-600 uppercase">On Leave</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="text-[9px] font-black text-emerald-600 uppercase">Active</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Company-defined extra fields (only the ones this person has a value for) */}
-                  {(() => {
-                    const items = customSummary(colCtl.customFields, emp);
-                    return items.length ? (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-border/50">
-                        {items.map(({ def, text }) => (
-                          <span key={def.fieldName} className="text-[10px] text-slate-500"><b className="uppercase tracking-wider">{def.fieldLabel}:</b> {text}</span>
+                      {/* Row 2: roles */}
+                      <div className="flex flex-wrap gap-1">
+                        {roles.map((r, i) => (
+                          <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>
+                            {r}
+                          </span>
                         ))}
                       </div>
-                    ) : null;
-                  })()}
+
+                      {/* Row 3: email + phone */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Mail size={11} className="text-primary/40 flex-shrink-0" />
+                          <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 truncate">
+                            {emp.email || '—'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone size={11} className="text-primary/40 flex-shrink-0" />
+                          <span className="text-[11px] font-mono font-semibold text-slate-600 dark:text-slate-400">
+                            {emp.whatsappNumber || '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Row 4: linkage + status */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div>{renderTeamLinks(emp)}</div>
+                        {isOnLeave ? (
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <Plane size={11} className="text-amber-500" />
+                              <span className="text-[9px] font-black text-amber-600 uppercase">On Leave</span>
+                            </div>
+                            {leaveRangeText(emp.leaveStatus) && <div className="mt-0.5 text-[9px] font-bold text-slate-500">{leaveRangeText(emp.leaveStatus)}</div>}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span className="text-[9px] font-black text-emerald-600 uppercase">Active</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Company-defined extra fields (only the ones this person has a value for) */}
+                      {(() => {
+                        const items = customSummary(colCtl.customFields, emp);
+                        return items.length ? (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 border-t border-border/50">
+                            {items.map(({ def, text }) => (
+                              <span key={def.fieldName} className="text-[10px] text-slate-500"><b className="uppercase tracking-wider">{def.fieldLabel}:</b> {text}</span>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  </div>
+                );
+              }}
+            />
+
+            {/* ── EMPTY STATE ──────────────────────────────────────── */}
+            {filteredEmployees.length === 0 && (
+              <div className="bg-card border border-border rounded-2xl py-20 flex flex-col items-center gap-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-muted border border-border flex items-center justify-center">
+                  <Users size={24} className="text-slate-400" />
+                </div>
+                <div>
+                  <p className="font-black text-[10px] uppercase tracking-[0.4em] text-slate-500">No Results Found</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {searchTerm ? 'Try different search terms' : 'No employees have been added yet.'}
+                  </p>
                 </div>
               </div>
-            );
-            }}
-          />
-
-          {/* ── EMPTY STATE ──────────────────────────────────────── */}
-          {filteredEmployees.length === 0 && (
-            <div className="bg-card border border-border rounded-2xl py-20 flex flex-col items-center gap-4 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted border border-border flex items-center justify-center">
-                <Users size={24} className="text-slate-400" />
-              </div>
-              <div>
-                <p className="font-black text-[10px] uppercase tracking-[0.4em] text-slate-500">No Results Found</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {searchTerm ? 'Try different search terms' : 'No employees have been added yet.'}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -626,35 +639,35 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                   <p className="p-8 text-center text-xs text-slate-400">No one is linked.</p>
                 ) : (
                   <ResponsiveTable>
-                  <table className="mobile-card-table w-full text-left">
-                    <thead className="bg-muted/50 sticky top-0">
-                      <tr>
-                        {['Name', 'Roles', 'Department', 'Location', 'Phone'].map(h => (
-                          <th key={h} className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {people.map(p => {
-                        const pr = Array.isArray(p.roles) && p.roles.length ? p.roles : (p.role ? [p.role] : []);
-                        return (
-                          <tr key={p._id} className="border-t border-border/60">
-                            <td className="px-4 py-2.5 text-sm font-bold text-foreground">{p.name}</td>
-                            <td className="px-4 py-2.5">
-                              <div className="flex flex-wrap gap-1">
-                                {pr.map((r, i) => (
-                                  <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>{r}</span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">{p.department || '—'}</td>
-                            <td className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">{p.location || '—'}</td>
-                            <td className="px-4 py-2.5 text-[11px] font-mono text-slate-600 dark:text-slate-400">{p.whatsappNumber || '—'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    <table className="mobile-card-table w-full text-left">
+                      <thead className="bg-muted/50 sticky top-0">
+                        <tr>
+                          {['Name', 'Roles', 'Department', 'Location', 'Phone'].map(h => (
+                            <th key={h} className="px-4 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {people.map(p => {
+                          const pr = Array.isArray(p.roles) && p.roles.length ? p.roles : (p.role ? [p.role] : []);
+                          return (
+                            <tr key={p._id} className="border-t border-border/60">
+                              <td className="px-4 py-2.5 text-sm font-bold text-foreground">{p.name}</td>
+                              <td className="px-4 py-2.5">
+                                <div className="flex flex-wrap gap-1">
+                                  {pr.map((r, i) => (
+                                    <span key={i} className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${getRoleStyle(r)}`}>{r}</span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">{p.department || '—'}</td>
+                              <td className="px-4 py-2.5 text-[11px] font-semibold text-slate-600 dark:text-slate-400">{p.location || '—'}</td>
+                              <td className="px-4 py-2.5 text-[11px] font-mono text-slate-600 dark:text-slate-400">{p.whatsappNumber || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </ResponsiveTable>
                 )}
               </div>
@@ -690,11 +703,10 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Leave Status</span>
                 <button
                   onClick={() => setLeaveData({ ...leaveData, onLeave: !leaveData.onLeave })}
-                  className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm ${
-                    leaveData.onLeave
+                  className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-sm ${leaveData.onLeave
                       ? 'bg-amber-500 text-white'
                       : 'bg-muted text-slate-500 border border-border'
-                  }`}
+                    }`}
                 >
                   {leaveData.onLeave ? 'On Leave' : 'At Work'}
                 </button>
@@ -705,13 +717,13 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leave Start</label>
                   <input type="date" value={leaveData.startDate}
-                    onChange={(e) => setLeaveData({ ...leaveData, startDate: e.target.value })}
+                    onChange={(e) => setLeaveData({ ...leaveData, startDate: e.target.value, onLeave: true })}
                     className="w-full bg-background border border-border text-foreground px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leave End</label>
                   <input type="date" value={leaveData.endDate}
-                    onChange={(e) => setLeaveData({ ...leaveData, endDate: e.target.value })}
+                    onChange={(e) => setLeaveData({ ...leaveData, endDate: e.target.value, onLeave: true })}
                     className="w-full bg-background border border-border text-foreground px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20" />
                 </div>
               </div>
@@ -730,11 +742,10 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                   {eligibleBuddies.length > 0 ? eligibleBuddies.map(emp => (
                     <button key={emp._id}
                       onClick={() => { setLeaveData({ ...leaveData, buddyId: emp._id }); setBuddySearchQuery(emp.name); }}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-between ${
-                        leaveData.buddyId === emp._id
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all flex items-center justify-between ${leaveData.buddyId === emp._id
                           ? 'bg-amber-500 text-white'
                           : 'text-slate-500 hover:bg-card hover:text-foreground'
-                      }`}>
+                        }`}>
                       {emp.name}
                       {leaveData.buddyId === emp._id && <CheckCircle2 size={12} />}
                     </button>

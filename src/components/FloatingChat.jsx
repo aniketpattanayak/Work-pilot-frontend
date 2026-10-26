@@ -6,11 +6,11 @@ import { dialog } from './Dialog';
 import { useUploadLimit, checkFiles } from '../utils/uploadLimit';
 
 function Avatar({ name, size = 28 }) {
-  const colors = ['#185FA5','#0F6E56','#3C3489','#854F0B','#A32D2D','#3B6D11'];
+  const colors = ['#185FA5', '#0F6E56', '#3C3489', '#854F0B', '#A32D2D', '#3B6D11'];
   const color = colors[(name?.charCodeAt(0) || 0) % colors.length];
   return (
-    <div style={{ width:size, height:size, borderRadius:'50%', background:color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:size*0.38, fontWeight:600, color:'white', flexShrink:0 }}>
-      {(name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+    <div style={{ width: size, height: size, borderRadius: '50%', background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 600, color: 'white', flexShrink: 0 }}>
+      {(name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
     </div>
   );
 }
@@ -19,8 +19,8 @@ function timeAgo(date) {
   if (!date) return '';
   const diff = Math.floor((Date.now() - new Date(date)) / 1000);
   if (diff < 60) return 'now';
-  if (diff < 3600) return `${Math.floor(diff/60)}m`;
-  return new Date(date).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function FloatingChat({ currentUser, openTrigger }) {
@@ -28,11 +28,11 @@ export default function FloatingChat({ currentUser, openTrigger }) {
   if (typeof window !== 'undefined' && window.location.pathname.includes('/chat')) {
     return null;
   }
-  const [open, setOpen]             = useState(false);
-  const [view, setView]             = useState('list'); // 'list' | 'chat'
-  const [text, setText]             = useState('');
-  const [uploading, setUploading]   = useState(false);
-  const [file, setFile]             = useState(null);
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState('list'); // 'list' | 'chat'
+  const [text, setText] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile] = useState(null);
   const maxFileMb = useUploadLimit();
   const pickFile = (input) => {
     const { ok, problems } = checkFiles(input.files, maxFileMb);
@@ -40,8 +40,8 @@ export default function FloatingChat({ currentUser, openTrigger }) {
     setFile(ok[0] || null);
     input.value = '';
   };
-  const fileRef                     = useRef();
-  const messagesEndRef              = useRef();
+  const fileRef = useRef();
+  const messagesEndRef = useRef();
   const myId = currentUser?._id || currentUser?.id;
 
   const {
@@ -78,13 +78,28 @@ export default function FloatingChat({ currentUser, openTrigger }) {
     setText('');
     setFile(null);
     // Scroll to bottom
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }), 50);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   };
 
   const handleOpenConv = async (convId) => {
     await openConversation(convId);
     setView('chat');
   };
+
+  // A chat icon elsewhere in the app (task tables) asks for this popup to open on one conversation.
+  const openConvRef = useRef(handleOpenConv);
+  openConvRef.current = handleOpenConv;
+  useEffect(() => {
+    const onOpen = (e) => {
+      const d = e && e.detail;
+      if (!d || !d.convId) return;
+      d.handled = true;
+      setOpen(true);
+      openConvRef.current(d.convId);
+    };
+    window.addEventListener('wp:open-chat', onOpen);
+    return () => window.removeEventListener('wp:open-chat', onOpen);
+  }, []);
 
   const handleBack = () => {
     closeConversation();
@@ -93,73 +108,73 @@ export default function FloatingChat({ currentUser, openTrigger }) {
 
   const convTitle = activeConversation?.displayName || (
     activeConversation?.type === 'announcement' ? `📢 ${activeConversation.title}` :
-    activeConversation?.type === 'task' ? `📋 ${activeConversation.taskTitle}` :
-    'Direct Message'
+      activeConversation?.type === 'task' ? `📋 ${activeConversation.taskTitle}` :
+        'Direct Message'
   );
 
   return (
     // bottom offset includes the phone's home-indicator safe area so the
     // bubble never sits under it; className carries the mobile-only
     // full-screen panel override (see .floating-chat-panel in index.css).
-    <div className="floating-chat-launcher" style={{ position:'fixed', bottom:'calc(24px + env(safe-area-inset-bottom, 0px))', right:24, zIndex:1000, fontFamily:'var(--font-sans)' }}>
+    <div className="floating-chat-launcher" style={{ position: 'fixed', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', right: 24, zIndex: 1000, fontFamily: 'var(--font-sans)' }}>
 
       {/* ── Chat panel ── */}
       {open && (
         <div className="floating-chat-panel" style={{
-          position:'absolute', bottom:68, right:0,
-          width:340, height:480, maxHeight:'70vh',
-          background:'var(--color-card)',
-          borderRadius:16, boxShadow:'0 8px 40px rgba(0,0,0,0.18)',
-          border:'1px solid var(--color-border)',
-          display:'flex', flexDirection:'column', overflow:'hidden',
+          position: 'absolute', bottom: 68, right: 0,
+          width: 340, height: 480, maxHeight: '70vh',
+          background: 'var(--color-card)',
+          borderRadius: 16, boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
+          border: '1px solid var(--color-border)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
           {/* Header */}
-          <div style={{ padding:'12px 16px', background:'#185FA5', color:'white', display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ padding: '12px 16px', background: '#185FA5', color: 'white', display: 'flex', alignItems: 'center', gap: 8 }}>
             {view === 'chat' && (
-              <button onClick={handleBack} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:2, display:'flex', marginRight:4 }}>
+              <button onClick={handleBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', padding: 2, display: 'flex', marginRight: 4 }}>
                 <ChevronLeft size={18} />
               </button>
             )}
-            <span style={{ fontWeight:700, fontSize:14, flex:1 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
               {view === 'list' ? 'Messages' : convTitle}
             </span>
-            <button onClick={() => setOpen(false)} style={{ background:'none', border:'none', cursor:'pointer', color:'white', padding:2, display:'flex' }}>
+            <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'white', padding: 2, display: 'flex' }}>
               <X size={16} />
             </button>
           </div>
 
           {/* ── CONVERSATION LIST ── */}
           {view === 'list' && (
-            <div style={{ flex:1, overflowY:'auto' }}>
+            <div style={{ flex: 1, overflowY: 'auto' }}>
               {conversations.length === 0 && (
-                <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--color-muted-foreground)', fontSize:13 }}>
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--color-muted-foreground)', fontSize: 13 }}>
                   No conversations yet
                 </div>
               )}
               {conversations.map(conv => {
                 const title = conv.displayName || (
                   conv.type === 'announcement' ? `📢 ${conv.title}` :
-                  conv.type === 'task' ? `📋 ${conv.taskTitle}` :
-                  conv.lastMessage?.senderName || 'Direct Message'
+                    conv.type === 'task' ? `📋 ${conv.taskTitle}` :
+                      conv.lastMessage?.senderName || 'Direct Message'
                 );
                 const unread = conv.unreadCount || 0;
                 return (
                   <div key={conv._id} onClick={() => handleOpenConv(conv._id)}
-                    style={{ display:'flex', gap:10, alignItems:'center', padding:'10px 14px', cursor:'pointer', borderBottom:'1px solid var(--color-border)' }}
+                    style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'var(--color-muted)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <Avatar name={title} />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:12, fontWeight:600, color:'var(--color-foreground)' }}>{title}</span>
-                        <span style={{ fontSize:10, color:'var(--color-muted-foreground)' }}>{timeAgo(conv.lastMessage?.sentAt)}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-foreground)' }}>{title}</span>
+                        <span style={{ fontSize: 10, color: 'var(--color-muted-foreground)' }}>{timeAgo(conv.lastMessage?.sentAt)}</span>
                       </div>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:2 }}>
-                        <span style={{ fontSize:11, color:'var(--color-muted-foreground)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:200 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                        <span style={{ fontSize: 11, color: 'var(--color-muted-foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
                           {conv.lastMessage?.text || 'No messages yet'}
                         </span>
                         {unread > 0 && (
-                          <span style={{ background:'#185FA5', color:'white', borderRadius:8, fontSize:9, fontWeight:700, padding:'1px 5px', flexShrink:0 }}>
+                          <span style={{ background: '#185FA5', color: 'white', borderRadius: 8, fontSize: 9, fontWeight: 700, padding: '1px 5px', flexShrink: 0 }}>
                             {unread}
                           </span>
                         )}
@@ -174,32 +189,32 @@ export default function FloatingChat({ currentUser, openTrigger }) {
           {/* ── MESSAGES ── */}
           {view === 'chat' && (
             <>
-              <div style={{ flex:1, overflowY:'auto', padding:'12px 14px', display:'flex', flexDirection:'column', gap:2 }}>
-                {loadingMsgs && <div style={{ textAlign:'center', fontSize:11, color:'var(--color-muted-foreground)' }}>Loading…</div>}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {loadingMsgs && <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-muted-foreground)' }}>Loading…</div>}
                 {messages.map((msg, i) => {
                   const isMine = msg.senderId?.toString() === myId?.toString();
                   return (
-                    <div key={msg._id || i} style={{ display:'flex', flexDirection: isMine ? 'row-reverse' : 'row', gap:6, marginBottom:3, alignItems:'flex-end' }}>
+                    <div key={msg._id || i} style={{ display: 'flex', flexDirection: isMine ? 'row-reverse' : 'row', gap: 6, marginBottom: 3, alignItems: 'flex-end' }}>
                       {!isMine && <Avatar name={msg.senderName} size={24} />}
-                      <div style={{ maxWidth:'75%' }}>
+                      <div style={{ maxWidth: '75%' }}>
                         <div style={{
                           background: isMine ? '#185FA5' : 'var(--color-muted)',
                           color: isMine ? 'white' : 'var(--color-foreground)',
                           borderRadius: isMine ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
                           padding: msg.fileUrl ? '6px' : '8px 12px',
-                          fontSize:12, lineHeight:1.5,
+                          fontSize: 12, lineHeight: 1.5,
                         }}>
                           {msg.fileUrl ? (
                             msg.fileType?.startsWith('image/') ? (
-                              <img src={msg.fileUrl} alt="" style={{ maxWidth:180, maxHeight:160, borderRadius:8, display:'block', cursor:'pointer' }} onClick={() => window.open(msg.fileUrl,'_blank')} />
+                              <img src={msg.fileUrl} alt="" style={{ maxWidth: 180, maxHeight: 160, borderRadius: 8, display: 'block', cursor: 'pointer' }} onClick={() => window.open(msg.fileUrl, '_blank')} />
                             ) : (
-                              <a href={msg.fileUrl} target="_blank" rel="noreferrer" style={{ color: isMine ? 'white' : 'var(--color-primary)', fontSize:11, display:'flex', alignItems:'center', gap:5 }}>
+                              <a href={msg.fileUrl} target="_blank" rel="noreferrer" style={{ color: isMine ? 'white' : 'var(--color-primary)', fontSize: 11, display: 'flex', alignItems: 'center', gap: 5 }}>
                                 <Paperclip size={12} />{msg.fileName || 'File'}
                               </a>
                             )
                           ) : msg.text}
                         </div>
-                        <div style={{ fontSize:9, color:'var(--color-muted-foreground)', textAlign: isMine ? 'right' : 'left', marginTop:1 }}>
+                        <div style={{ fontSize: 9, color: 'var(--color-muted-foreground)', textAlign: isMine ? 'right' : 'left', marginTop: 1 }}>
                           {timeAgo(msg.createdAt)}
                         </div>
                       </div>
@@ -211,30 +226,30 @@ export default function FloatingChat({ currentUser, openTrigger }) {
 
               {/* Input */}
               {activeConversation?.type !== 'announcement' || currentUser?.role === 'Admin' ? (
-                <div style={{ padding:'8px 12px', borderTop:'1px solid var(--color-border)', background:'var(--color-card)' }}>
+                <div style={{ padding: '8px 12px', borderTop: '1px solid var(--color-border)', background: 'var(--color-card)' }}>
                   {file && (
-                    <div style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 8px', background:'var(--color-muted)', borderRadius:6, marginBottom:6, fontSize:11 }}>
-                      <Paperclip size={11} /><span style={{ flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{file.name}</span>
-                      <button onClick={() => setFile(null)} style={{ background:'none', border:'none', cursor:'pointer' }}><X size={11} /></button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: 'var(--color-muted)', borderRadius: 6, marginBottom: 6, fontSize: 11 }}>
+                      <Paperclip size={11} /><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                      <button onClick={() => setFile(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={11} /></button>
                     </div>
                   )}
-                  <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-                    <button onClick={() => fileRef.current?.click()} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--color-muted-foreground)', padding:4, display:'flex' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button onClick={() => fileRef.current?.click()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-muted-foreground)', padding: 4, display: 'flex' }}>
                       <Paperclip size={15} />
                     </button>
-                    <input ref={fileRef} type="file" style={{ display:'none' }} onChange={e => pickFile(e.target)} />
+                    <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={e => pickFile(e.target)} />
                     <input value={text} onChange={e => { setText(e.target.value); sendTyping(activeConvId); }}
-                      onKeyDown={e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                       placeholder="Message…"
-                      style={{ flex:1, background:'var(--color-muted)', border:'1px solid var(--color-border)', borderRadius:20, padding:'6px 12px', fontSize:12, color:'var(--color-foreground)', outline:'none', fontFamily:'inherit' }} />
+                      style={{ flex: 1, background: 'var(--color-muted)', border: '1px solid var(--color-border)', borderRadius: 20, padding: '6px 12px', fontSize: 12, color: 'var(--color-foreground)', outline: 'none', fontFamily: 'inherit' }} />
                     <button onClick={handleSend} disabled={!text.trim() && !file}
-                      style={{ background:'#185FA5', border:'none', borderRadius:'50%', width:30, height:30, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, opacity: (!text.trim() && !file) ? 0.5 : 1 }}>
+                      style={{ background: '#185FA5', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, opacity: (!text.trim() && !file) ? 0.5 : 1 }}>
                       <Send size={13} color="white" />
                     </button>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding:'8px', textAlign:'center', fontSize:11, color:'var(--color-muted-foreground)', borderTop:'1px solid var(--color-border)' }}>
+                <div style={{ padding: '8px', textAlign: 'center', fontSize: 11, color: 'var(--color-muted-foreground)', borderTop: '1px solid var(--color-border)' }}>
                   Read-only announcement
                 </div>
               )}
@@ -247,12 +262,12 @@ export default function FloatingChat({ currentUser, openTrigger }) {
           MobileDualLauncher instead, see .launcher-btn-desktop-only in index.css) */}
       <button onClick={() => setOpen(p => !p)}
         className="launcher-btn-desktop-only"
-        style={{ width:52, height:52, borderRadius:'50%', background:'#185FA5', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(24,95,165,0.4)', position:'relative', transition:'transform .15s' }}
+        style={{ width: 52, height: 52, borderRadius: '50%', background: '#185FA5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 20px rgba(24,95,165,0.4)', position: 'relative', transition: 'transform .15s' }}
         onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
         {open ? <X size={22} color="white" /> : <MessageSquare size={22} color="white" />}
         {!open && totalUnread > 0 && (
-          <div style={{ position:'absolute', top:-2, right:-2, background:'#E24B4A', color:'white', borderRadius:10, fontSize:10, fontWeight:700, padding:'1px 5px', minWidth:18, textAlign:'center', border:'2px solid var(--color-background)' }}>
+          <div style={{ position: 'absolute', top: -2, right: -2, background: '#E24B4A', color: 'white', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 5px', minWidth: 18, textAlign: 'center', border: '2px solid var(--color-background)' }}>
             {totalUnread > 99 ? '99+' : totalUnread}
           </div>
         )}

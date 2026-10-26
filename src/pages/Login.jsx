@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import API from '../api/axiosConfig'; 
+import API from '../api/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { getSubdomain } from '../utils/subdomain';
-import { 
-  ShieldCheck, 
-  Mail, 
-  Lock, 
-  LogIn, 
-  RefreshCcw, 
-  AlertTriangle, 
+import {
+  ShieldCheck,
+  Mail,
+  Lock,
+  LogIn,
+  RefreshCcw,
+  AlertTriangle,
   Factory,
   Eye,     // Added for password visibility
   EyeOff   // Added for password visibility
@@ -27,7 +27,7 @@ const Login = ({ onLoginSuccess }) => {
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const navigate = useNavigate();
   const subdomain = getSubdomain();
 
@@ -42,7 +42,7 @@ const Login = ({ onLoginSuccess }) => {
         setTenant(res.data);
       } catch (err) {
         console.error("Factory verification failed:", err);
-        setTenant(null); 
+        setTenant(null);
       } finally {
         setLoading(false);
       }
@@ -56,24 +56,25 @@ const Login = ({ onLoginSuccess }) => {
    */
   const handleLogin = async (e) => {
     e.preventDefault();
-    
+
     if (!subdomain) return alert("Security Error: No subdomain detected.");
     if (!tenant) return alert("System Error: Factory node not verified.");
 
     try {
       setIsSubmitting(true);
       const res = await API.post('/tasks/login-employee', {
-        email, 
-        password, 
+        email,
+        password,
         subdomain
       });
-      
+
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
       const actualTenantId = res.data.tenantId || tenant.id || tenant._id;
       localStorage.setItem('tenantId', actualTenantId);
-      
-      onLoginSuccess(res.data.user, actualTenantId); 
+
+      try { sessionStorage.removeItem('wpLanded'); } catch (e) { /* ignore */ }
+      onLoginSuccess(res.data.user, actualTenantId);
       navigate('/dashboard');
     } catch (err) {
       console.error("Login Error Object:", err);
@@ -81,8 +82,8 @@ const Login = ({ onLoginSuccess }) => {
       // Subscription paused — redirect to suspended screen immediately
       if (err.response?.status === 403 && err.response?.data?.code === 'SUBSCRIPTION_PAUSED') {
         const { reason, pausedAt } = err.response.data;
-        sessionStorage.setItem('suspendedReason',      reason   || '');
-        sessionStorage.setItem('suspendedPausedAt',    pausedAt || '');
+        sessionStorage.setItem('suspendedReason', reason || '');
+        sessionStorage.setItem('suspendedPausedAt', pausedAt || '');
         sessionStorage.setItem('suspendedCompanyName', tenant?.companyName || '');
         navigate('/suspended');
         return;
@@ -137,15 +138,15 @@ const Login = ({ onLoginSuccess }) => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-[440px] w-full bg-card border border-border rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-8 md:p-12 backdrop-blur-2xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-1000">
-        
+
         {/* Branding Section (Responsive) */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mx-auto mb-8 min-h-[90px] group">
             {tenant?.logo ? (
-              <img 
-                src={tenant?.logo} 
-                alt="Factory Emblem" 
-                className="max-w-[200px] max-h-[90px] object-contain transition-transform duration-700 group-hover:scale-105" 
+              <img
+                src={tenant?.logo}
+                alt="Factory Emblem"
+                className="max-w-[200px] max-h-[90px] object-contain transition-transform duration-700 group-hover:scale-105"
               />
             ) : (
               <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-inner group-hover:border-primary/40 transition-all">
@@ -161,18 +162,18 @@ const Login = ({ onLoginSuccess }) => {
             <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Secure Terminal Entry</span>
           </div>
         </div>
-        
+
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Personnel Email</label>
             <div className="relative group">
               <Mail className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
-              <input 
-                type="email" 
-                placeholder="name@factory.com" 
+              <input
+                type="email"
+                placeholder="name@factory.com"
                 required
                 className="w-full bg-background border border-border text-foreground pl-12 sm:pl-14 pr-6 py-4 sm:py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-bold text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700"
-                onChange={(e) => setEmail(e.target.value)} 
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
@@ -181,12 +182,12 @@ const Login = ({ onLoginSuccess }) => {
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-2">Password</label>
             <div className="relative group">
               <Lock className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
-              <input 
+              <input
                 type={showPassword ? "text" : "password"} // Dynamic Type Toggle
-                placeholder="••••••••" 
+                placeholder="••••••••"
                 required
                 className="w-full bg-background border border-border text-foreground pl-12 sm:pl-14 pr-14 py-4 sm:py-5 rounded-2xl outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all font-black text-sm shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-700 tracking-widest"
-                onChange={(e) => setPassword(e.target.value)} 
+                onChange={(e) => setPassword(e.target.value)}
               />
               {/* Visibility Toggle Button */}
               <button
@@ -200,25 +201,25 @@ const Login = ({ onLoginSuccess }) => {
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={isSubmitting}
             className="w-full mt-6 py-5 rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-white dark:text-slate-950 font-black text-xs sm:text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-4 cursor-pointer"
           >
             {isSubmitting ? (
-                <RefreshCcw className="animate-spin" size={20} />
+              <RefreshCcw className="animate-spin" size={20} />
             ) : (
-                <LogIn size={20} />
+              <LogIn size={20} />
             )}
             {isSubmitting ? "Authenticating..." : "Authorize Terminal"}
           </button>
         </form>
 
         <div className="mt-12 pt-8 border-t border-border/50 text-center">
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] leading-relaxed">
-                Multi-Tenant Protocol v1.6.0<br/>
-                <span className="opacity-60 font-bold">Encrypted Node Handshake Active</span>
-            </p>
+          <p className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] leading-relaxed">
+            Multi-Tenant Protocol v1.6.0<br />
+            <span className="opacity-60 font-bold">Encrypted Node Handshake Active</span>
+          </p>
         </div>
       </div>
     </div>

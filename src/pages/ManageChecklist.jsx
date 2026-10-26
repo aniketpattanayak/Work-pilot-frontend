@@ -29,6 +29,7 @@ import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '../components/useChat';
+import { openChatPopup } from '../utils/openChatPopup';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
@@ -53,7 +54,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const openChat = async (item) => {
     const idOf = (v) => String((v && v._id) || v || '');
     const conv = await openTaskThread({ taskId: item._id, taskType: 'checklist', taskTitle: item.taskName, participants: [idOf(item.doerId), idOf(item.createdBy) || assignerId].filter(Boolean) });
-    if (conv && conv._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+    if (conv && conv._id && !openChatPopup(conv._id)) navigate(`/dashboard/chat?conv=${conv._id}`);
   };
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -98,7 +99,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let pointer = new Date(today);
-    const weekends = tenantSettings?.weekends || [0];
+    // A person who works on Sundays keeps Sunday as a working day; everyone else has it off.
+    const doerEmp = employees.find(e => String(e._id) === String(item.doerId?._id || item.doerId));
+    const weekends = (tenantSettings?.weekends || [0]).filter(d => !(d === 0 && (doerEmp?.workOnSunday || item.doerId?.workOnSunday)));
     const holidays = tenantSettings?.holidays || [];
 
     const normalizeDate = (d) => {
@@ -156,15 +159,21 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       return dates;
     }
 
+    // A scheduled day that is a day off (Sunday off, weekly off, holiday) moves to the next working day,
+    // e.g. Sunday 8 Nov for someone who has Sunday off shows on Monday 9 Nov.
+    const fmt = (d) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    let lastShown = 0;
     let loopSafety = 0;
     while (dates.length < 5 && loopSafety < 1000) {
       loopSafety++;
-      if (pointer.getDay() === 0 && weekends.includes(0)) {
-        pointer.setDate(pointer.getDate() + 1);
-        continue;
-      }
-      if (matchesConfig(pointer) && !isNonWorkingDay(pointer)) {
-        dates.push({ label: dates.length === 0 ? "NEXT" : "FOLLOWING", date: new Date(pointer).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) });
+      if (matchesConfig(pointer)) {
+        const shown = new Date(pointer);
+        let guard = 0;
+        while (isNonWorkingDay(shown) && guard++ < 60) shown.setDate(shown.getDate() + 1);
+        if (shown.getTime() > lastShown) {
+          lastShown = shown.getTime();
+          dates.push({ label: dates.length === 0 ? "NEXT" : "FOLLOWING", date: fmt(shown) });
+        }
       }
       pointer.setDate(pointer.getDate() + 1);
     }
@@ -194,7 +203,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     try {
       setLoading(true);
       const [checkRes, empRes, settingsRes] = await Promise.all([
-        API.get(`/tasks/checklist-all/${currentTenantId}`).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { _: Date.now() } }).catch(() => ({ data: [] })),
         API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
@@ -206,6 +215,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
     } catch (err) { console.error("Fetch error:", err); } finally { setLoading(false); }
   }, [currentTenantId]);
+
+  // Refresh button: same as Manage Delegation - clear the filters and reload everything.
+  const handleRefresh = () => { setSearchTerm(''); setSelectedDate(''); setActiveTab('All'); fetchData(); };
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -270,28 +282,32 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span> },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
     { key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span> },
-    { key: 'schedule', label: 'Schedule', width: 'minmax(0,1fr)', cellClassName: 'min-w-0', render: (item) => {
-      const schedule = getNextFiveDates(item);
-      return (
-        <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
-          {schedule.length > 0 ? schedule.map((obj, i) => (<option key={i}>{obj.label} → {obj.date}</option>)) : <option>Synced</option>}
-        </select>
-      );
-    } },
-    { key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
-      <>
-        {chatEnabled && !isViewer && (
-          <button onClick={(e) => { e.stopPropagation(); openChat(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg" title="Message"><MessageSquare size={14} /></button>
-        )}
-        <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
-        {!isViewer && (
-          <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
-        )}
-        {!isViewer && (
-          <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist"><Trash2 size={14} /></button>
-        )}
-      </>
-    ) },
+    {
+      key: 'schedule', label: 'Schedule', width: 'minmax(0,1fr)', cellClassName: 'min-w-0', render: (item) => {
+        const schedule = getNextFiveDates(item);
+        return (
+          <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
+            {schedule.length > 0 ? schedule.map((obj, i) => (<option key={i}>{obj.label} → {obj.date}</option>)) : <option>Synced</option>}
+          </select>
+        );
+      }
+    },
+    {
+      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
+        <>
+          {chatEnabled && !isViewer && (
+            <button onClick={(e) => { e.stopPropagation(); openChat(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg" title="Message"><MessageSquare size={14} /></button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
+          {!isViewer && (
+            <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
+          )}
+          {!isViewer && (
+            <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist"><Trash2 size={14} /></button>
+          )}
+        </>
+      )
+    },
   ];
   const checklistCtl = useConfigurableColumns({ tableKey: 'checklist_table', columns: checklistColumns, customFieldEntity: 'task', phoneUsesDefaults: true });
 
@@ -334,7 +350,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
           <div className="hidden md:block"><ColumnCustomizer ctl={checklistCtl} /></div>
           <button
-            onClick={fetchData}
+            onClick={handleRefresh}
             className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
