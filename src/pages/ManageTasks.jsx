@@ -34,6 +34,7 @@ import {
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
 import { useChat } from '../components/useChat';
+import { openChatPopup } from '../utils/openChatPopup';
 import { isViewerOnly } from '../utils/viewerMode';
 import { dialog } from '../components/Dialog';
 import ImageLightbox from '../components/ImageLightbox';
@@ -63,7 +64,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
-    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+    if (conv?._id && !openChatPopup(conv._id)) navigate(`/dashboard/chat?conv=${conv._id}`);
   }, [openTaskThread, navigate]);
   const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);

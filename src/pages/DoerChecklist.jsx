@@ -5,6 +5,7 @@ import RevisionPanel from '../components/RevisionPanel';
 import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import { useChat } from '../components/useChat';
+import { openChatPopup } from '../utils/openChatPopup';
 import ImageLightbox from '../components/ImageLightbox';
 import LocalFileThumb from '../components/LocalFileThumb';
 import { useUploadLimit, checkFiles, uploadHint } from '../utils/uploadLimit';
@@ -92,7 +93,7 @@ const DoerChecklist = ({ doerId }) => {
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
-    if (conv?._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+    if (conv?._id && !openChatPopup(conv._id)) navigate(`/dashboard/chat?conv=${conv._id}`);
   }, [openTaskThread, navigate]);
   // History/files details modal: mirrors the assigner-side one in
   // ManageTasks.jsx so the doer can see every uploaded photo and the full

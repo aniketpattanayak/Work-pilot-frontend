@@ -86,6 +86,21 @@ export default function FloatingChat({ currentUser, openTrigger }) {
     setView('chat');
   };
 
+  // A chat icon elsewhere in the app (task tables) asks for this popup to open on one conversation.
+  const openConvRef = useRef(handleOpenConv);
+  openConvRef.current = handleOpenConv;
+  useEffect(() => {
+    const onOpen = (e) => {
+      const d = e && e.detail;
+      if (!d || !d.convId) return;
+      d.handled = true;
+      setOpen(true);
+      openConvRef.current(d.convId);
+    };
+    window.addEventListener('wp:open-chat', onOpen);
+    return () => window.removeEventListener('wp:open-chat', onOpen);
+  }, []);
+
   const handleBack = () => {
     closeConversation();
     setView('list');

@@ -29,6 +29,7 @@ import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
 import { useNavigate } from 'react-router-dom';
 import { useChat } from '../components/useChat';
+import { openChatPopup } from '../utils/openChatPopup';
 import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
@@ -53,7 +54,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const openChat = async (item) => {
     const idOf = (v) => String((v && v._id) || v || '');
     const conv = await openTaskThread({ taskId: item._id, taskType: 'checklist', taskTitle: item.taskName, participants: [idOf(item.doerId), idOf(item.createdBy) || assignerId].filter(Boolean) });
-    if (conv && conv._id) navigate(`/dashboard/chat?conv=${conv._id}`);
+    if (conv && conv._id && !openChatPopup(conv._id)) navigate(`/dashboard/chat?conv=${conv._id}`);
   };
   const [checklists, setChecklists] = useState([]);
   const [employees, setEmployees] = useState([]);
