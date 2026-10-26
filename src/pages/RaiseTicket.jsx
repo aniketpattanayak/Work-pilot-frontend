@@ -257,7 +257,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
                       </td>
                       <td className="px-4 py-3 border-b border-border/40">
                         <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-xl border font-black text-[10px] uppercase tracking-widest ${isResolved ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isResolved ? 'bg-emerald-500' : 'bg-amber-500'}`} />{ticket.status}
+                          <span className={`w-1.5 h-1.5 rounded-full ${isResolved ? 'bg-emerald-500' : 'bg-amber-500'}`} />{isResolved ? 'Done' : ticket.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs font-bold text-slate-500 border-b border-border/40 whitespace-nowrap">{fmtDate(ticket.createdAt)}</td>
@@ -315,7 +315,7 @@ const RaiseTicket = ({ userId, tenantId }) => {
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-xs text-slate-400 font-bold">Waiting for support to look at this ticket.</p>
+                                <p className="text-xs text-slate-400 font-bold">{ticket.status === 'In-Progress' ? 'Support is working on this ticket now.' : 'Waiting for support to look at this ticket.'}</p>
                               )}
                             </div>
                           </div>

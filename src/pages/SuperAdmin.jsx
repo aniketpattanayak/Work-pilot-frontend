@@ -97,7 +97,8 @@ function Badge({ type }) {
     due:        { bg:C.amberL, color:C.amberT, dot:C.amber,  label:'Due'        },
     overdue:    { bg:C.redL,   color:C.redT,   dot:C.red,    label:'Overdue'    },
     open:       { bg:C.amberL, color:C.amberT, dot:C.amber,  label:'Open'       },
-    resolved:   { bg:C.greenL, color:C.greenT, dot:C.green,  label:'Resolved'   },
+    resolved:   { bg:C.greenL, color:C.greenT, dot:C.green,  label:'Done'       },
+    inprogress: { bg:C.blueL,  color:C.blueT,  dot:C.blue,   label:'In progress'},
     high:       { bg:C.redL,   color:C.redT,   dot:C.red,    label:'High'       },
     medium:     { bg:C.amberL, color:C.amberT, dot:C.amber,  label:'Medium'     },
     low:        { bg:'#F9FAFB',color:C.muted,  dot:'#D0D5DD',label:'Low'        },
@@ -1070,14 +1071,33 @@ function TicketsModal({ onClose }) {
   useEffect(loadTickets, []);
 
   const handleResolve = async (id) => {
+    if (saving) return;
+    const note = remarks.trim();
+    if (!note) { alert('Please write how the issue was resolved before marking it Done.'); return; }
     setSaving(true);
     try {
-      // Try both resolve endpoints
-      // Use the correct endpoint: PUT /tickets/resolve with ticketId in body
-      await SA.put('/tickets/resolve', { ticketId: id, adminRemarks: remarks });
-      setTickets(p => p.map(t => t._id===id ? {...t, status:'Resolved', adminRemarks:remarks, resolutionRemarks:remarks} : t));
+      const r = await SA.put('/tickets/resolve', { ticketId: id, adminRemarks: note });
+      const done = (r.data && r.data.ticket) || {};
+      setTickets(p => p.map(t => t._id===id ? {...t, status:'Resolved', adminRemarks:note, resolutionRemarks:note, resolvedAt: done.resolvedAt || new Date().toISOString()} : t));
       setSelected(null); setRemarks('');
-    } catch(e) { alert('Failed to resolve: ' + (e.response?.data?.message||e.message)); }
+    } catch(e) {
+      alert('Could not mark it Done: ' + (e.response?.data?.message||e.message));
+      if (e.response && e.response.status === 409) loadTickets(); // someone already finished it: show the real state
+    }
+    finally { setSaving(false); }
+  };
+
+  // Open -> In progress
+  const handleStart = async (id) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await SA.put('/tickets/start', { ticketId: id });
+      setTickets(p => p.map(t => t._id===id ? {...t, status:'In-Progress'} : t));
+    } catch(e) {
+      alert('Could not start the ticket: ' + (e.response?.data?.message||e.message));
+      loadTickets();
+    }
     finally { setSaving(false); }
   };
 
@@ -1122,7 +1142,7 @@ function TicketsModal({ onClose }) {
             {[
               ['all',      'All',      tickets.length,  C.muted,  '#F9FAFB'],
               ['open',     'Open',     openCount,        C.amber,  C.amberL],
-              ['resolved', 'Resolved', resolvedCount,    C.green,  C.greenL],
+              ['resolved', 'Done', resolvedCount,    C.green,  C.greenL],
             ].map(([f, label, count, color, bg]) => (
               <button key={f} onClick={() => setFilter(f)}
                 style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px',
@@ -1193,7 +1213,7 @@ function TicketsModal({ onClose }) {
                       </div>
                       <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                         {t.priority && <Badge type={t.priority}/>}
-                        <Badge type={isResolved ? 'resolved' : 'open'}/>
+                        <Badge type={isResolved ? 'resolved' : (String(t.status||'').toLowerCase()==='in-progress' ? 'inprogress' : 'open')}/>
                       </div>
                     </div>
 
@@ -1237,7 +1257,7 @@ function TicketsModal({ onClose }) {
                         fontSize:12, color:C.greenT, display:'flex', gap:6, alignItems:'flex-start' }}>
                         <CheckCircle2 size={14} style={{ flexShrink:0, marginTop:1 }}/>
                         <div>
-                          <div style={{ fontWeight:600, marginBottom:2 }}>Resolved</div>
+                          <div style={{ fontWeight:600, marginBottom:2 }}>Done{t.resolvedAt ? ' · ' + new Date(t.resolvedAt).toLocaleString('en-IN', { timeZone:'Asia/Kolkata', day:'2-digit', month:'short', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true }) : ''}</div>
                           {(t.resolutionRemarks || t.adminRemarks || t.remarks || t.resolution) &&
                             <div style={{ opacity:.85 }}>{t.resolutionRemarks || t.adminRemarks || t.remarks || t.resolution}</div>
                           }
@@ -1253,15 +1273,23 @@ function TicketsModal({ onClose }) {
                           <button onClick={()=>{setSelected(null);setRemarks('');}} style={secondaryBtn}>Cancel</button>
                           <button onClick={()=>handleResolve(t._id)} disabled={saving}
                             style={{ ...primaryBtn, background:C.green }}>
-                            <CheckCircle2 size={14}/>{saving?'Saving…':'Mark as resolved'}
+                            <CheckCircle2 size={14}/>{saving?'Saving…':'Mark as Done'}
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <button onClick={()=>setSelected(t._id)}
-                        style={{ ...secondaryBtn, fontSize:12, marginTop:4 }}>
-                        <CheckCircle2 size={13}/> Resolve this ticket
-                      </button>
+                      <div style={{ display:'flex', gap:8, marginTop:4, flexWrap:'wrap' }}>
+                        {String(t.status||'').toLowerCase()==='open' && (
+                          <button onClick={()=>handleStart(t._id)} disabled={saving}
+                            style={{ ...secondaryBtn, fontSize:12 }}>
+                            <Clock size={13}/> Start work
+                          </button>
+                        )}
+                        <button onClick={()=>{setSelected(t._id); setRemarks('');}}
+                          style={{ ...secondaryBtn, fontSize:12 }}>
+                          <CheckCircle2 size={13}/> Mark as Done
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
