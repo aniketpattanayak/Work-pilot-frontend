@@ -8,6 +8,12 @@ import ColumnCustomizer from '../components/ColumnCustomizer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { customSummary } from '../utils/customFieldsConfig';
 
+// 26/10/2026 style date, and the saved leave range as "26/10/2026 to 29/10/2026".
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtDMY = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; };
+const toInputDate = (v) => { if (!v) return ''; const d = new Date(v); return Number.isNaN(d.getTime()) ? '' : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
+const leaveRangeText = (ls) => (ls && ls.startDate && ls.endDate ? `${fmtDMY(ls.startDate)} to ${fmtDMY(ls.endDate)}` : '');
+
 // On leave only while today is inside the saved date range (same rule as the server).
 const isOnLeaveNow = (ls) => {
   if (!ls || !ls.onLeave) return false;
@@ -79,11 +85,13 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
   const openLeaveManager = (emp) => {
     setSelectedEmp(emp);
     setBuddySearchQuery('');
+    // Show the person's real state: On Leave (with the saved dates) or At Work.
+    const nowOnLeave = isOnLeaveNow(emp.leaveStatus);
     setLeaveData({
-      onLeave: true,
-      startDate: '',
-      endDate: '',
-      buddyId: ''
+      onLeave: nowOnLeave,
+      startDate: nowOnLeave ? toInputDate(emp.leaveStatus && emp.leaveStatus.startDate) : '',
+      endDate: nowOnLeave ? toInputDate(emp.leaveStatus && emp.leaveStatus.endDate) : '',
+      buddyId: nowOnLeave && emp.leaveStatus && emp.leaveStatus.buddyId ? emp.leaveStatus.buddyId : ''
     });
     setShowLeaveModal(true);
   };
@@ -328,9 +336,12 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
         return (
                       <div>
                         {isOnLeave ? (
+                          <div>
                           <div className="flex items-center gap-1.5">
                             <Plane size={11} className="text-amber-500 flex-shrink-0" />
                             <span className="text-[9px] font-black text-amber-600 uppercase tracking-tight">On Leave</span>
+                          </div>
+                          {leaveRangeText(emp.leaveStatus) && <div className="mt-0.5 text-[9px] font-bold text-slate-500 whitespace-nowrap" data-testid="leave-range">{leaveRangeText(emp.leaveStatus)}</div>}
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5">
@@ -557,9 +568,12 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                   <div className="flex items-center justify-between pt-1">
                     <div>{renderTeamLinks(emp)}</div>
                     {isOnLeave ? (
-                      <div className="flex items-center gap-1.5">
-                        <Plane size={11} className="text-amber-500" />
-                        <span className="text-[9px] font-black text-amber-600 uppercase">On Leave</span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <Plane size={11} className="text-amber-500" />
+                          <span className="text-[9px] font-black text-amber-600 uppercase">On Leave</span>
+                        </div>
+                        {leaveRangeText(emp.leaveStatus) && <div className="mt-0.5 text-[9px] font-bold text-slate-500">{leaveRangeText(emp.leaveStatus)}</div>}
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
@@ -705,13 +719,13 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leave Start</label>
                   <input type="date" value={leaveData.startDate}
-                    onChange={(e) => setLeaveData({ ...leaveData, startDate: e.target.value })}
+                    onChange={(e) => setLeaveData({ ...leaveData, startDate: e.target.value, onLeave: true })}
                     className="w-full bg-background border border-border text-foreground px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Leave End</label>
                   <input type="date" value={leaveData.endDate}
-                    onChange={(e) => setLeaveData({ ...leaveData, endDate: e.target.value })}
+                    onChange={(e) => setLeaveData({ ...leaveData, endDate: e.target.value, onLeave: true })}
                     className="w-full bg-background border border-border text-foreground px-3 py-2.5 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20" />
                 </div>
               </div>
