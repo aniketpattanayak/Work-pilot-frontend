@@ -73,6 +73,7 @@ const Login = ({ onLoginSuccess }) => {
       const actualTenantId = res.data.tenantId || tenant.id || tenant._id;
       localStorage.setItem('tenantId', actualTenantId);
       
+      try { sessionStorage.removeItem('wpLanded'); } catch (e) { /* ignore */ }
       onLoginSuccess(res.data.user, actualTenantId); 
       navigate('/dashboard');
     } catch (err) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import API from "../api/axiosConfig";
 import useCompanySettings from "../hooks/useCompanySettings";
@@ -166,6 +166,20 @@ const sessionUser = liveUser;
 
   // Determine if user has Administrative clearance
   const isAdmin = userRoles.some((role) => role.toLowerCase() === "admin");
+
+  // An Assigner (who is not an Admin) lands on Manage Delegation right after logging in / opening the site.
+  // Only the first screen of a login does this: the Dashboard menu item still opens the Dashboard afterwards.
+  const firstScreen = useRef((() => { try { return !sessionStorage.getItem('wpLanded'); } catch (e) { return false; } })());
+  const landOnDelegation = firstScreen.current && (() => {
+    const lower = userRoles.map((r) => String(r).toLowerCase());
+    return lower.includes('assigner') && !lower.includes('admin');
+  })();
+  useEffect(() => {
+    try { sessionStorage.setItem('wpLanded', '1'); } catch (e) { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    if (!/\/dashboard\/?$/.test(location.pathname)) firstScreen.current = false;
+  }, [location.pathname]);
 
   const badgeIconMap = {
     Star,
@@ -481,7 +495,7 @@ useEffect(() => {
           </Routes>
           ) : (
           <Routes>
-            <Route path="/" element={<UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
+            <Route path="/" element={landOnDelegation ? <Navigate to="/dashboard/manage-tasks" replace /> : <UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
 
             <Route path="review-meeting" element={guard('menu_reviewMeeting', <ReviewMeeting tenantId={currentTenantId} />)} />
             <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
