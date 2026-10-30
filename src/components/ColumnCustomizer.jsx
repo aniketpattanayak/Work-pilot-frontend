@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, X } from 'lucide-react';
 
 /**
  * "Customize columns" button + popover. `ctl` is the object from useConfigurableColumns.
@@ -41,7 +41,13 @@ export default function ColumnCustomizer({ ctl, className = '' }) {
         <div ref={panel} role="dialog" aria-label="Customize columns" data-testid="customize-panel"
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.w || 320, maxHeight: `calc(100vh - ${pos.top + 12}px)`, zIndex: 1000000 }}
           className="bg-card border border-border rounded-2xl shadow-2xl p-4 text-foreground flex flex-col">
-          <p className="text-[11px] font-black uppercase tracking-widest mb-1">Customize columns</p>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className="text-[11px] font-black uppercase tracking-widest">Customize columns</p>
+            <button type="button" onClick={() => ctl.cancelEdit()} aria-label="Close" title="Close" data-testid="customize-close"
+              className="-mt-1 -mr-1 p-1.5 rounded-lg text-slate-400 hover:text-foreground hover:bg-muted active:scale-90 transition-all shrink-0">
+              <X size={16} />
+            </button>
+          </div>
           <p className="text-[10px] text-slate-500 mb-3">Tick what to show; use the arrows to change the order.</p>
           <ul className="flex-1 min-h-[120px] overflow-y-auto space-y-1 pr-1">
             {movable.map((c, i) => (

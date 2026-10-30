@@ -25,6 +25,7 @@ import {
   Upload
 } from 'lucide-react';
 import CreateChecklist from './CreateChecklist';
+import TaskActivityDrawer from '../components/TaskActivityDrawer';
 import BulkUpload from '../components/BulkUpload';
 import { dialog } from '../components/Dialog';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +38,8 @@ import { fmtIST } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
+import useTaskUnread from '../hooks/useTaskUnread';
+import UnreadBadge from '../components/UnreadBadge';
 
 const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const todayYmd = () => ymd(new Date());
@@ -50,7 +53,9 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const isViewer = isViewerOnly();
   const navigate = useNavigate();
   const { openTaskThread, chatEnabled } = useChat();
+  const { unreadFor, markRead } = useTaskUnread();
   const [historyFor, setHistoryFor] = useState(null); // History modal for one checklist task
+  const [activeTaskDrawer, setActiveTaskDrawer] = useState(null);
   const openChat = async (item) => {
     const idOf = (v) => String((v && v._id) || v || '');
     const conv = await openTaskThread({ taskId: item._id, taskType: 'checklist', taskTitle: item.taskName, participants: [idOf(item.doerId), idOf(item.createdBy) || assignerId].filter(Boolean) });
@@ -229,7 +234,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   });
 
   const handleEditClick = (item, e) => {
-    e.stopPropagation();
+    if (e?.stopPropagation) e.stopPropagation();
     const emp = employees.find(e => e._id === (item.doerId?._id || item.doerId));
     setSelectedEmployee(emp);
     setEditingId(item._id);
@@ -277,33 +282,40 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
 
   // Built-in columns (company custom fields and the saved layout are added by useConfigurableColumns)
   const checklistColumns = [
-    { key: 'sno', label: 'S no.', width: '60px', headerClassName: 'text-center', cellClassName: 'text-center text-xs font-black text-slate-400', render: (item, index) => index + 1 },
-    { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <><span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>{item.createdAt && <span className="block mt-0.5 text-[9px] font-bold text-slate-400" data-testid="given-at">Given: {fmtIST(item.createdAt)}</span>}</> },
-    { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-semibold">{item.doerId?.name || 'UNMAPPED'}</span> },
+    { key: 'sno', label: 'S no.', width: '60px', cellClassName: 'text-xs font-black text-slate-400', render: (item, index) => index + 1 },
+    { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <><span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>{item.createdAt && <span className="inline-block mt-1 rounded-lg px-2 py-1 text-[10px] leading-tight font-bold text-white bg-sky-600 shadow-sm normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(item.createdAt)}</span>}</> },
+    { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-bold">{item.doerId?.name || 'UNMAPPED'}</span> },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
-    { key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => <span className="text-[10px] font-bold text-primary truncate">{item.frequency}</span> },
-    { key: 'schedule', label: 'Schedule', width: 'minmax(0,1fr)', cellClassName: 'min-w-0', render: (item) => {
-      const schedule = getNextFiveDates(item);
-      return (
-        <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
-          {schedule.length > 0 ? schedule.map((obj, i) => (<option key={i}>{obj.label} → {obj.date}</option>)) : <option>Synced</option>}
-        </select>
-      );
-    } },
-    { key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item) => (
-      <>
-        {chatEnabled && !isViewer && (
-          <button onClick={(e) => { e.stopPropagation(); openChat(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg" title="Message"><MessageSquare size={14} /></button>
-        )}
-        <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
-        {!isViewer && (
-          <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
-        )}
-        {!isViewer && (
-          <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist"><Trash2 size={14} /></button>
-        )}
-      </>
-    ) },
+    {
+      key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => {
+        const tone = { Daily: 'bg-sky-500/15 text-sky-700 dark:text-sky-300', Weekly: 'bg-violet-500/15 text-violet-700 dark:text-violet-300', Monthly: 'bg-blue-600 text-white', Quarterly: 'bg-teal-600 text-white', 'Half-Yearly': 'bg-amber-500 text-white', Yearly: 'bg-emerald-600 text-white' }[item.frequency] || 'bg-primary/15 text-primary';
+        return <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-bold truncate max-w-full ${tone}`}>{item.frequency}</span>;
+      }
+    },
+    {
+      key: 'schedule', label: 'Schedule', width: 'minmax(0,1fr)', cellClassName: 'min-w-0', render: (item) => {
+        const schedule = getNextFiveDates(item);
+        return (
+          <select className="w-full text-xs bg-background border border-border p-2 rounded-lg">
+            {schedule.length > 0 ? schedule.map((obj, i) => (<option key={i}>{obj.label} → {obj.date}</option>)) : <option>Synced</option>}
+          </select>
+        );
+      }
+    },
+    {
+      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item, index) => (
+        <>
+          <button onClick={(e) => { e.stopPropagation(); setActiveTaskDrawer({ task: item, index }); markRead(item._id); }} className="relative p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message"><MessageSquare size={14} /><UnreadBadge count={unreadFor(item._id)} /></button>
+          <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
+          {!isViewer && (
+            <button onClick={(e) => handleEditClick(item, e)} className="p-2 bg-slate-800 text-white rounded-lg" title="Edit Checklist"><Edit3 size={14} /></button>
+          )}
+          {!isViewer && (
+            <button onClick={(e) => handleDelete(item._id, item.taskName, e)} className="p-2 bg-red-600 text-white rounded-lg" title="Delete Checklist"><Trash2 size={14} /></button>
+          )}
+        </>
+      )
+    },
   ];
   const checklistCtl = useConfigurableColumns({ tableKey: 'checklist_table', columns: checklistColumns, customFieldEntity: 'task', phoneUsesDefaults: true });
 
@@ -336,6 +348,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           </div>
         </div>
       )}
+
       {/* ================= HEADER ================= */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-3 gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -382,7 +395,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           assignerId={currentAssignerId}
           user={user}
           onClose={() => setShowBulk(false)}
-          onSuccess={() => fetchData()} /* Updated: ONLY fetch data, keep modal open to see result! */
+          onSuccess={() => fetchData()}
           mode="checklist"
         />
       )}
@@ -409,11 +422,6 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
             </div>
           }
         >
-          {/* TABS — all visible, no sideways scrolling. Each chip sizes to
-              its own label (no flex-1): forcing every chip to the same
-              shared width squeezes multi-word labels like "Half-Yearly"
-              below their natural width, which crowds them against their
-              neighbors on the next wrapped line. */}
           <div className="flex flex-wrap bg-background p-1.5 rounded-lg border border-border gap-1.5">
             {frequencyTabs.map(tab => (
               <button
@@ -439,7 +447,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
               rows={filteredChecklists}
               rowKey={(item) => item._id}
               renderHeader={({ cells, style }) => (
-                <div className="mobile-grid-head grid px-6 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 border-b border-border sticky top-0 bg-card z-10" style={style}>
+                <div className="mobile-grid-head grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2 sticky top-0 z-10" style={style}>
                   {cells}
                 </div>
               )}
@@ -598,7 +606,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       {/* ── CREATE CHECKLIST MODAL ── */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
@@ -628,8 +636,29 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           </div>
         </div>
       )}
+
+      {activeTaskDrawer && (
+        <TaskActivityDrawer
+          isOpen={!!activeTaskDrawer}
+          onClose={() => { markRead(activeTaskDrawer.task._id); setActiveTaskDrawer(null); }}
+          task={activeTaskDrawer.task}
+          taskIndex={activeTaskDrawer.index !== undefined ? activeTaskDrawer.index + 1 : 1}
+          taskType="checklist"
+          employees={employees}
+          currentUser={user}
+          onEdit={(t) => {
+            setActiveTaskDrawer(null);
+            handleEditClick(t);
+          }}
+          onDelete={(t) => {
+            setActiveTaskDrawer(null);
+            handleDelete(t._id, t.taskName);
+          }}
+          onUpdateTask={fetchData}
+        />
+      )}
     </div>
   );
 };
 
-export default ManageChecklist;
+export default ManageChecklist;

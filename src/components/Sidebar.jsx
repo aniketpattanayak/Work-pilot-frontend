@@ -72,6 +72,10 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const [tenantFeatures, setTenantFeatures] = useState({});
   const [hrModules, setHrModules] = useState({});
   const safeRoles = Array.isArray(roles) ? roles : [];
+  // Role badges show in a fixed order, two per row: Assigner | Doer, Coordinator | Admin, Viewer
+  const ROLE_ORDER = ['assigner', 'doer', 'coordinator', 'admin', 'viewer'];
+  const rankOf = (r) => { const i = ROLE_ORDER.indexOf(String(r).toLowerCase()); return i === -1 ? ROLE_ORDER.length : i; };
+  const orderedRoles = [...new Set(safeRoles)].sort((a, b) => rankOf(a) - rankOf(b));
   // A Viewer-only account sees one tab only: Global View.
   const viewerOnly = safeRoles.length > 0 && safeRoles.every((r) => String(r).toLowerCase() === 'viewer');
   const iconMap = { Star, Trophy, Medal, Zap, ShieldCheck: ShieldCheckIcon, Flame, Target, Rocket, Award };
@@ -79,7 +83,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const toggleCollapsed = () => {
     const next = !collapsed;
     setCollapsed(next);
-    try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
+    try { localStorage.setItem('sidebarCollapsed', String(next)); } catch { }
   };
 
   const fetchFactoryBranding = useCallback(async () => {
@@ -111,35 +115,35 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     {
       label: 'Main',
       items: [
-        { name: 'Dashboard',        icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
+        { name: 'Dashboard', icon: <LayoutDashboard />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator', 'Viewer'] },
         { name: 'Global View', icon: <Globe />, roles: ['Viewer'], featureKey: 'reviewMeeting' },
         { name: 'Manage Tasks', label: 'Manage Delegation', icon: <ClipboardList />, roles: ['Admin', 'Assigner'] },
         { name: 'Manage Checklist', icon: <LayoutList />, roles: ['Admin'] },
-        { name: 'My Tasks',         icon: <CheckSquare />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'My Flow Tasks',    icon: <Zap />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'Following',        icon: <Eye />,             roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'Personal Tasks',   icon: <NotebookPen />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], featureKey: 'personalTasks' },
-        { name: 'Planner',          icon: <ListOrdered />,     roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], onlyIfOn: 'planner' },
-        { name: 'Attendance',       icon: <Clock />,           roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'attendance' },
-        { name: 'Leave',            icon: <CalendarDays />,    roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
-        { name: 'Payroll',          icon: <Wallet />,          roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'payroll' },
-        { name: 'My Checklist',     icon: <ListTodo />,        roles: [] },
+        { name: 'My Tasks', icon: <CheckSquare />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'My Flow Tasks', icon: <Zap />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Following', icon: <Eye />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Personal Tasks', icon: <NotebookPen />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], featureKey: 'personalTasks' },
+        { name: 'Planner', icon: <ListOrdered />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], onlyIfOn: 'planner' },
+        { name: 'Attendance', icon: <Clock />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'attendance' },
+        { name: 'Leave', icon: <CalendarDays />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'leave' },
+        { name: 'Payroll', icon: <Wallet />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'], hrKey: 'payroll' },
+        { name: 'My Checklist', icon: <ListTodo />, roles: [] },
       ],
     },
     {
       label: 'Administration',
       items: [
-        { name: 'Employees', label: 'Manage Employee', icon: <Users />,       roles: ['Admin'] },
-        { name: 'Mapping', label: 'PC Mapping', icon: <UserCog />,     roles: ['Admin'] },
+        { name: 'Employees', label: 'Manage Employee', icon: <Users />, roles: ['Admin'] },
+        { name: 'Mapping', label: 'PC Mapping', icon: <UserCog />, roles: ['Admin'] },
         { name: 'Tracking', icon: <Eye />, roles: ['Admin', 'Coordinator'] },
-        { name: 'Chat',              icon: <MessageSquare />, roles: ['Admin', 'Coordinator', 'Doer', 'Assigner', 'OrderEntry'], featureKey: 'chat' },
-        { name: 'Order Forms',       icon: <FileText />,    roles: ['Admin'] },
-        { name: 'New Order',          icon: <ShoppingCart />, roles: ['Admin', 'Assigner', 'Coordinator', 'OrderEntry'] },
-        { name: 'Flow Management',   icon: <GitBranch />,   roles: ['Admin'], featureKey: 'fms' },
+        { name: 'Chat', icon: <MessageSquare />, roles: ['Admin', 'Coordinator', 'Doer', 'Assigner', 'OrderEntry'], featureKey: 'chat' },
+        { name: 'Order Forms', icon: <FileText />, roles: ['Admin'] },
+        { name: 'New Order', icon: <ShoppingCart />, roles: ['Admin', 'Assigner', 'Coordinator', 'OrderEntry'] },
+        { name: 'Flow Management', icon: <GitBranch />, roles: ['Admin'], featureKey: 'fms' },
         { name: 'Review Meeting', icon: <BarChart3 />, roles: ['Admin', 'Coordinator'], featureKey: 'reviewMeeting' },
         { name: 'Reports Hub', icon: <FileText />, roles: ['Admin'] },
-        { name: 'Rewards Log',       icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
-        { name: 'Settings',          icon: <Settings />,    roles: ['Admin'] },
+        { name: 'Rewards Log', icon: <HistoryIcon />, roles: ['Admin', 'Assigner', 'Doer', 'Coordinator'] },
+        { name: 'Settings', icon: <Settings />, roles: ['Admin'] },
       ],
     },
     {
@@ -154,14 +158,14 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
   const MENU_SWITCH = { 'Following': 'menu_following', 'My Flow Tasks': 'menu_myFlowTasks', 'Personal Tasks': 'menu_personalTasks', 'Attendance': 'menu_attendance', 'Leave': 'menu_leave', 'Payroll': 'menu_payroll', 'Tracking': 'menu_tracking', 'Chat': 'menu_chat', 'Order Forms': 'menu_orderForms', 'New Order': 'menu_newOrder', 'Flow Management': 'menu_flowManagement', 'Review Meeting': 'menu_reviewMeeting', 'Reports Hub': 'menu_reportsHub', 'Rewards Log': 'menu_rewardsLog', 'Raise Ticket': 'menu_raiseTicket' };
 
   const getRoute = (itemName) => {
-    if (itemName === 'Dashboard')       return '';
-    if (itemName === 'My Checklist')    return 'checklist';
-    if (itemName === 'Chat')            return 'chat';
-    if (itemName === 'Order Forms')     return 'order-forms';
-    if (itemName === 'New Order')       return 'new-order';
+    if (itemName === 'Dashboard') return '';
+    if (itemName === 'My Checklist') return 'checklist';
+    if (itemName === 'Chat') return 'chat';
+    if (itemName === 'Order Forms') return 'order-forms';
+    if (itemName === 'New Order') return 'new-order';
     if (itemName === 'Flow Management') return 'flow-management';   // updated: new FMS
-    if (itemName === 'My Flow Tasks')   return 'flow-tasks';
-    if (itemName === 'Reports Hub')     return 'reports';
+    if (itemName === 'My Flow Tasks') return 'flow-tasks';
+    if (itemName === 'Reports Hub') return 'reports';
     return itemName.toLowerCase().replace(/\s+/g, '-');
   };
 
@@ -171,7 +175,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
     if (route === '' && (currentPath === 'dashboard' || currentPath === '')) return true;
     // Match flow-management also for sub-paths like /dashboard/flow-management
     if (route === 'flow-management' && location.pathname.includes('flow-management')) return true;
-    if (route === 'flow-tasks'      && location.pathname.includes('flow-tasks'))      return true;
+    if (route === 'flow-tasks' && location.pathname.includes('flow-tasks')) return true;
     return currentPath === route;
   };
 
@@ -181,12 +185,12 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
   return (
     <aside
-      style={{ width: collapsed ? '68px' : '260px' }}
+      style={{ width: collapsed ? '68px' : '216px' }}
       className="bg-card text-card-foreground border-r border-border h-screen flex flex-col sticky top-0 z-[100] shadow-xl dark:shadow-none overflow-hidden transition-all duration-300 ease-in-out flex-shrink-0"
     >
 
       {/* ── HEADER: LOGO + TOGGLE ─────────────────────────────── */}
-      <div className={`flex items-center border-b border-border/50 flex-shrink-0 transition-all duration-300 ${collapsed ? 'flex-col gap-3 px-2 py-4' : 'flex-row justify-between px-4 py-4'}`}>
+      <div className={`flex items-center border-b border-border/50 flex-shrink-0 transition-all duration-300 ${collapsed ? 'flex-col gap-3 px-2 py-4' : 'flex-row justify-between px-3 py-4'}`}>
 
         {/* Logo area */}
         <div className={`flex items-center gap-2.5 min-w-0 overflow-hidden ${collapsed ? 'justify-center' : 'flex-1'}`}>
@@ -224,13 +228,13 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
       {/* ── ROLE BADGES (expanded only) ───────────────────────── */}
       {!collapsed && (
-        <div className="px-4 pt-3 pb-1 flex flex-wrap gap-1.5 flex-shrink-0 overflow-hidden">
-          {safeRoles.length > 0 ? safeRoles.map((r, i) => (
-            <span key={i} className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+        <div className="px-3 pt-3 pb-1 grid grid-cols-2 gap-1.5 flex-shrink-0">
+          {safeRoles.length > 0 ? orderedRoles.map((r) => (
+            <span key={r} className="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 text-center truncate">
               {r}
             </span>
           )) : (
-            <span className="text-[8px] font-bold text-red-500 px-2 py-0.5 bg-red-50 dark:bg-red-500/10 rounded-md border border-red-200 dark:border-red-500/20">
+            <span className="col-span-2 text-center text-[8px] font-bold text-red-500 px-2 py-1 bg-red-50 dark:bg-red-500/10 rounded-md border border-red-200 dark:border-red-500/20">
               UNAUTHORIZED
             </span>
           )}
@@ -239,7 +243,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
 
       {/* ── PERFORMANCE SCORE (expanded only) ─────────────────── */}
       {!collapsed && user?.totalPoints !== undefined && (
-        <div className="mx-3 mt-3 mb-1 p-3 rounded-xl bg-background border border-border flex-shrink-0">
+        <div className="mx-2.5 mt-3 mb-1 p-3 rounded-xl bg-background border border-border flex-shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-amber-500/10 rounded-lg flex-shrink-0">
               <Trophy size={13} className="text-amber-500" />
@@ -306,7 +310,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
                           w-full flex items-center rounded-xl border transition-all duration-200 active:scale-95
                           ${collapsed
                             ? 'justify-center px-0 py-2.5'
-                            : 'justify-between px-3 py-2.5 gap-3'
+                            : 'justify-between px-2.5 py-2.5 gap-2'
                           }
                           ${active
                             ? 'bg-primary/10 border-primary/20 shadow-sm'
@@ -314,7 +318,7 @@ const Sidebar = ({ roles = [], tenantId, onLogout }) => {
                           }
                         `}
                       >
-                        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3 min-w-0'}`}>
+                        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
                           <span className={`flex-shrink-0 transition-colors duration-200 ${active ? 'text-primary' : 'text-slate-400 dark:text-slate-500 group-hover:text-primary'}`}>
                             {React.cloneElement(item.icon, { size: 17, strokeWidth: active ? 2.5 : 2 })}
                           </span>

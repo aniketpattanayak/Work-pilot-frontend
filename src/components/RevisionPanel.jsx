@@ -71,30 +71,60 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
   const maxExt = Number(task?.maxExtensionDays) || 0;
   const limited = maxExt > 0 && !!task?.deadline;
   const [extDays, setExtDays] = useState('');
-  const fmtDay = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  const fmtDay = (d) => new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  // 28/10/2026 style (Indian date)
+  const fmtDMY = (d) => new Date(d).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtOptionDate = (d, daysOffset) => {
+    const dateObj = new Date(d);
+    const weekday = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+    const day = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit' });
+    const month = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', month: 'short' });
+    const year = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+    const dayStr = daysOffset === 1 ? '+1 day' : `+${daysOffset} days`;
+    return `${weekday}, ${day} ${month} ${year} (${dayStr})`;
+  };
+  const fmtHeaderDeadline = (d) => {
+    if (!d) return '';
+    const dateObj = new Date(d);
+    const weekday = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+    const day = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit' });
+    const month = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', month: 'short' });
+    const year = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+    return `${weekday}, ${day} ${month} ${year}`.toUpperCase();
+  };
+  const fmtFriendly = (d) => {
+    if (!d) return '';
+    const dateObj = new Date(d);
+    const weekday = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short' });
+    const day = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit' });
+    const month = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', month: 'short' });
+    const year = dateObj.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+    return `${weekday}, ${day} ${month} ${year}`;
+  };
   const extOptions = limited ? Array.from({ length: maxExt }, (_, i) => ({ k: i + 1, date: new Date(new Date(task.deadline).getTime() + (i + 1) * 86400000) })) : [];
 
   const handleLimitedRevision = async () => {
     setShowErr(true);
     const re = reasonError(rs, reasonRequired);
     if (re) return dialog.alert(re);
-    if (!extDays) return dialog.alert("Please choose the new date.");
+    if (!extDays) return dialog.alert("Please choose how many days you need.");
     if (!rs.reason && !rs.note.trim()) return dialog.alert("Please write the reason.");
     const pickedDay = extOptions.find((o) => String(o.k) === String(extDays));
-    const okLimited = await dialog.confirm("Move the deadline to " + fmtDay(pickedDay.date) + "? This is applied straight away and your assigner is informed.", { title: 'Change deadline?' });
+    if (!pickedDay) return dialog.alert("Please choose one of the dates your assigner allowed.");
+    const dateChoiceText = fmtOptionDate(pickedDay.date, pickedDay.k);
+    const okLimited = await dialog.confirm("Move the deadline to " + dateChoiceText + "? This is applied straight away and your assigner is informed.", { title: 'Change deadline?' });
     if (!okLimited) return;
     try {
       setIsProcessing(true);
-      const picked = extOptions.find((o) => String(o.k) === String(extDays));
       await API.post('/tasks/handle-revision', {
         taskId: task._id,
         action: 'Request',
         remarks: [rs.reason, rs.note.trim()].filter(Boolean).join(' - '),
         reason: rs.reason,
         reasonNote: rs.note.trim(),
-        proposedDeadline: picked.date.toISOString()
+        proposedDeadline: pickedDay.date.toISOString()
       });
-      dialog.alert("Done. The deadline is now " + fmtDay(picked.date) + ". Your assigner has been informed.");
+      dialog.alert("Done. The deadline is now " + dateChoiceText + ". Your assigner has been informed.");
       onSuccess();
     } catch (err) {
       dialog.alert(err.response?.data?.message || "Could not change the deadline. Please try again.");
@@ -210,18 +240,31 @@ const RevisionPanel = ({ task, employees, assignerId, onSuccess, source }) => {
           <DateReasonFields value={rs} onChange={setRs} invalid={showErr} />
 
           {limited ? (
-            <>
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">New deadline (up to {maxExt} day{maxExt > 1 ? 's' : ''} after {fmtDay(task.deadline)})</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">
+                NEW DEADLINE (UP TO {maxExt} DAY{maxExt > 1 ? 'S' : ''} AFTER {fmtHeaderDeadline(task.deadline)})
+              </label>
               <select
                 value={extDays}
                 onChange={(e) => setExtDays(e.target.value)}
-                className="w-full p-4 border rounded-xl bg-background text-foreground"
+                className="w-full p-4 border rounded-xl bg-background text-foreground text-sm font-semibold"
               >
-                <option value="">Choose the new date…</option>
-                {extOptions.map((o) => (<option key={o.k} value={o.k}>{fmtDay(o.date)} (+{o.k} day{o.k > 1 ? 's' : ''})</option>))}
+                <option value="">Choose the new date...</option>
+                {extOptions.map((o) => (
+                  <option key={o.k} value={o.k}>
+                    {fmtOptionDate(o.date, o.k)}
+                  </option>
+                ))}
               </select>
-              <p className="text-[10px] font-bold text-slate-500 ml-2">The new date is applied at once, no approval needed. A deadline can be changed only once.</p>
-            </>
+              {extDays && (() => {
+                const o = extOptions.find((x) => String(x.k) === String(extDays));
+                return o ? (
+                  <p className="text-[10px] font-bold text-slate-500 ml-2" data-testid="ext-new-date">
+                    The deadline moves from {fmtFriendly(task.deadline)} to {fmtOptionDate(o.date, o.k)}.
+                  </p>
+                ) : null;
+              })()}
+            </div>
           ) : (
             <>
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.3em] ml-2">Proposed Deadline</label>
