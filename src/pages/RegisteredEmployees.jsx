@@ -5,6 +5,7 @@ import MobileFilters from '../components/MobileFilters';
 import ResponsiveTable from '../components/ResponsiveTable';
 import ConfigurableTable from '../components/ConfigurableTable';
 import ColumnCustomizer from '../components/ColumnCustomizer';
+import ExcelReportButton from '../components/ExcelReportButton';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { customSummary } from '../utils/customFieldsConfig';
 
@@ -407,6 +408,10 @@ const RegisteredEmployees = ({ employees, onEdit, fetchEmployees, onAddNew }) =>
               <span className="text-primary font-black text-sm">{filteredEmployees.length}</span>
             </div>
             <div className="hidden xl:block"><ColumnCustomizer ctl={colCtl} /></div>
+            <ExcelReportButton scope="employees"
+              getRows={() => filteredEmployees.map((e) => ({ id: String(e._id), label: e.name || '', sub: [e.department, e.location].filter(Boolean).join(' · ') }))}
+              filtersActive={!!searchTerm.trim() || selectedRole !== 'All' || statusFilter !== 'All' || deptFilter !== 'All' || locFilter !== 'All'}
+              onClearFilters={() => { setSearchTerm(''); setStatusFilter('All'); setDeptFilter('All'); setLocFilter('All'); setSelectedRole('All'); }} />
             <button
               onClick={async () => { setRefreshing(true); try { await fetchEmployees(); } finally { setRefreshing(false); } }}
               disabled={refreshing}

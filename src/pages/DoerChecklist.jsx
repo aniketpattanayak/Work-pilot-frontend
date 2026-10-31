@@ -56,6 +56,7 @@ import useCompanySettings from '../hooks/useCompanySettings';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { fmtIST, fmtISTDate, fmtISTTime } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
+import ExcelReportButton from '../components/ExcelReportButton';
 import ActionsMenu from '../components/mytasks/ActionsMenu';
 import HoldModal from '../components/mytasks/HoldModal';
 import SubTaskModal from '../components/mytasks/SubTaskModal';
@@ -688,6 +689,9 @@ const DoerChecklist = ({ doerId }) => {
   const allTicked = rowsNow.length > 0 && rowsNow.every((i) => selected[i.uniqueKey]);
   const toggleOne = (k) => setSelected((s) => { const n = { ...s }; if (n[k]) delete n[k]; else n[k] = true; return n; });
   const toggleAll = () => setSelected((s) => { const n = { ...s }; if (rowsNow.every((i) => n[i.uniqueKey])) rowsNow.forEach((i) => delete n[i.uniqueKey]); else rowsNow.forEach((i) => { n[i.uniqueKey] = true; }); return n; });
+  // Excel download: checklist days and delegation tasks are in the report (FMS steps and planner items are not)
+  const excelOk = (i) => i.dataType === 'Checklist' || i.dataType === 'Delegation';
+  const excelId = (i) => (i.dataType === 'Checklist' && i.instanceDate ? `${i._id}|${i.instanceDate}` : String(i._id));
   const closeBulk = (count) => {
     setBulkMode(null);
     if (count > 0) { setSelected({}); setFlash(`${count} task${count > 1 ? 's' : ''} updated.`); fetchAllTasks(); }
@@ -843,6 +847,11 @@ const DoerChecklist = ({ doerId }) => {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
+          <ExcelReportButton scope="mytasks" className="min-h-[44px] lg:min-h-[40px] shrink-0"
+            getRows={() => rowsNow.filter(excelOk).map((i) => ({ id: excelId(i), label: i.title || '', sub: `${i.dataType}${i.statusLabel ? ' · ' + i.statusLabel : ''}` }))}
+            selectedIds={bulkOn ? selectedItems.filter(excelOk).map(excelId) : undefined}
+            filtersActive={(!!timeFilter && timeFilter !== 'All') || !!startDate || !!endDate || !!givenFrom || !!givenTo || activeCategory !== 'All Data'}
+            onClearFilters={() => { setGivenFrom(''); setGivenTo(''); setStartDate(''); setEndDate(''); setTimeFilter('All'); setActiveCategory('All Data'); }} />
           <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
             <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
