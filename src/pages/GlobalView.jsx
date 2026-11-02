@@ -228,10 +228,55 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     if (!from || !to) { setRows([]); return; }
     try {
       setRowsLoading(true);
-      const res = await API.get(`/tasks/employee-deep-dive/${p.employeeId}`, {
-        params: { startDate: `${from}T00:00:00.000+05:30`, endDate: `${to}T23:59:59.999+05:30` }
+      const [deepRes, doerRes, chkRes] = await Promise.all([
+        API.get(`/tasks/employee-deep-dive/${p.employeeId}`, {
+          params: { startDate: `${from}T00:00:00.000+05:30`, endDate: `${to}T23:59:59.999+05:30` }
+        }),
+        API.get(`/tasks/doer/${p.employeeId}?includePassedOn=1`).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist/${p.employeeId}?includeDone=1`).catch(() => ({ data: [] }))
+      ]);
+
+      const doerTasks = Array.isArray(doerRes.data) ? doerRes.data : (doerRes.data?.tasks || []);
+      const doerTaskMap = new Map();
+      doerTasks.forEach(dt => {
+        if (dt && dt._id) {
+          const asg = dt.assignerId?.name || dt.assignerName || '';
+          if (asg) doerTaskMap.set(String(dt._id), asg);
+        }
       });
-      setRows(Array.isArray(res.data) ? res.data : []);
+
+      const chkTasks = Array.isArray(chkRes.data) ? chkRes.data : (chkRes.data?.data || []);
+      const chkTaskMap = new Map();
+      chkTasks.forEach(ct => {
+        if (ct && ct._id) {
+          // Following My Task table (toChecklistItem): i.createdBy?.name || i.assignerId?.name || 'Admin'
+          const asg = ct.createdBy?.name || ct.assignerId?.name || ct.assignerName || 'Admin';
+          chkTaskMap.set(String(ct._id), asg);
+        }
+      });
+
+      const rawRows = Array.isArray(deepRes.data) ? deepRes.data : [];
+      const mappedRows = rawRows.map(r => {
+        let assignedBy = '—';
+        if (r.type === 'Delegation') {
+          assignedBy = doerTaskMap.get(String(r.id)) || r.assignedBy || r.assignerName || r.assignerId?.name || '—';
+        } else if (r.type === 'Checklist') {
+          // Consistent with My Task checklist tab:
+          assignedBy = chkTaskMap.get(String(r.id)) || (r.assignedBy && r.assignedBy !== '—' ? r.assignedBy : null) || r.createdBy?.name || r.assignerName || r.assignerId?.name || 'Admin';
+        } else if (r.type === 'FMS') {
+          assignedBy = r.assignedBy || 'System';
+        } else {
+          assignedBy = r.assignedBy || '—';
+        }
+
+        return {
+          ...r,
+          assignedBy,
+          assignedTo: r.assignedTo || active?.employeeName || p.employeeName || '—'
+        };
+      });
+
+      setRows(mappedRows);
     } catch (err) {
       setRows([]);
     } finally {
@@ -356,64 +401,64 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
         ) : (
           <div className="overflow-auto max-h-[calc(100vh-250px)]">
             <ResponsiveTable>
-            <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="text-[10px] font-black uppercase tracking-wider">
-                  <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
-                  <th rowSpan={2} className="sticky left-10 z-40 border-b border-border bg-background px-2 py-1 text-left min-w-[150px]">Employee</th>
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[90px]">Location</th>
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[110px]">Dept</th>
-                  {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[110px]">Late Target (%)</th>}
-                  {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[190px]" title={`Last period${previousName ? ' (' + previousName + ')' : ''}: the target set for the person, and the late % they actually had`}>Previous period<div className="text-[8px] font-bold normal-case tracking-normal text-slate-400">Target &rarr; Actual late %{previousName ? ` · ${previousName}` : ''}</div></th>}
-                  {TYPES.map((t) => (
-                    <th key={t} colSpan={5} className={`border-b border-border px-2 py-1 ${GROUP_STYLE[KEYS[t]].head}`}>{t}</th>
+              <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
+                <thead className="sticky top-0 z-30">
+                  <tr className="text-[10px] font-black uppercase tracking-wider">
+                    <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
+                    <th rowSpan={2} className="sticky left-10 z-40 border-b border-border bg-background px-2 py-1 text-left min-w-[150px]">Employee</th>
+                    <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[90px]">Location</th>
+                    <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 text-left min-w-[110px]">Dept</th>
+                    {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[110px]">Late Target (%)</th>}
+                    {canEdit && <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[190px]" title={`Last period${previousName ? ' (' + previousName + ')' : ''}: the target set for the person, and the late % they actually had`}>Previous period<div className="text-[8px] font-bold normal-case tracking-normal text-slate-400">Target &rarr; Actual late %{previousName ? ` · ${previousName}` : ''}</div></th>}
+                    {TYPES.map((t) => (
+                      <th key={t} colSpan={5} className={`border-b border-border px-2 py-1 ${GROUP_STYLE[KEYS[t]].head}`}>{t}</th>
+                    ))}
+                    <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(late done + late pending) / all tasks due">Late %</th>
+                    <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(pending + late pending) / all tasks due">Not Done %</th>
+                  </tr>
+                  <tr className="text-[9px] font-black">
+                    {TYPES.map((t) => COLS.map(([f, label, tip]) => (
+                      <th key={t + f} title={tip} className={`border-b border-border px-1 py-0.5 ${GROUP_STYLE[KEYS[t]].sub}`}>{label}</th>
+                    )))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {people.map((p, i) => (
+                    <tr key={String(p.employeeId)} onClick={() => openAudit(p)} className="cursor-pointer hover:bg-primary/10 odd:bg-background/40">
+                      <td className={`${cellBase} sticky left-0 z-10 bg-card text-slate-400 min-w-[40px] max-w-[40px]`}>{i + 1}</td>
+                      <td className="sticky left-10 z-10 bg-card border border-border px-2 py-1 font-black uppercase text-foreground whitespace-nowrap">{p.employeeName}</td>
+                      <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.location || '—'}</td>
+                      <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.department || '—'}</td>
+                      {canEdit && (
+                        <td className="border border-border px-1 py-0.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
+                        </td>
+                      )}
+                      {canEdit && <PreviousCell prev={p.previous} />}
+                      {TYPES.map((t) => COLS.map(([f]) => {
+                        const v = p[KEYS[t]]?.[f] || 0;
+                        const tone = v > 0 && f === 'lateDone' ? 'text-amber-600 font-black' : v > 0 && f === 'latePending' ? 'text-red-600 font-black' : v > 0 ? 'text-foreground font-bold' : 'text-slate-300 dark:text-slate-600';
+                        return <td key={t + f} className={`${cellBase} ${tone}`}>{v}</td>;
+                      }))}
+                      {pctCell(p.overall?.latePct || 0)}
+                      {pctCell(p.overall?.notDonePct || 0)}
+                    </tr>
                   ))}
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(late done + late pending) / all tasks due">Late %</th>
-                  <th rowSpan={2} className="border-b border-border bg-background px-2 py-1 min-w-[78px]" title="(pending + late pending) / all tasks due">Not Done %</th>
-                </tr>
-                <tr className="text-[9px] font-black">
-                  {TYPES.map((t) => COLS.map(([f, label, tip]) => (
-                    <th key={t + f} title={tip} className={`border-b border-border px-1 py-0.5 ${GROUP_STYLE[KEYS[t]].sub}`}>{label}</th>
-                  )))}
-                </tr>
-              </thead>
-              <tbody>
-                {people.map((p, i) => (
-                  <tr key={String(p.employeeId)} onClick={() => openAudit(p)} className="cursor-pointer hover:bg-primary/10 odd:bg-background/40">
-                    <td className={`${cellBase} sticky left-0 z-10 bg-card text-slate-400 min-w-[40px] max-w-[40px]`}>{i + 1}</td>
-                    <td className="sticky left-10 z-10 bg-card border border-border px-2 py-1 font-black uppercase text-foreground whitespace-nowrap">{p.employeeName}</td>
-                    <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.location || '—'}</td>
-                    <td className="border border-border px-2 py-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{p.department || '—'}</td>
-                    {canEdit && (
-                      <td className="border border-border px-1 py-0.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
-                      </td>
-                    )}
-                    {canEdit && <PreviousCell prev={p.previous} />}
-                    {TYPES.map((t) => COLS.map(([f]) => {
-                      const v = p[KEYS[t]]?.[f] || 0;
-                      const tone = v > 0 && f === 'lateDone' ? 'text-amber-600 font-black' : v > 0 && f === 'latePending' ? 'text-red-600 font-black' : v > 0 ? 'text-foreground font-bold' : 'text-slate-300 dark:text-slate-600';
-                      return <td key={t + f} className={`${cellBase} ${tone}`}>{v}</td>;
-                    }))}
-                    {pctCell(p.overall?.latePct || 0)}
-                    {pctCell(p.overall?.notDonePct || 0)}
-                  </tr>
-                ))}
-                {people.length === 0 && (
-                  <tr><td colSpan={canEdit ? 23 : 21} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
+                  {people.length === 0 && (
+                    <tr><td colSpan={canEdit ? 23 : 21} className="py-16 text-center text-slate-400 font-bold text-sm">No people match</td></tr>
+                  )}
+                </tbody>
+                {people.length > 0 && (
+                  <tfoot className="sticky bottom-0 z-20">
+                    <tr className="font-black bg-muted">
+                      <td colSpan={canEdit ? 6 : 4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
+                      {TYPES.map((t) => COLS.map(([f]) => <td key={t + f} className={`${cellBase}`}>{totals.t[KEYS[t]][f]}</td>))}
+                      {pctCell(totals.avgLate)}
+                      {pctCell(totals.avgNotDone)}
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-              {people.length > 0 && (
-                <tfoot className="sticky bottom-0 z-20">
-                  <tr className="font-black bg-muted">
-                    <td colSpan={canEdit ? 6 : 4} className="border border-border px-2 py-1 text-right uppercase tracking-widest text-[10px]">Total / Average</td>
-                    {TYPES.map((t) => COLS.map(([f]) => <td key={t + f} className={`${cellBase}`}>{totals.t[KEYS[t]][f]}</td>))}
-                    {pctCell(totals.avgLate)}
-                    {pctCell(totals.avgNotDone)}
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+              </table>
             </ResponsiveTable>
           </div>
         )}
@@ -469,81 +514,85 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 <div className="py-24 text-center text-slate-400 font-bold text-sm">No tasks in this range</div>
               ) : (
                 <ResponsiveTable>
-                <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[900px]">
-                  <thead className="sticky top-0 z-20 bg-background">
-                    <tr className="text-[10px] font-black uppercase tracking-wider">
-                      {['S.no', 'Type', 'Task', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
-                        <th key={h} className="border border-border px-2 py-1 text-left bg-background">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shownRows.map((r, i) => {
-                      const b = bucketOf(r);
-                      const key = `${r.id}-${i}`;
-                      const isFms = r.type === 'FMS';
-                      const open = openFms.includes(key);
-                      const f = r.fms || { steps: [], pendingStep: null };
-                      return (
-                        <React.Fragment key={key}>
-                          <tr className={`odd:bg-background/40 ${isFms ? 'cursor-pointer hover:bg-primary/10' : ''}`} onClick={isFms ? () => setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key])) : undefined}>
-                            <td className="border border-border px-2 py-1 text-slate-400 text-center w-10">{i + 1}</td>
-                            <td className="border border-border px-2 py-1 font-black uppercase text-[10px] w-24">{r.type}</td>
-                            <td className="border border-border px-2 py-1 font-bold">
-                              <span className="inline-flex items-center gap-1">{isFms && (open ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}{r.name}</span>
-                            </td>
-                            <td className="border border-border px-2 py-1 whitespace-nowrap">{fmtDate(r.deadline)}</td>
-                            <td className="border border-border px-2 py-1 whitespace-nowrap">{r.completedAt ? fmtDateTime(r.completedAt) : '—'}</td>
-                            <td className="border border-border px-2 py-1 whitespace-nowrap font-bold"><span className={`px-1.5 py-0.5 rounded ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>{drift(r.deadline, r.completedAt)}</span></td>
-                            <td className="border border-border px-2 py-1 text-center w-28">
-                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
-                            </td>
-                            {canEdit && (
-                              <td className="border border-border px-2 py-1 text-center w-16" onClick={(e) => e.stopPropagation()}>
-                                {r.type === 'FMS' ? '—' : (
-                                  <button type="button" title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'} onClick={() => deleteRecord(r)} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
-                                )}
+                  <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1100px]">
+                    <thead className="sticky top-0 z-20 bg-background">
+                      <tr className="text-[10px] font-black uppercase tracking-wider">
+                        {['S.no', 'Type', 'Task', 'Assigned By', 'Assigned To', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
+                          <th key={h} className="border border-border px-2 py-1 text-left bg-background">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownRows.map((r, i) => {
+                        const b = bucketOf(r);
+                        const key = `${r.id}-${i}`;
+                        const isFms = r.type === 'FMS';
+                        const open = openFms.includes(key);
+                        const f = r.fms || { steps: [], pendingStep: null };
+                        return (
+                          <React.Fragment key={key}>
+                            <tr className={`odd:bg-background/40 ${isFms ? 'cursor-pointer hover:bg-primary/10' : ''}`} onClick={isFms ? () => setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key])) : undefined}>
+                              <td className="border border-border px-2 py-1 text-slate-400 text-center w-10">{i + 1}</td>
+                              <td className="border border-border px-2 py-1 font-black uppercase text-[10px] w-24">{r.type}</td>
+                              <td className="border border-border px-2 py-1 font-bold">
+                                <span className="inline-flex items-center gap-1">{isFms && (open ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}{r.name}</span>
                               </td>
-                            )}
-                          </tr>
-                          {isFms && open && (
-                            <tr>
-                              <td colSpan={canEdit ? 8 : 7} className="border border-border bg-muted/40 px-4 py-2">
-                                {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
-                                {f.steps.length > 0 && (
-                                  <ResponsiveTable>
-                                  <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
-                                    <thead><tr className="text-[9px] font-black uppercase text-slate-500">
-                                      {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
-                                    </tr></thead>
-                                    <tbody>
-                                      {f.steps.map((st, j) => (
-                                        <tr key={j} className={st.mine ? 'bg-primary/5' : 'bg-card'}>
-                                          <td className="border border-border px-2 py-0.5 font-bold">{st.nodeName}{st.mine && <span className="ml-1 text-[9px] text-primary uppercase">this person</span>}</td>
-                                          <td className="border border-border px-2 py-0.5">{st.completedByName || st.assignedToName || '—'}</td>
-                                          <td className="border border-border px-2 py-0.5">{fmtDateTime(st.plannedDeadline)}</td>
-                                          <td className="border border-border px-2 py-0.5">{fmtDateTime(st.completedAt)}</td>
-                                          <td className={`border border-border px-2 py-0.5 font-bold ${st.onTime ? 'text-emerald-600' : 'text-red-500'}`}>{st.onTime ? 'On time' : 'Late'}{st.decision ? ` · ${st.decision}` : ''}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                </ResponsiveTable>
-                                )}
-                                {f.pendingStep && (
-                                  <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
-                                    Pending step: {f.pendingStep.nodeName} · with {f.pendingStep.assignedToName || '—'}{f.pendingStep.mine ? ' (this person)' : ''} · due {fmtDateTime(f.pendingStep.plannedDeadline)}{f.pendingStep.overdue ? ' · OVERDUE' : ''}
-                                  </p>
-                                )}
+                              <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                {r.assignedBy || '—'}
                               </td>
+                              <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{r.assignedTo || active?.employeeName || '—'}</td>
+                              <td className="border border-border px-2 py-1 whitespace-nowrap">{fmtDate(r.deadline)}</td>
+                              <td className="border border-border px-2 py-1 whitespace-nowrap">{r.completedAt ? fmtDateTime(r.completedAt) : '—'}</td>
+                              <td className="border border-border px-2 py-1 whitespace-nowrap font-bold"><span className={`px-1.5 py-0.5 rounded ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>{drift(r.deadline, r.completedAt)}</span></td>
+                              <td className="border border-border px-2 py-1 text-center w-28">
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
+                              </td>
+                              {canEdit && (
+                                <td className="border border-border px-2 py-1 text-center w-16" onClick={(e) => e.stopPropagation()}>
+                                  {r.type === 'FMS' ? '—' : (
+                                    <button type="button" title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'} onClick={() => deleteRecord(r)} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                                  )}
+                                </td>
+                              )}
                             </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                                  </ResponsiveTable>
+                            {isFms && open && (
+                              <tr>
+                                <td colSpan={canEdit ? 10 : 9} className="border border-border bg-muted/40 px-4 py-2">
+                                  {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
+                                  {f.steps.length > 0 && (
+                                    <ResponsiveTable>
+                                      <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
+                                        <thead><tr className="text-[9px] font-black uppercase text-slate-500">
+                                          {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
+                                        </tr></thead>
+                                        <tbody>
+                                          {f.steps.map((st, j) => (
+                                            <tr key={j} className={st.mine ? 'bg-primary/5' : 'bg-card'}>
+                                              <td className="border border-border px-2 py-0.5 font-bold">{st.nodeName}{st.mine && <span className="ml-1 text-[9px] text-primary uppercase">this person</span>}</td>
+                                              <td className="border border-border px-2 py-0.5">{st.completedByName || st.assignedToName || '—'}</td>
+                                              <td className="border border-border px-2 py-0.5">{fmtDateTime(st.plannedDeadline)}</td>
+                                              <td className="border border-border px-2 py-0.5">{fmtDateTime(st.completedAt)}</td>
+                                              <td className={`border border-border px-2 py-0.5 font-bold ${st.onTime ? 'text-emerald-600' : 'text-red-500'}`}>{st.onTime ? 'On time' : 'Late'}{st.decision ? ` · ${st.decision}` : ''}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </ResponsiveTable>
+                                  )}
+                                  {f.pendingStep && (
+                                    <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                      Pending step: {f.pendingStep.nodeName} · with {f.pendingStep.assignedToName || '—'}{f.pendingStep.mine ? ' (this person)' : ''} · due {fmtDateTime(f.pendingStep.plannedDeadline)}{f.pendingStep.overdue ? ' · OVERDUE' : ''}
+                                    </p>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </ResponsiveTable>
               )}
             </div>
           </div>

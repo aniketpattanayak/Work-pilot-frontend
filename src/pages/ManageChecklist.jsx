@@ -84,13 +84,12 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [activeTab, setActiveTab] = useState('All');
 
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
-  const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
-
   // Safely get user and assignerId for the BulkUpload component
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : {};
   const currentAssignerId = assignerId || user?._id || user?.id;
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || user?.tenantId;
+  const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
@@ -284,6 +283,17 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const checklistColumns = [
     { key: 'sno', label: 'S no.', width: '60px', cellClassName: 'text-xs font-black text-slate-400', render: (item, index) => index + 1 },
     { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <><span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>{item.createdAt && <span className="inline-block mt-1 rounded-lg px-2 py-1 text-[10px] leading-tight font-bold text-white bg-sky-600 shadow-sm normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(item.createdAt)}</span>}</> },
+    {
+      key: 'assignedBy',
+      label: 'Assigned By',
+      width: 'minmax(0,1fr)',
+      cellClassName: 'min-w-0 pr-2',
+      render: (item) => (
+        <span className="truncate block text-sm font-bold">
+          {item.createdBy?.name || item.assignerId?.name || item.assignerName || user?.name || 'Admin'}
+        </span>
+      )
+    },
     { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-bold">{item.doerId?.name || 'UNMAPPED'}</span> },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
     {

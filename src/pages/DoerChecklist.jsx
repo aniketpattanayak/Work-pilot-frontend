@@ -605,7 +605,16 @@ const DoerChecklist = ({ doerId }) => {
   // ───────── My Tasks helpers: selection, hold, sub tasks, one Actions button ─────────
   const isDoneItem = (it) => it.dataType === 'Checklist' ? !!it.isDone : it.dataType === 'Delegation' ? ['Completed', 'Verified'].includes(it.status) : it.status === 'completed';
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
-  const notDueYet = (it) => { if (it.dataType !== 'Checklist' && it.dataType !== 'Delegation') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
+  const notDueYet = (it) => {
+    // Delegation tasks can be completed early based on actual completion date before deadline!
+    if (it.dataType === 'Delegation') return false;
+    if (it.dataType !== 'Checklist') return false;
+    const d = new Date(it.deadlineDate);
+    d.setHours(0, 0, 0, 0);
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return d.getTime() > t.getTime();
+  };
   const isPastDueItem = (it) => !!it.deadlineDate && new Date(it.deadlineDate) < new Date() && !isDoneItem(it) && !isHeld(it);
   const isFmsDelayed = (it) => !!it.isOverdue || (!!it.deadlineDate && it.status !== 'completed' && new Date() > new Date(it.deadlineDate));
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
@@ -644,7 +653,7 @@ const DoerChecklist = ({ doerId }) => {
       if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
-      if (notDueYet(it)) return { ok: false, why: 'It is scheduled for a later date.' };
+      // Note: Early completion is allowed before deadline for delegation tasks
       return { ok: true };
     }
     if (notDueYet(it)) return { ok: false, why: 'It is not due yet.' };

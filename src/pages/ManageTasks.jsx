@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import {
@@ -78,7 +78,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   }, [openTaskThread, navigate]);
   const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All'); // Status dropdown filter
   const [nameFilter, setNameFilter] = useState('');
@@ -90,6 +89,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [revisionModalTask, setRevisionModalTask] = useState(null);
   // A rejected task: click its action icon to send it back (same person or a mapped one) with a new deadline
   const [sendBackTask, setSendBackTask] = useState(null);
+  // Verify Task popup modal
+  const [verifyModalTask, setVerifyModalTask] = useState(null);
 
   // History/files details modal: shared by the assigner and the doer side
   // (TaskCard.jsx below has its own copy) so either side can see every
@@ -130,9 +131,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     return () => { live = false; clearTimeout(t); };
   }, [isEditOpen, editingTask, editFormData.deadline, editFormData.doerId]);
 
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const currentAssignerId = assignerId || user?._id || user?.id;
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || user?.tenantId;
   const myRoles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
   // Someone who only passed the task on (not the original assigner, not an Admin) can follow
@@ -149,28 +150,43 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     [t.assignerId?.name, ...(t.forwardChain || []).map(c => c.employeeId?.name), t.doerId?.name].filter(Boolean).join(' → ');
 
   // ── Apply time filter, status filter AND name filter ─────────────────────
-  const applyFilters = useCallback((range, status, name, allTasks = tasks) => {
+  const filteredTasks = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const q = (name || '').toLowerCase().trim();
+    const q = (nameFilter || '').toLowerCase().trim();
 
-    const filtered = allTasks.filter(task => {
+    return tasks.filter(task => {
       // Time filter
-      if (task.deadline && range !== 'All') {
+      if (task.deadline && timeFilter !== 'All') {
         const deadline = new Date(task.deadline);
         deadline.setHours(0, 0, 0, 0);
-        if (range === 'Today' && deadline.getTime() !== now.getTime()) return false;
-        if (range === 'Next 7 Days') {
+        if (timeFilter === 'Today' && deadline.getTime() !== now.getTime()) return false;
+        if (timeFilter === 'Next 7 Days') {
           const nextWeek = new Date(now);
           nextWeek.setDate(now.getDate() + 7);
           if (!(deadline >= now && deadline <= nextWeek)) return false;
         }
-        if (range === 'Pending Work' && (task.status || '') !== 'Pending') return false;
+        if (timeFilter === 'Pending Work' && (task.status || '') !== 'Pending') return false;
       }
 
       // Status filter dropdown
-      if (status !== 'All') {
-        if (displayStatus(task).toLowerCase() !== status.toLowerCase()) return false;
+      if (statusFilter !== 'All') {
+        const sLower = statusFilter.toLowerCase();
+        if (sLower === 'completed') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'completed' && ts !== 'completed') return false;
+        } else if (sLower === 'verified') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'verified' && ts !== 'verified') return false;
+        } else if (sLower === 'rejected') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'rejected' && ts !== 'rejected') return false;
+        } else if (displayStatus(task).toLowerCase() !== sLower) {
+          return false;
+        }
       }
 
       // Name filter — matches task title OR assigned person name
@@ -181,12 +197,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       }
       return true;
     });
-
-    setFilteredTasks(filtered);
-  }, [tasks]);
+  }, [tasks, timeFilter, statusFilter, nameFilter]);
 
   const fetchData = useCallback(async () => {
-    if (!currentAssignerId || !currentTenantId) return;
+    if (!currentAssignerId || !currentTenantId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const isEmployee = user?.role === 'employee';
@@ -195,9 +212,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         : `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
-        API.get(taskEndpoint).catch(() => ({ data: [] })),
+        API.get(taskEndpoint).catch((err) => {
+          console.error("Task fetch error:", err);
+          return { data: [] };
+        }),
         !isEmployee
-          ? API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+          ? API.get(`/tasks/employees/${currentTenantId}`).catch((err) => {
+            console.error("Employee fetch error:", err);
+            return { data: [] };
+          })
           : Promise.resolve({ data: [] })
       ]);
 
@@ -214,24 +237,18 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       setTasks(sorted);
       setEmployees(employeeData);
-      setFilteredTasks(sorted);
-      setTimeFilter('All');
-      setStatusFilter('All');
-      setNameFilter('');
     } catch (err) {
       console.error("Fetch error:", err);
-      setTasks([]); setEmployees([]);
+      setTasks([]);
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
   }, [currentAssignerId, currentTenantId, user?.role]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Re-apply filters whenever filters change
   useEffect(() => {
-    applyFilters(timeFilter, statusFilter, nameFilter);
-  }, [timeFilter, statusFilter, nameFilter, applyFilters]);
+    fetchData();
+  }, [fetchData]);
 
   const handleVerifyTask = async (taskOrId, isSatisfied) => {
     const taskId = typeof taskOrId === 'object' ? taskOrId._id : taskOrId;
@@ -357,6 +374,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           })()}
         </>
       ),
+    },
+    {
+      key: 'assignedBy',
+      label: 'Assigned By',
+      width: '1.2fr',
+      cellClassName: 'text-xs font-bold min-w-0 pr-2',
+      render: (task) => (
+        <span className="truncate block">{task.assignerId?.name || task.assignerName || user?.name || '-'}</span>
+      )
     },
     {
       key: 'assignedTo', label: 'Assigned To', width: '1.5fr',
@@ -485,16 +511,18 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               <AlertTriangle size={14} />
             </button>
           )}
-          {!isViewer && task.status === 'Completed' && canVerifyTask(task) && (<>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task, true); }}
-              className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
-              <CheckCircle size={14} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task, false); }}
-              className="p-2 bg-red-500/5 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
-              <XCircle size={14} />
-            </button>
-          </>)}
+          {!isViewer && task.status === 'Completed' && statusFilter !== 'Verified' && canVerifyTask(task) && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setVerifyModalTask(task); }}
+                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
+                <CheckCircle size={14} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setSendBackTask(task); }}
+                className="p-2 bg-red-500/10 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
+                <XCircle size={14} />
+              </button>
+            </>
+          )}
           <button onClick={(e) => {
             e.stopPropagation();
             setActiveTaskDrawer({ task, index });
@@ -672,6 +700,127 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           </ResponsiveGrid>
         </div>
       </div>
+
+      {/* VERIFY TASK POPUP MODAL */}
+      {verifyModalTask && (
+        <div className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setVerifyModalTask(null)}>
+          <div className="mobile-sheet w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wide text-foreground">Verify Task</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Review completion & verify directive</p>
+                </div>
+              </div>
+              <button onClick={() => setVerifyModalTask(null)} className="p-2 rounded-full hover:bg-muted text-slate-400 hover:text-foreground transition">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-left flex-1 custom-scrollbar">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Directive Title</span>
+                <p className="text-sm font-black text-foreground mt-0.5">{verifyModalTask.title}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Assigned To</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.doerId?.name || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Target Deadline</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.deadline ? fmtISTDate(verifyModalTask.deadline) : 'No deadline'}</p>
+                </div>
+              </div>
+
+              {verifyModalTask.description && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</span>
+                  <p className="text-xs text-foreground/80 mt-0.5 whitespace-pre-wrap">{verifyModalTask.description}</p>
+                </div>
+              )}
+
+              {/* Completion Evidence / Remarks */}
+              <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 size={13} /> Completed Status Details
+                </span>
+                <p className="text-xs text-foreground font-medium">
+                  {verifyModalTask.remarks || "Work marked as completed by doer."}
+                </p>
+                {(() => {
+                  const photos = allTaskPhotos(verifyModalTask);
+                  if (!photos.length) return null;
+                  return (
+                    <div className="mt-2 pt-2 border-t border-emerald-500/15">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">Evidence Photos ({photos.length})</span>
+                      <div className="flex flex-wrap gap-2">
+                        {photos.slice(0, 4).map((f, fi) => (
+                          <TaskPhotoThumb key={fi} file={f} className="w-14 h-14" onClick={() => openGallery(photos, fi, verifyModalTask)} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="text-[11px] text-muted-foreground p-3 rounded-xl bg-muted/40 border border-border/50">
+                ℹ️ Clicking <b>Verify</b> confirms the work. The task status remains <b>Completed</b>. To send back for correction, click <b>Reject / Send Back</b>.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-border flex flex-wrap items-center justify-between gap-3 bg-muted/10">
+              <button
+                type="button"
+                onClick={() => {
+                  const t = verifyModalTask;
+                  setVerifyModalTask(null);
+                  setSendBackTask(t);
+                }}
+                className="px-4 py-2 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95"
+              >
+                <XCircle size={14} /> Reject / Send Back
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerifyModalTask(null)}
+                  className="px-4 py-2 rounded-xl border border-border bg-card text-foreground font-black text-[11px] uppercase tracking-wider hover:bg-background transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const taskId = verifyModalTask._id;
+                    try {
+                      await API.put('/tasks/respond', {
+                        taskId,
+                        status: 'Verified',
+                        remarks: 'Directive evidence verified.',
+                        doerId: currentAssignerId
+                      });
+                      setVerifyModalTask(null);
+                      await fetchData();
+                      dialog.alert('The task has been verified successfully.', { tone: 'success' });
+                    } catch (err) {
+                      dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' });
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <CheckCircle size={14} /> Verify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {sendBackTask && (
         <SendBackReassignModal
