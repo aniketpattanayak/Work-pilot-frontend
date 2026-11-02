@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import {
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import RevisionPanel from '../components/RevisionPanel';
 import CreateTask from './CreateTask';
+import TaskActivityDrawer from '../components/TaskActivityDrawer';
 import { useChat } from '../components/useChat';
 import { openChatPopup } from '../utils/openChatPopup';
 import { isViewerOnly } from '../utils/viewerMode';
@@ -52,15 +53,24 @@ import DateReasonFields from '../components/mytasks/DateReasonFields';
 import useDateReasons from '../hooks/useDateReasons';
 import { reasonError } from '../utils/dateReasonCheck';
 import { fmtIST, fmtISTDate, fmtISTTime, fmtISTShort } from '../utils/istTime';
+import SendBackReassignModal from '../components/mytasks/SendBackReassignModal';
+import useTaskUnread from '../hooks/useTaskUnread';
+import UnreadBadge from '../components/UnreadBadge';
 
-// Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back"
+// Work the assigner sent back is stored as "Accepted" again; its last history entry says "Sent Back" or "Rejected"
 const displayStatus = (t) => {
+  if (!t) return '';
+  if (t.status === 'Rejected') return 'Rejected';
   const last = (t.history || []).slice(-1)[0];
-  return t.status === 'Accepted' && last && last.action === 'Sent Back' ? 'Rejected' : (t.status || '');
+  if (t.status === 'Accepted' && last && (last.action === 'Sent Back' || last.action === 'Rejected')) {
+    return 'Rejected';
+  }
+  return t.status || '';
 };
 
 const ManageTasks = ({ assignerId, tenantId }) => {
   const { openTaskThread, chatEnabled } = useChat();
+  const { unreadFor, markRead } = useTaskUnread();
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
@@ -68,7 +78,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   }, [openTaskThread, navigate]);
   const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All'); // Status dropdown filter
   const [nameFilter, setNameFilter] = useState('');
@@ -76,22 +85,12 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [activeTaskDrawer, setActiveTaskDrawer] = useState(null);
   const [revisionModalTask, setRevisionModalTask] = useState(null);
-
-  // Reject-with-evidence modal state: rejecting (sending back for
-  // correction) can now carry remarks AND photo(s) from storage or the
-  // live camera, same as the doer's own "mark done" flow, instead of a
-  // text-only prompt.
-  const [rejectModalTask, setRejectModalTask] = useState(null);
-  const [rejectRemarks, setRejectRemarks] = useState('');
-  const [rejectFiles, setRejectFiles] = useState([]);
-  const maxFileMb = useUploadLimit();
-  const addRejectFiles = (list) => {
-    const { ok, problems } = checkFiles(list, maxFileMb);
-    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
-    if (ok.length) setRejectFiles((prev) => [...prev, ...ok]);
-  };
-  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  // A rejected task: click its action icon to send it back (same person or a mapped one) with a new deadline
+  const [sendBackTask, setSendBackTask] = useState(null);
+  // Verify Task popup modal
+  const [verifyModalTask, setVerifyModalTask] = useState(null);
 
   // History/files details modal: shared by the assigner and the doer side
   // (TaskCard.jsx below has its own copy) so either side can see every
@@ -132,9 +131,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     return () => { live = false; clearTimeout(t); };
   }, [isEditOpen, editingTask, editFormData.deadline, editFormData.doerId]);
 
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const currentAssignerId = assignerId || user?._id || user?.id;
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || user?.tenantId;
   const myRoles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
   // Someone who only passed the task on (not the original assigner, not an Admin) can follow
@@ -151,28 +150,43 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     [t.assignerId?.name, ...(t.forwardChain || []).map(c => c.employeeId?.name), t.doerId?.name].filter(Boolean).join(' → ');
 
   // ── Apply time filter, status filter AND name filter ─────────────────────
-  const applyFilters = useCallback((range, status, name, allTasks = tasks) => {
+  const filteredTasks = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const q = (name || '').toLowerCase().trim();
+    const q = (nameFilter || '').toLowerCase().trim();
 
-    const filtered = allTasks.filter(task => {
+    return tasks.filter(task => {
       // Time filter
-      if (task.deadline && range !== 'All') {
+      if (task.deadline && timeFilter !== 'All') {
         const deadline = new Date(task.deadline);
         deadline.setHours(0, 0, 0, 0);
-        if (range === 'Today' && deadline.getTime() !== now.getTime()) return false;
-        if (range === 'Next 7 Days') {
+        if (timeFilter === 'Today' && deadline.getTime() !== now.getTime()) return false;
+        if (timeFilter === 'Next 7 Days') {
           const nextWeek = new Date(now);
           nextWeek.setDate(now.getDate() + 7);
           if (!(deadline >= now && deadline <= nextWeek)) return false;
         }
-        if (range === 'Pending Work' && (task.status || '') !== 'Pending') return false;
+        if (timeFilter === 'Pending Work' && (task.status || '') !== 'Pending') return false;
       }
 
       // Status filter dropdown
-      if (status !== 'All') {
-        if (displayStatus(task).toLowerCase() !== status.toLowerCase()) return false;
+      if (statusFilter !== 'All') {
+        const sLower = statusFilter.toLowerCase();
+        if (sLower === 'completed') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'completed' && ts !== 'completed') return false;
+        } else if (sLower === 'verified') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'verified' && ts !== 'verified') return false;
+        } else if (sLower === 'rejected') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'rejected' && ts !== 'rejected') return false;
+        } else if (displayStatus(task).toLowerCase() !== sLower) {
+          return false;
+        }
       }
 
       // Name filter — matches task title OR assigned person name
@@ -183,12 +197,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       }
       return true;
     });
-
-    setFilteredTasks(filtered);
-  }, [tasks]);
+  }, [tasks, timeFilter, statusFilter, nameFilter]);
 
   const fetchData = useCallback(async () => {
-    if (!currentAssignerId || !currentTenantId) return;
+    if (!currentAssignerId || !currentTenantId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const isEmployee = user?.role === 'employee';
@@ -197,9 +212,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         : `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
-        API.get(taskEndpoint).catch(() => ({ data: [] })),
+        API.get(taskEndpoint).catch((err) => {
+          console.error("Task fetch error:", err);
+          return { data: [] };
+        }),
         !isEmployee
-          ? API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] }))
+          ? API.get(`/tasks/employees/${currentTenantId}`).catch((err) => {
+            console.error("Employee fetch error:", err);
+            return { data: [] };
+          })
           : Promise.resolve({ data: [] })
       ]);
 
@@ -216,26 +237,22 @@ const ManageTasks = ({ assignerId, tenantId }) => {
 
       setTasks(sorted);
       setEmployees(employeeData);
-      setFilteredTasks(sorted);
-      setTimeFilter('All');
-      setStatusFilter('All');
-      setNameFilter('');
     } catch (err) {
       console.error("Fetch error:", err);
-      setTasks([]); setEmployees([]);
+      setTasks([]);
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
   }, [currentAssignerId, currentTenantId, user?.role]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Re-apply filters whenever filters change
   useEffect(() => {
-    applyFilters(timeFilter, statusFilter, nameFilter);
-  }, [timeFilter, statusFilter, nameFilter, applyFilters]);
+    fetchData();
+  }, [fetchData]);
 
-  const handleVerifyTask = async (taskId, isSatisfied) => {
+  const handleVerifyTask = async (taskOrId, isSatisfied) => {
+    const taskId = typeof taskOrId === 'object' ? taskOrId._id : taskOrId;
+    const taskObj = typeof taskOrId === 'object' ? taskOrId : tasks.find((t) => t._id === taskId) || { _id: taskId };
     if (isSatisfied) {
       const yes = await dialog.confirm('Mark this task as verified? This confirms the work was done to your satisfaction.', { title: 'Verify task', confirmText: 'Verify' });
       if (!yes) return;
@@ -246,35 +263,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       } catch (err) { dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' }); }
       return;
     }
-    // Rejecting ("send back for correction") now opens a modal instead of a
-    // text-only prompt, so the assigner can also attach photo(s) - from
-    // storage or the live camera - explaining what's wrong, same as the
-    // doer's own evidence on completion.
-    setRejectModalTask({ _id: taskId });
-    setRejectRemarks('');
-    setRejectFiles([]);
-  };
-
-  const handleSubmitReject = async (e) => {
-    e.preventDefault();
-    if (!rejectModalTask || !rejectRemarks.trim()) return;
-    setRejectSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('taskId', rejectModalTask._id);
-      formData.append('status', 'Accepted'); // this app's existing "sent back for correction" status
-      formData.append('remarks', rejectRemarks.trim());
-      formData.append('doerId', currentAssignerId);
-      rejectFiles.forEach((f) => formData.append('evidence', f));
-      await API.put('/tasks/respond', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setRejectModalTask(null);
-      fetchData();
-      dialog.alert('The task was sent back to the doer.', { tone: 'success' });
-    } catch (err) {
-      dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' });
-    } finally {
-      setRejectSubmitting(false);
-    }
+    // Rejecting a completed task opens the Send Back For Correction form: same person or another one, with a new deadline
+    setSendBackTask(taskObj);
   };
 
   const handleCancelTask = async (taskId, title) => {
@@ -359,7 +349,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       render: (task, index) => (
         <>
           <span className="font-black text-sm whitespace-normal break-words block">{task.title}</span>
-          {task.createdAt && <span className="block mt-0.5 text-[9px] font-bold text-slate-400" data-testid="given-at">Given: {fmtIST(task.createdAt)}</span>}
+          {task.createdAt && <span className="inline-block mt-1 rounded-lg px-2 py-1 text-[10px] leading-tight font-bold text-white bg-sky-600 shadow-sm normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(task.createdAt)}</span>}
           {(task.files || []).length > 0 && (() => {
             // So anyone looking at the list — not just whoever opens
             // History & files — can see at a glance that a photo was
@@ -386,6 +376,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
+      key: 'assignedBy',
+      label: 'Assigned By',
+      width: '1.2fr',
+      cellClassName: 'text-xs font-bold min-w-0 pr-2',
+      render: (task) => (
+        <span className="truncate block">{task.assignerId?.name || task.assignerName || user?.name || '-'}</span>
+      )
+    },
+    {
       key: 'assignedTo', label: 'Assigned To', width: '1.5fr',
       cellClassName: 'text-xs font-bold min-w-0 pr-2',
       render: (task, index) => (
@@ -402,8 +401,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       cellClassName: 'min-w-0 pr-2',
       render: (task, index) => (
         <>
-          <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">
-            {task.description || "No description provided."}
+          <p className="text-sm whitespace-normal break-words italic font-medium text-foreground/80">
+            {task.description || "NO DESCRIPTION"}
           </p>
         </>
       ),
@@ -413,21 +412,26 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       cellClassName: 'text-xs font-bold min-w-0',
       render: (task, index) => (
         <>
-          {task.deadline ? (
-            <>
-              {fmtISTDate(task.deadline)}{' '}
-              <span className="text-muted-foreground font-semibold">
-                {fmtISTTime(task.deadline)}
+          {task.deadline ? (() => {
+            // Colour only: red = overdue, amber = due today, green = upcoming or already done.
+            const isDone = ['Completed', 'Verified'].includes(task.status);
+            const dd = new Date(task.deadline); dd.setHours(0, 0, 0, 0);
+            const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+            const tone = isDone ? 'bg-emerald-600' : dd < t0 ? 'bg-red-500' : dd.getTime() === t0.getTime() ? 'bg-amber-500' : 'bg-emerald-600';
+            return (
+              <span className={`inline-flex flex-col items-center leading-tight rounded-lg px-3 py-1.5 text-white font-bold shadow-sm ${tone}`} data-testid="deadline-pill">
+                <span>{fmtISTDate(task.deadline)}</span>
+                <span className="font-semibold opacity-90">{fmtISTTime(task.deadline)}</span>
               </span>
-            </>
-          ) : 'AWAITING'}
+            );
+          })() : 'AWAITING'}
           {(() => {
             const ch = (task.dateChanges || []).filter((c) => c.byRole !== 'hold');
             const was = (ch[0] && ch[0].oldDeadline) || (!(task.dateChanges || []).length && task.originalDeadline);
             if (!was) return null;
             const d = Math.round((new Date(task.deadline) - new Date(was)) / 86400000);
             return (
-              <span className="block text-[9px] font-black uppercase text-amber-600 mt-1" title="The deadline was changed">
+              <span className="block text-[9px] font-black uppercase text-amber-600 mt-1.5" title="The deadline was changed">
                 Revised &middot; was {fmtISTDate(was)} ({d >= 0 ? '+' : ''}{d}d){ch.length > 1 ? ` · changed ${ch.length} times` : ''}
               </span>
             );
@@ -451,11 +455,24 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     {
       key: 'status', label: 'Status', width: 'minmax(100px,1fr)',
       cellClassName: 'min-w-0',
-      render: (task, index) => (
-        <>
-          <span className="text-[10px] px-2 py-1 rounded bg-sky-500/10 font-semibold">{displayStatus(task)}</span>
-        </>
-      ),
+      render: (task) => {
+        const st = displayStatus(task);
+        const tone = {
+          Pending: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+          Accepted: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+          Completed: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+          Verified: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+          'Revision Requested': 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+          Rejected: 'bg-red-500/15 text-red-600 dark:text-red-300',
+        }[st] || 'bg-sky-500/15 text-sky-700 dark:text-sky-300';
+        return (
+          <span
+            className={`text-xs px-3 py-1.5 rounded-lg font-bold inline-flex items-center gap-1 transition-all ${tone}`}
+          >
+            {displayStatus(task)}
+          </span>
+        );
+      },
     },
     {
       key: 'followers', label: 'Followers', width: 'minmax(110px,1fr)',
@@ -463,7 +480,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       render: (task) => {
         const names = (task.followers || []).map((f) => f && f.name).filter(Boolean);
         return names.length
-          ? <span className="block text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-300 whitespace-normal break-words" title="Followers only follow up with the doer">{names.join(', ')}</span>
+          ? (
+            <span className="flex flex-wrap gap-1" title="Followers only follow up with the doer">
+              {names.map((n, i) => (
+                <span key={i} className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide bg-violet-500/15 text-violet-700 dark:text-violet-300 whitespace-nowrap">{n}</span>
+              ))}
+            </span>
+          )
           : <span className="follow-none text-slate-400">-</span>;
       },
     },
@@ -488,34 +511,28 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               <AlertTriangle size={14} />
             </button>
           )}
-          {!isViewer && task.status === 'Completed' && canVerifyTask(task) && (<>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, true); }}
-              className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
-              <CheckCircle size={14} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task._id, false); }}
-              className="p-2 bg-red-500/5 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
-              <XCircle size={14} />
-            </button>
-          </>)}
-          {!isViewer && chatEnabled && (
-            <button onClick={(e) => {
-              e.stopPropagation();
-              openTaskChat({
-                taskId: task._id,
-                taskType: 'delegation',
-                taskTitle: task.title || task.taskTitle || 'Task',
-                // Bug fix: task.assignerId is a populated object here
-                // ({_id, name, ...}), not a plain id - pushing it
-                // straight into participants silently corrupted the
-                // thread's participant list. Always resolve to the id.
-                participants: [task.doerId?._id || task.doerId, task.assignerId?._id || task.assignerId].filter(Boolean),
-              });
-            }}
-              className="flex items-center gap-1 text-[11px] px-2 py-2 rounded-xl border border-border text-muted-foreground hover:border-blue-400 hover:text-blue-500 transition-all font-bold" title="Comments">
-              💬
-            </button>
+          {!isViewer && task.status === 'Completed' && statusFilter !== 'Verified' && canVerifyTask(task) && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setVerifyModalTask(task); }}
+                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
+                <CheckCircle size={14} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setSendBackTask(task); }}
+                className="p-2 bg-red-500/10 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
+                <XCircle size={14} />
+              </button>
+            </>
           )}
+          <button onClick={(e) => {
+            e.stopPropagation();
+            setActiveTaskDrawer({ task, index });
+            markRead(task._id);
+          }}
+            className="relative p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-xl transition-all active:scale-90 font-bold"
+            title="Comments">
+            <MessageSquare size={14} />
+            <UnreadBadge count={unreadFor(task._id)} />
+          </button>
           <button onClick={(e) => { e.stopPropagation(); setDetailsModalTask(task); }}
             className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-xl transition-all active:scale-90" title="History & files">
             <History size={14} />
@@ -643,7 +660,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               rows={filteredTasks}
               rowKey={(task) => task._id}
               renderHeader={({ cells, style }) => (
-                <div className="mobile-grid-head grid px-6 py-4 bg-card backdrop-blur-xl border-b border-border font-black text-slate-400 text-[10px] lg:text-[11px] uppercase tracking-[0.14em] items-center sticky top-0 z-20" style={style}>
+                <div className="mobile-grid-head grid px-6 py-2.5 bg-slate-900 dark:bg-slate-950 rounded-t-lg border border-slate-800 font-black text-slate-400 text-[10px] uppercase tracking-[0.14em] items-center gap-2 sticky top-0 z-20" style={style}>
                   {cells}
                 </div>
               )}
@@ -684,73 +701,138 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         </div>
       </div>
 
-      {/* REJECT (SEND BACK) MODAL — remarks + photo evidence, from storage or live camera */}
-      {rejectModalTask && (
-        <div className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSubmitReject} className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center px-6 py-4 border-b border-border flex-shrink-0">
-              <h3 className="font-black text-sm uppercase tracking-widest text-red-600">Send Back For Correction</h3>
-              <button type="button" onClick={() => setRejectModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
-            </div>
-            <div className="p-6 space-y-4 overflow-y-auto flex-1">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">What needs to be corrected? *</label>
-                <textarea
-                  required
-                  rows={4}
-                  autoFocus
-                  value={rejectRemarks}
-                  onChange={(e) => setRejectRemarks(e.target.value)}
-                  placeholder="Describe the corrections needed — the doer will see this."
-                  className="w-full bg-background border border-border px-4 py-2.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-400/30 focus:border-red-400 resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
-                  Photo / file evidence (optional)
-                </label>
-                <div className="flex gap-2">
-                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
-                    <Upload size={14} /> From storage
-                    <input
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => { addRejectFiles(e.target.files); e.target.value = ''; }}
-                    />
-                  </label>
-                  <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-border text-xs font-bold text-muted-foreground hover:border-primary/50 hover:text-primary cursor-pointer transition-all">
-                    <Camera size={14} /> Take photo
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => { addRejectFiles(e.target.files); e.target.value = ''; }}
-                    />
-                  </label>
+      {/* VERIFY TASK POPUP MODAL */}
+      {verifyModalTask && (
+        <div className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setVerifyModalTask(null)}>
+          <div className="mobile-sheet w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
+                  <CheckCircle size={18} />
                 </div>
-                {rejectFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {rejectFiles.map((f, i) => (
-                      <LocalFileThumb key={i} file={f} onRemove={() => setRejectFiles((prev) => prev.filter((_, j) => j !== i))} />
-                    ))}
-                  </div>
-                )}
-                <p className="mt-2 text-[10px] font-bold text-muted-foreground">{uploadHint(maxFileMb)}</p>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wide text-foreground">Verify Task</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Review completion & verify directive</p>
+                </div>
               </div>
-            </div>
-            <div className="p-6 pt-0 flex-shrink-0">
-              <button
-                type="submit"
-                disabled={rejectSubmitting || !rejectRemarks.trim()}
-                className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest disabled:opacity-50 transition-all"
-              >
-                {rejectSubmitting ? 'Sending…' : 'Send back to doer'}
+              <button onClick={() => setVerifyModalTask(null)} className="p-2 rounded-full hover:bg-muted text-slate-400 hover:text-foreground transition">
+                <X size={16} />
               </button>
             </div>
-          </form>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-left flex-1 custom-scrollbar">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Directive Title</span>
+                <p className="text-sm font-black text-foreground mt-0.5">{verifyModalTask.title}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Assigned To</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.doerId?.name || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Target Deadline</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.deadline ? fmtISTDate(verifyModalTask.deadline) : 'No deadline'}</p>
+                </div>
+              </div>
+
+              {verifyModalTask.description && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</span>
+                  <p className="text-xs text-foreground/80 mt-0.5 whitespace-pre-wrap">{verifyModalTask.description}</p>
+                </div>
+              )}
+
+              {/* Completion Evidence / Remarks */}
+              <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 size={13} /> Completed Status Details
+                </span>
+                <p className="text-xs text-foreground font-medium">
+                  {verifyModalTask.remarks || "Work marked as completed by doer."}
+                </p>
+                {(() => {
+                  const photos = allTaskPhotos(verifyModalTask);
+                  if (!photos.length) return null;
+                  return (
+                    <div className="mt-2 pt-2 border-t border-emerald-500/15">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">Evidence Photos ({photos.length})</span>
+                      <div className="flex flex-wrap gap-2">
+                        {photos.slice(0, 4).map((f, fi) => (
+                          <TaskPhotoThumb key={fi} file={f} className="w-14 h-14" onClick={() => openGallery(photos, fi, verifyModalTask)} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="text-[11px] text-muted-foreground p-3 rounded-xl bg-muted/40 border border-border/50">
+                ℹ️ Clicking <b>Verify</b> confirms the work. The task status remains <b>Completed</b>. To send back for correction, click <b>Reject / Send Back</b>.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-border flex flex-wrap items-center justify-between gap-3 bg-muted/10">
+              <button
+                type="button"
+                onClick={() => {
+                  const t = verifyModalTask;
+                  setVerifyModalTask(null);
+                  setSendBackTask(t);
+                }}
+                className="px-4 py-2 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95"
+              >
+                <XCircle size={14} /> Reject / Send Back
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerifyModalTask(null)}
+                  className="px-4 py-2 rounded-xl border border-border bg-card text-foreground font-black text-[11px] uppercase tracking-wider hover:bg-background transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const taskId = verifyModalTask._id;
+                    try {
+                      await API.put('/tasks/respond', {
+                        taskId,
+                        status: 'Verified',
+                        remarks: 'Directive evidence verified.',
+                        doerId: currentAssignerId
+                      });
+                      setVerifyModalTask(null);
+                      await fetchData();
+                      dialog.alert('The task has been verified successfully.', { tone: 'success' });
+                    } catch (err) {
+                      dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' });
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <CheckCircle size={14} /> Verify
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      {sendBackTask && (
+        <SendBackReassignModal
+          task={sendBackTask}
+          assignerId={currentAssignerId}
+          onClose={() => setSendBackTask(null)}
+          onDone={() => {
+            setSendBackTask(null);
+            fetchData();
+            dialog.alert('The task was sent back with the updated details.', { tone: 'success' });
+          }}
+        />
       )}
 
       {/* HISTORY & FILES MODAL — every uploaded photo and the full audit
@@ -1008,6 +1090,27 @@ const ManageTasks = ({ assignerId, tenantId }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTaskDrawer && (
+        <TaskActivityDrawer
+          isOpen={!!activeTaskDrawer}
+          onClose={() => { markRead(activeTaskDrawer.task._id); setActiveTaskDrawer(null); }}
+          task={activeTaskDrawer.task}
+          taskIndex={activeTaskDrawer.index !== undefined ? activeTaskDrawer.index + 1 : 24}
+          taskType="delegation"
+          employees={employees}
+          currentUser={user}
+          onEdit={(t) => {
+            setActiveTaskDrawer(null);
+            handleOpenEdit(t);
+          }}
+          onDelete={(t) => {
+            setActiveTaskDrawer(null);
+            handleCancelTask(t._id, t.title);
+          }}
+          onUpdateTask={fetchData}
+        />
       )}
     </div>
   );

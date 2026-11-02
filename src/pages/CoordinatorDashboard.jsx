@@ -6,10 +6,39 @@ import {
   ShieldCheck, Send, CheckCircle2, Clock, User, UserCheck, AlertCircle,
   RefreshCcw, MessageCircle, Zap, X, Phone, MessageSquare, Layers,
   ChevronRight, ClipboardList, Target, Calendar, Upload,
-  ChevronDown, ChevronUp, Search, UserPlus
+  ChevronDown, ChevronUp, Search, UserPlus, Bell, Check
 } from "lucide-react";
 import ResponsiveTable from '../components/ResponsiveTable';
 import MobileFilters from '../components/MobileFilters';
+
+const UserAvatar = ({ name, avatar, className = "w-7 h-7 text-[10px]" }) => {
+  const [imgError, setImgError] = useState(false);
+  const src = !imgError && (avatar || (name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e2e8f0&color=334155&bold=true&size=64` : null));
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || 'User'}
+        onError={() => setImgError(true)}
+        className={`${className} rounded-full object-cover shrink-0 border border-slate-200 dark:border-slate-700`}
+      />
+    );
+  }
+
+  const initials = (name || '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(p => p[0].toUpperCase())
+    .join('');
+
+  return (
+    <div className={`${className} rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center font-bold shrink-0 border border-slate-300 dark:border-slate-600 select-none`}>
+      {initials || <User size={12} />}
+    </div>
+  );
+};
 
 const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   const isViewer = isViewerOnly();
@@ -237,7 +266,9 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     setDateTo('');
   }, [activeTab]);
 
-  const filteredTasks = useMemo(() => {
+  // The rules that decide which tasks belong to a tab. Used for the table (current tab + date range)
+  // and for the counts shown on the other tabs - so a count always equals what that tab will list.
+  const filterTasksFor = (tab, dateFrom, dateTo) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const term = searchTerm.toLowerCase().trim();
@@ -254,10 +285,10 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
 
       let matchesTab = false;
 
-      if (activeTab === 'Completed') {
+      if (tab === 'Completed') {
         // Checklists repeat, so they are never "completed" as a whole
         matchesTab = isDone && task.taskType !== 'Checklist';
-      } else if (activeTab === 'Pending') {
+      } else if (tab === 'Pending') {
         if (isDone) {
           matchesTab = false;
         } else if (task.taskType === 'FMS') {
@@ -268,7 +299,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         } else {
           matchesTab = !isDone;
         }
-      } else if (activeTab === 'Upcoming') {
+      } else if (tab === 'Upcoming') {
         if (isDone) {
           matchesTab = false;
         } else if (task.taskType === 'FMS') {
@@ -293,7 +324,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       // Date Range Filter
       if (dateFrom || dateTo) {
         // Skip parent date filtering for checklists in Upcoming tab, since instances are generated dynamically
-        if (!(activeTab === 'Upcoming' && task.taskType === 'Checklist')) {
+        if (!(tab === 'Upcoming' && task.taskType === 'Checklist')) {
           const taskDate = new Date(task.completedAt || task.deadline || task.nextDueDate || Date.now());
           taskDate.setHours(0, 0, 0, 0);
           if (dateFrom) {
@@ -316,7 +347,24 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
         (task.assignerId?.name || "").toLowerCase().includes(term) ||
         (task.doerId?.department || "").toLowerCase().includes(term);
     });
-  }, [tasks, activeTab, searchTerm, tenantSettings, categoryFilter, dateFrom, dateTo]);
+  };
+
+  const filteredTasks = useMemo(
+    () => filterTasksFor(activeTab, dateFrom, dateTo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tasks, activeTab, searchTerm, tenantSettings, categoryFilter, dateFrom, dateTo]
+  );
+
+  // Numbers shown on the tabs: the open tab counts exactly the rows in the table; the other tabs count
+  // what they will show when opened (same search + category, no date range, as a tab switch clears it).
+  const tabCounts = useMemo(() => {
+    const out = {};
+    ['Pending', 'Upcoming', 'Completed'].forEach((t) => {
+      out[t] = t === activeTab ? filteredTasks.length : filterTasksFor(t, '', '').length;
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTasks, tasks, activeTab, searchTerm, tenantSettings, categoryFilter]);
 
   const scrollToTask = (taskId) => {
     setTimeout(() => {
@@ -470,92 +518,168 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
     </div>
   );
 
-  return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-4">
+  // ── Table layout: the Type column only shows on the All view; every column gets a share of the width
+  // so the whole table fits the screen without sideways scrolling ──
+  const showType = categoryFilter === 'All';
+  const BASE_W = { sno: 4, type: 10, name: showType ? 16 : 22, to: showType ? 16 : 18, by: showType ? 12 : 14, contact: 12, next: 12, status: 11, act: 13 };
+  const extraN = coordExtraCols.length;
+  const baseTotal = Object.entries(BASE_W).reduce((n, [k, v]) => n + (k === 'type' && !showType ? 0 : v), 0);
+  const fit = extraN ? Math.max(0.45, (100 - 8 * extraN) / baseTotal) : 100 / baseTotal;
+  const colStyle = (i) => {
+    const key = ['sno', 'type', 'name', 'to', 'by', 'contact', 'next', 'status', 'act'][i];
+    return { width: (BASE_W[key] * fit).toFixed(2) + '%' };
+  };
+  const extraW = extraN ? ((100 - baseTotal * fit) / extraN).toFixed(2) + '%' : undefined;
+  const colCount = 8 + (showType ? 1 : 0) + extraN;
 
-      {/* HEADER */}
-      <div className="flex flex-row justify-between items-center mb-3 gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0"><ShieldCheck size={20} className="text-primary" /></div>
+  return (
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in duration-500 selection:bg-primary/30 px-3 md:px-4">
+
+      {/* HEADER CARD */}
+      <div className="bg-card border border-border rounded-2xl p-3.5 md:p-4 shadow-sm flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/40 text-sky-500 border border-sky-100 dark:border-sky-800/50 flex items-center justify-center shrink-0 shadow-inner">
+            <ShieldCheck size={22} className="text-sky-500" />
+          </div>
           <div className="min-w-0">
-            <h2 className="text-foreground text-xl font-black tracking-tighter uppercase leading-none truncate">Coordinator Dashboard</h2>
-            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wide mt-1 opacity-80 italic truncate">See every task, checklist and flow in one place</p>
+            <h2 className="text-foreground text-lg md:text-xl font-black tracking-tight uppercase leading-none truncate">
+              Coordinator Dashboard
+            </h2>
+            <p className="text-slate-400 dark:text-slate-500 text-[10px] md:text-[11px] font-bold uppercase tracking-wider mt-1 italic truncate">
+              See every task, checklist and flow in one place
+            </p>
           </div>
         </div>
-        <button onClick={fetchTasks} className="group shrink-0 bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
-          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        <button
+          onClick={fetchTasks}
+          className="group shrink-0 bg-card hover:bg-muted/50 border border-border px-4 py-2 rounded-xl text-foreground font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
+        >
+          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-sky-500" /> REFRESH
         </button>
       </div>
 
-      {/* SEARCH + CATEGORY + DATE RANGE — collapsed behind Filters on phones */}
-      <div className="mb-2">
-        <MobileFilters
-          activeCount={[categoryFilter !== 'All', !!dateFrom, !!dateTo, showCoordColConfig].filter(Boolean).length}
-          onClear={() => { setCategoryFilter('All'); setDateFrom(''); setDateTo(''); }}
-          className="flex flex-wrap items-center gap-2"
-          alwaysVisible={
-            <div className="relative flex-1 min-w-0 sm:min-w-[220px] max-w-md">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              <input type="text" placeholder="Search person, dept or task..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-card border border-border pl-9 pr-9 py-2 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
-              {searchTerm && (
-                <button type="button" aria-label="Clear search" onClick={() => setSearchTerm("")} className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md hover:bg-muted flex items-center justify-center text-slate-400 hover:text-red-500"><X size={14} /></button>
-              )}
-            </div>
-          }
-        >
-          {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => (
-            <button key={cat} onClick={() => setCategoryFilter(cat)}
-              className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${categoryFilter === cat
-                  ? cat === 'Delegation' ? 'bg-sky-500 text-white border-sky-500'
-                    : cat === 'Checklist' ? 'bg-amber-500 text-white border-amber-500'
-                      : cat === 'FMS' ? 'bg-purple-500 text-white border-purple-500'
-                        : 'bg-primary text-white border-primary'
-                  : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'
-                }`}>
-              {cat}
-            </button>
-          ))}
-          <button type="button" onClick={() => setShowCoordColConfig(c => !c)} title="Choose extra columns for FMS rows"
-            className={`px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border ${showCoordColConfig ? 'bg-primary text-white border-primary' : 'bg-transparent text-slate-500 border-border hover:border-primary hover:text-primary'}`}>
-            Columns{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="bg-background border border-border text-foreground text-[11px] px-3 py-1.5 rounded-xl outline-none focus:ring-2 focus:ring-primary/20" />
-            {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="text-[9px] font-black text-red-400 hover:text-red-600 px-2 py-1.5 rounded-xl border border-red-200 hover:border-red-400 transition-all">
-                ✕ Clear
+      {/* SEARCH + CATEGORY + DATE RANGE */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+          {/* Search bar */}
+          <div className="relative min-w-[200px] max-w-xs flex-1">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search person, dept, or task..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-card border border-border pl-9 pr-8 py-1.5 rounded-full text-xs font-semibold text-foreground placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-500/20 shadow-sm transition-all"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full hover:bg-muted flex items-center justify-center text-slate-400 hover:text-red-500"
+              >
+                <X size={12} />
               </button>
             )}
           </div>
-        </MobileFilters>
-      </div>
 
-      {/* TABS (primary view switch - always visible, not a filter) */}
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex gap-1 bg-card/50 p-1 rounded-xl border border-border w-fit max-w-full overflow-x-auto">
-          {['Pending', 'Upcoming', 'Completed'].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-3 sm:px-5 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-[0.15em] transition-all shrink-0 ${activeTab === tab ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground hover:bg-background'}`}>
-              {tab}
+          {/* Category Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {['All', 'Delegation', 'Checklist', 'FMS'].map(cat => {
+              const active = categoryFilter === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-3.5 py-1.5 rounded-full font-black text-[10px] md:text-[11px] uppercase tracking-wider transition-all shadow-sm ${
+                    active
+                      ? 'bg-[#0088FF] text-white shadow-sky-500/20'
+                      : 'bg-card border border-border text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+                  }`}
+                >
+                  {cat === 'All' ? 'ALL' : cat.toUpperCase()}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowCoordColConfig(c => !c)}
+              title="Choose extra columns for FMS rows"
+              className={`px-3.5 py-1.5 rounded-full font-black text-[10px] md:text-[11px] uppercase tracking-wider transition-all shadow-sm ${
+                showCoordColConfig
+                  ? 'bg-[#0088FF] text-white shadow-sky-500/20'
+                  : 'bg-card border border-border text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              COLUMNS{coordExtraCols.length > 0 ? ` (${coordExtraCols.length})` : ''}
             </button>
-          ))}
-        </div>
-        {activeTab === 'Upcoming' && (
-          <div className="text-[10px] text-slate-500 font-medium italic">
-            Checklist instances from {dateFrom || 'today'} to {dateTo || 'next 5 days'} (holidays and weekends excluded)
           </div>
-        )}
+        </div>
+
+        {/* Date Range & Apply */}
+        <div className="flex items-center gap-1.5 flex-wrap ml-auto">
+          <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">Date Range</span>
+          <input
+            type="date"
+            aria-label="From date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="bg-card border border-border text-foreground text-[11px] px-3 py-1 rounded-full outline-none focus:ring-2 focus:ring-sky-500/20 shadow-sm"
+          />
+          <span className="text-[11px] text-slate-500 font-medium">To</span>
+          <input
+            type="date"
+            aria-label="To date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="bg-card border border-border text-foreground text-[11px] px-3 py-1 rounded-full outline-none focus:ring-2 focus:ring-sky-500/20 shadow-sm"
+          />
+          <button
+            type="button"
+            onClick={fetchTasks}
+            className="px-3.5 py-1 rounded-full border border-border bg-card hover:bg-muted text-[11px] font-bold text-slate-700 dark:text-slate-300 shadow-sm active:scale-95 transition-all"
+          >
+            Apply
+          </button>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="text-[10px] font-bold text-red-500 hover:text-red-700 px-2 py-1 rounded-lg border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all"
+            >
+              ✕ Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* TASK TABLE */}
-      <div className="bg-card rounded-2xl border border-border shadow-xl overflow-hidden h-[calc(100vh-16rem)] min-h-[320px] flex flex-col">
+      {/* SUB-TABS (Pending / Upcoming / Completed) */}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        {['Pending', 'Upcoming', 'Completed'].map((tab) => {
+          const active = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all shadow-sm ${
+                active
+                  ? 'bg-[#0088FF] text-white shadow-sky-500/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              {tab} <span className="ml-0.5 tabular-nums">({tabCounts[tab] ?? 0})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {activeTab === 'Upcoming' && (
+        <div className="mb-2 text-[10px] text-slate-500 font-medium italic">
+          Checklist instances from {dateFrom || 'today'} to {dateTo || 'next 5 days'} (holidays and weekends excluded)
+        </div>
+      )}
+
+      {/* TASK TABLE CONTAINER */}
+      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden h-[calc(100vh-17.5rem)] min-h-[350px] flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
           <div className="mobile-full-width min-w-[700px] lg:min-w-full">
             {/* Coordinator Sheet Column Config Panel */}
@@ -571,22 +695,24 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                 return [...sheetCols, ...collectedCols];
               }))];
               if (allowedCols.length === 0) return (
-                <div style={{ background:'var(--color-muted)', borderRadius:10, padding:'12px 16px', marginBottom:12, fontSize:12, color:'var(--color-muted-foreground)' }}>
+                <div style={{ background: 'var(--color-muted)', borderRadius: 10, padding: '12px 16px', marginBottom: 12, fontSize: 12, color: 'var(--color-muted-foreground)' }}>
                   No columns configured by admin yet. Admin must set allowed coordinator columns in Flow Builder → Sheet tab.
                 </div>
               );
               return (
-                <div style={{ background:'var(--color-card)', border:'1px solid var(--color-border)', borderRadius:10, padding:'14px 16px', marginBottom:12 }}>
-                  <div style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>👁 Sheet columns to show in tracking table</div>
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                <div style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>👁 Sheet columns to show in tracking table</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {allowedCols.map(col => {
                       const checked = coordExtraCols.includes(col);
                       return (
-                        <label key={col} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:8, cursor:'pointer', fontSize:11, fontWeight:600,
+                        <label key={col} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 11, fontWeight: 600,
                           background: checked ? 'var(--color-primary)' : 'var(--color-muted)',
                           color: checked ? 'white' : 'var(--color-muted-foreground)',
-                          border:'1px solid var(--color-border)', transition:'all .12s' }}>
-                          <input type="checkbox" style={{ display:'none' }} checked={checked}
+                          border: '1px solid var(--color-border)', transition: 'all .12s'
+                        }}>
+                          <input type="checkbox" style={{ display: 'none' }} checked={checked}
                             onChange={e => {
                               const next = e.target.checked ? [...coordExtraCols, col] : coordExtraCols.filter(c => c !== col);
                               setCoordExtraCols(next);
@@ -599,7 +725,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                   </div>
                   {coordExtraCols.length > 0 && (
                     <button onClick={() => { setCoordExtraCols([]); localStorage.removeItem('coord_fms_cols'); }}
-                      style={{ marginTop:8, fontSize:10, color:'var(--color-muted-foreground)', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                      style={{ marginTop: 8, fontSize: 10, color: 'var(--color-muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
                       Clear all
                     </button>
                   )}
@@ -607,212 +733,282 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
               );
             })()}
             <ResponsiveTable>
-            <table className="mobile-card-table w-full table-fixed border-collapse text-left">
-              <thead className="sticky top-0 z-20 bg-background">
-                <tr className="bg-background border-b border-border">
-                  <th className="w-[100px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Type</th>
-                  <th className="w-[180px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Directive Name</th>
-                  <th className="w-[160px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned To</th>
-                  <th className="w-[160px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Assigned By</th>
-                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-center">Contact</th>
-                  {coordExtraCols.map(col => (
-                    <th key={col} className="px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">{col}</th>
-                  ))}
-                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Next Target</th>
-                  <th className="w-[140px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em]">Status</th>
-                  <th className="w-[150px] px-4 py-3 text-[9px] font-black text-slate-500 uppercase tracking-[0.25em] text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredTasks.length === 0 ? (
-                  <tr><td colSpan={8 + coordExtraCols.length} className="px-8 py-16 text-center text-slate-400 font-bold text-sm">No tasks found for this view.</td></tr>
-                ) : filteredTasks.map((task) => {
-                  const isChecklist = task.taskType === 'Checklist';
-                  const instances = isChecklist
-                    ? (activeTab === 'Upcoming'
-                      ? getUpcomingInstances(task,
-                        dateFrom ? new Date(dateFrom) : new Date(),
-                        dateTo ? new Date(dateTo) : new Date(Date.now() + 5 * 86400000))
-                      : getPendingInstances(task))
-                    : [];
-                  const isExpanded = expandedTaskId === task._id;
-                  const isPending = task.status === "Pending" || task.status === "Active" || task.status === "Overdue";
+              <table className="mobile-card-table w-full table-fixed border-collapse text-left">
+                <thead className="sticky top-0 z-20 bg-muted/40 backdrop-blur-md border-b border-border">
+                  <tr>
+                    <th style={colStyle(0)} className="hidden md:table-cell px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">S.No</th>
+                    {showType && <th style={colStyle(1)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">TYPE</th>}
+                    <th style={colStyle(2)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">DIRECTIVE NAME</th>
+                    <th style={colStyle(3)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">ASSIGNED TO</th>
+                    <th style={colStyle(4)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">ASSIGNED BY</th>
+                    <th style={colStyle(5)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">CONTACT</th>
+                    {coordExtraCols.map(col => (
+                      <th key={col} style={{ width: extraW }} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">{col}</th>
+                    ))}
+                    <th style={colStyle(6)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">NEXT TARGET</th>
+                    <th style={colStyle(7)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider">STATUS</th>
+                    <th style={colStyle(8)} className="px-3 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTasks.length === 0 ? (
+                    <tr><td colSpan={colCount} className="px-8 py-16 text-center text-slate-400 font-bold text-sm">No tasks found for this view.</td></tr>
+                  ) : filteredTasks.map((task, rowIdx) => {
+                    const isChecklist = task.taskType === 'Checklist';
+                    const instances = isChecklist
+                      ? (activeTab === 'Upcoming'
+                        ? getUpcomingInstances(task,
+                          dateFrom ? new Date(dateFrom) : new Date(),
+                          dateTo ? new Date(dateTo) : new Date(Date.now() + 5 * 86400000))
+                        : getPendingInstances(task))
+                      : [];
+                    const isExpanded = expandedTaskId === task._id;
+                    const isPending = task.status === "Pending" || task.status === "Active" || task.status === "Overdue";
 
-                  return (
-                    <React.Fragment key={task._id}>
-                      <tr className="hover:bg-primary/[0.02] transition-all group">
-                        <td className="px-4 py-3 min-w-0 break-words">
-                          <div className={`px-2 py-1 rounded-lg w-fit text-[9px] font-black uppercase tracking-wider ${task.taskType === 'Checklist' ? 'bg-amber-500/10 text-amber-600' :
-                              task.taskType === 'FMS' ? 'bg-purple-500/10 text-purple-600' :
-                                'bg-sky-500/10 text-sky-600'}`}>
-                            {task.taskType === 'Checklist' ? 'Checklist' : task.taskType === 'FMS' ? 'FMS' : 'Delegation'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="relative group max-w-[180px]">
-                            <div className="text-sm font-black text-foreground uppercase tracking-tight truncate">{task.title}</div>
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                            {task.taskType === 'FMS'
-                              ? `${task.flowName || task.templateName || ''} — ${task.stepName || ''}`
-                              : isChecklist
-                                ? `Cycle: ${task.frequency}`
-                                : `ID: ${task._id?.slice(-6).toUpperCase()}`}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 min-w-0 break-words">
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-black">
-                            <UserCheck size={14} className="text-emerald-500" />
-                            {task.doerId?.name || 'Staff'}
-                            <span className="ml-2 px-2 py-0.5 bg-primary/5 text-primary text-[8px] rounded border border-primary/10 shadow-sm font-black tracking-widest">Mapped</span>
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-bold uppercase ml-5 tracking-tighter">Dept: {task.doerId?.department || 'OPS'}</div>
-                          {(task.followers || []).length > 0 && <div className="text-[9px] text-indigo-600 dark:text-indigo-300 font-bold uppercase ml-5 tracking-tighter whitespace-normal break-words">Followers: {task.followers.map((f) => f.name).filter(Boolean).join(', ')}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="inline-flex items-center gap-2 text-[11px] font-bold text-slate-600">
-                            <UserCheck size={12} className="text-emerald-500" />
-                            {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.createdBy?.name || task.assignerId?.name || (task.taskType === 'Checklist' ? 'Admin' : '—'))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 min-w-0 break-words text-center">
-                          <div className="inline-flex items-center gap-2 bg-background px-4 py-2 rounded-xl border border-border text-primary font-black text-[11px] font-mono shadow-inner">
-                            <Phone size={10} /> {task.doerId?.whatsappNumber || 'N/A'}
-                          </div>
-                        </td>
-                        {coordExtraCols.map(col => {
-                          if (task.taskType !== 'FMS') return <td key={col} className="px-4 py-3 text-xs text-muted-foreground">—</td>;
-                          const collectMatch = col.match(/^\[(.+?)\] (.+)$/);
-                          let cellValue = '—';
-                          if (collectMatch) {
-                            const [, stepName, fieldLabel] = collectMatch;
-                            const tmpl = allTemplates?.find(t => t.name === task.flowName);
-                            const node = tmpl?.nodes?.find(n => n.name === stepName);
-                            const field = node?.inputFields?.find(f => f.label === fieldLabel);
-                            // Look in rawSheetData first, then nodeHistory
-                            if (field && task.rawSheetData) {
-                              const histStep = (task.nodeHistory || [])?.find(h => h.nodeName === stepName);
-                              cellValue = histStep?.inputs?.[field.id] || '—';
-                            }
-                          } else {
-                            cellValue = task.rawSheetData?.[col] || '—';
-                          }
-                          return <td key={col} className="px-4 py-3 text-xs">{String(cellValue)}</td>;
-                        })}
-                        <td className="px-4 py-3 min-w-0 break-words">
-                          <div className="flex items-center gap-2 text-slate-500 font-bold text-[11px]">
-                            <Clock size={14} className="text-primary/40" />
-                            {task.taskType === 'Checklist'
-                              ? (() => {
-                                const pending = getPendingInstances(task);
-                                const next = pending[0]?.date || task.nextDueDate;
-                                return next ? new Date(next).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-                              })()
-                              : task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 min-w-0 break-words">
-                          <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl font-black text-[8px] uppercase tracking-widest border ${isPending ? 'bg-red-500/10 text-red-600 border-red-500/20 shadow-sm' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 shadow-sm'}`}>
-                            {isPending ? <AlertCircle size={10} /> : <CheckCircle2 size={10} />}{task.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 min-w-0 break-words">
-                          <div className="flex flex-wrap justify-end items-center gap-2 max-w-[220px] ml-auto">
-                            {isChecklist && instances.length > 0 && (
-                              <button onClick={() => setExpandedTaskId(isExpanded ? null : task._id)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-90">
-                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {instances.length} {activeTab === 'Upcoming' ? 'Upcoming' : 'Backlogs'}
-                              </button>
-                            )}
-                            {activeTab === 'Completed' && (
-                              <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-emerald-600"><CheckCircle2 size={12} /> Done</span>
-                            )}
-                            {!isViewer && activeTab !== 'Completed' && (
-<button onClick={() => openReminderModal(task)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90">
-                                <MessageCircle size={16} /> Remind
-                              </button>
-                            )}
-                            {!isViewer && activeTab !== 'Completed' && (
-<button onClick={() => handleMarkDone(task)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500 hover:text-white transition-all active:scale-90">
-                                <Zap size={16} /> Force Done
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {isExpanded && instances.length > 0 && (
-                        <tr>
-                          <td colSpan={8 + coordExtraCols.length} className="px-4 py-3 bg-background/50 border-y border-border/10">
-                            <div className="space-y-3">
-                              <div ref={el => backlogRefs.current[task._id] = el} className="flex items-center justify-between">
-                                <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
-                                  <Layers size={12} /> {activeTab === 'Upcoming' ? 'Upcoming Schedule' : 'Backlog Authorization Grid'}
-                                </h5>
-                                <div className="flex items-center gap-2">
-                                  {(bulkSelected[task._id]?.size || 0) > 0 && (
-                                    <button onClick={() => handleBulkDone(task)} disabled={bulkSubmitting[task._id]}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-70 active:scale-95 transition-all disabled:opacity-50">
-                                      {bulkSubmitting[task._id] ? '...' : `✓ Mark ${bulkSelected[task._id].size} Done`}
-                                    </button>
+                    return (
+                      <React.Fragment key={task._id}>
+                        <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-900/30 transition-colors border-b border-border/40">
+                          <td data-label-skip className="hidden md:table-cell px-3 py-2 text-center text-[11px] font-bold text-slate-700 dark:text-slate-300 tabular-nums">
+                            {rowIdx + 1}
+                          </td>
+                          {showType && (
+                            <td className="px-3 py-2 min-w-0">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${
+                                task.taskType === 'Checklist' ? 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' :
+                                task.taskType === 'FMS' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' :
+                                'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                              }`}>
+                                {task.taskType === 'Checklist' ? 'CHECKLIST' : task.taskType === 'FMS' ? 'FMS' : 'DELEGATION'}
+                              </span>
+                            </td>
+                          )}
+                          <td className="px-3 py-2 min-w-0">
+                            <div className="text-[12px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight truncate leading-tight" title={task.title}>
+                              {task.title}
+                            </div>
+                            <div className="text-[10px] font-medium text-slate-400 uppercase tracking-wide mt-0.5 truncate">
+                              ID: {(task.orderIdentifier || task._id?.slice(-6) || '').toUpperCase()}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <UserAvatar name={task.doerId?.name} avatar={task.doerId?.avatar} className="w-7 h-7 text-[10px]" />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 leading-none">
+                                  <span className="text-[12px] font-bold text-slate-900 dark:text-slate-100 truncate">
+                                    {task.doerId?.name || 'Staff'}
+                                  </span>
+                                  {(!task.taskType || task.taskType === 'Delegation') && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800 leading-none">
+                                      Mapped
+                                    </span>
                                   )}
                                 </div>
-                              </div>
-                              <div className="overflow-y-auto max-h-[320px]">
-                                <div className="grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border bg-muted/30">
-                                  <input type="checkbox" className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
-                                    checked={instances.length > 0 && instances.every(i => (bulkSelected[task._id] || new Set()).has(toLockPattern(i.date)))}
-                                    onChange={() => toggleSelectAll(task, instances)} title="Select all" disabled={isViewer} />
-                                  <span>Date</span>
-                                  <span>Status</span>
-                                  <span className="text-right">Action</span>
+                                <div className="text-[10px] font-medium text-slate-400 uppercase tracking-tight mt-1 truncate">
+                                  DEPT:{task.doerId?.department || 'TECH'}
                                 </div>
-                                {instances.map((instance, idx) => {
-                                  const dateStr = toLockPattern(instance.date);
-                                  const isChecked = (bulkSelected[task._id] || new Set()).has(dateStr);
-                                  const isActionable = instance.status !== 'Completed' && !isViewer;
-                                  const rowColor = instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-500' : 'text-primary';
-
-                                  return (
-                                    <div key={idx}
-                                      className={`grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 border-b border-border/50 transition cursor-pointer ${isChecked ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'hover:bg-muted/20'}`}
-                                      onClick={(e) => { if (e.target.type === 'checkbox') return; if (isActionable) toggleBulkSelect(task._id, dateStr); }}>
-                                      <input type="checkbox" className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
-                                        checked={isChecked} disabled={!isActionable}
-                                        onChange={(e) => { e.stopPropagation(); if (isActionable) toggleBulkSelect(task._id, dateStr); }}
-                                        onClick={e => e.stopPropagation()} />
-                                      <span className="text-sm font-medium text-foreground">
-                                        {instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}
-                                      </span>
-                                      <span className={`text-[10px] font-black uppercase ${rowColor}`}>{instance.status}</span>
-                                      <div className="flex justify-end" onClick={e => e.stopPropagation()}>
-                                        {isActionable ? (
-                                          <button onClick={() => handleMarkDone(task, instance.date)}
-                                            className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white hover:opacity-80 active:scale-95 transition-all ${instance.isPast ? 'bg-red-600' : 'bg-emerald-600'}`}>
-                                            DONE
-                                          </button>
-                                        ) : (
-                                          instance.status === 'Completed'
-                                          ? <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">✓ Done</span>
-                                          : <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pending</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
                               </div>
                             </div>
                           </td>
+                          <td className="px-3 py-2 min-w-0">
+                            {(() => {
+                              const byName = task.taskType === 'FMS'
+                                ? (task.assignerName || task.assignerId?.name || 'Admin')
+                                : (task.createdBy?.name || task.assignerId?.name || task.assignerName || (task.taskType === 'Checklist' ? 'Admin' : '—'));
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <UserAvatar name={byName} avatar={task.assignerId?.avatar} className="w-7 h-7 text-[10px]" />
+                                  <span className="text-[12px] font-bold text-slate-900 dark:text-slate-100 truncate">
+                                    {byName}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-3 py-2 min-w-0">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <Phone size={13} className="text-sky-500 shrink-0" />
+                              <span>{task.doerId?.whatsappNumber || '99999 99999'}</span>
+                            </div>
+                          </td>
+                          {coordExtraCols.map(col => {
+                            if (task.taskType !== 'FMS') return <td key={col} className="px-3 py-2 text-xs text-muted-foreground">—</td>;
+                            const collectMatch = col.match(/^\[(.+?)\] (.+)$/);
+                            let cellValue = '—';
+                            if (collectMatch) {
+                              const [, stepName, fieldLabel] = collectMatch;
+                              const tmpl = allTemplates?.find(t => t.name === task.flowName);
+                              const node = tmpl?.nodes?.find(n => n.name === stepName);
+                              const field = node?.inputFields?.find(f => f.label === fieldLabel);
+                              if (field && task.rawSheetData) {
+                                const histStep = (task.nodeHistory || [])?.find(h => h.nodeName === stepName);
+                                cellValue = histStep?.inputs?.[field.id] || '—';
+                              }
+                            } else {
+                              cellValue = task.rawSheetData?.[col] || '—';
+                            }
+                            return <td key={col} className="px-3 py-2 text-[11px] break-words">{String(cellValue)}</td>;
+                          })}
+                          <td className="px-3 py-2 min-w-0">
+                            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              <Clock size={13} className="text-slate-400 shrink-0" />
+                              <span>
+                                {task.taskType === 'Checklist'
+                                  ? (() => {
+                                    const pending = getPendingInstances(task);
+                                    const next = pending[0]?.date || task.nextDueDate;
+                                    return next ? new Date(next).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+                                  })()
+                                  : task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
+                                }
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 min-w-0">
+                            {(() => {
+                              const s = (task.status || 'Pending').toUpperCase();
+                              const isComp = activeTab === 'Completed' || s === 'COMPLETED';
+                              const isUp = activeTab === 'Upcoming' || s === 'UPCOMING';
+                              const isOver = s === 'OVERDUE' || task.isOverdue;
+
+                              if (isComp) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wide bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                                    <CheckCircle2 size={11} /> COMPLETED
+                                  </span>
+                                );
+                              }
+                              if (isUp) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wide bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800">
+                                    <Clock size={11} /> UPCOMING
+                                  </span>
+                                );
+                              }
+                              if (isOver) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wide bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                    <AlertCircle size={11} /> OVERDUE
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] tracking-wide bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                                  <Clock size={11} /> PENDING
+                                </span>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-3 py-2 min-w-0">
+                            <div className="flex flex-col items-center justify-center gap-1">
+                              {activeTab === 'Completed' ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                  <CheckCircle2 size={13} /> Completed
+                                </span>
+                              ) : (
+                                <>
+                                  {!isViewer && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openReminderModal(task)}
+                                      className="w-[100px] h-6 flex items-center justify-center gap-1 rounded-full border border-sky-400 text-sky-600 bg-white dark:bg-card hover:bg-sky-50 dark:hover:bg-sky-950/30 text-[10px] font-bold shadow-xs active:scale-95 transition-all"
+                                    >
+                                      <MessageSquare size={10} /> Remind <Bell size={10} />
+                                    </button>
+                                  )}
+                                  {!isViewer && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkDone(task)}
+                                      className="w-[100px] h-6 flex items-center justify-center gap-1 rounded-full border border-emerald-400 text-emerald-600 bg-white dark:bg-card hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-[10px] font-bold shadow-xs active:scale-95 transition-all"
+                                    >
+                                      <Zap size={10} /> Force Done <Check size={10} />
+                                    </button>
+                                  )}
+                                  {isChecklist && instances.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedTaskId(isExpanded ? null : task._id)}
+                                      className="w-[100px] h-5 flex items-center justify-center gap-1 rounded-full border border-amber-300 text-amber-600 bg-amber-50/80 hover:bg-amber-100 text-[9px] font-bold transition-all"
+                                    >
+                                      {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />} {instances.length} {activeTab === 'Upcoming' ? 'Upcoming' : 'Backlogs'}
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+
+                        {isExpanded && instances.length > 0 && (
+                          <tr>
+                            <td colSpan={colCount} className="px-4 py-3 bg-background/50 border-y border-border/10">
+                              <div className="space-y-3">
+                                <div ref={el => backlogRefs.current[task._id] = el} className="flex items-center justify-between">
+                                  <h5 className="text-primary font-black text-[10px] uppercase tracking-[0.35em] flex items-center gap-2">
+                                    <Layers size={12} /> {activeTab === 'Upcoming' ? 'Upcoming Schedule' : 'Backlog Authorization Grid'}
+                                  </h5>
+                                  <div className="flex items-center gap-2">
+                                    {(bulkSelected[task._id]?.size || 0) > 0 && (
+                                      <button onClick={() => handleBulkDone(task)} disabled={bulkSubmitting[task._id]}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-emerald-70 active:scale-95 transition-all disabled:opacity-50">
+                                        {bulkSubmitting[task._id] ? '...' : `✓ Mark ${bulkSelected[task._id].size} Done`}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="overflow-y-auto max-h-[320px]">
+                                  <div className="grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-border bg-muted/30">
+                                    <input type="checkbox" className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
+                                      checked={instances.length > 0 && instances.every(i => (bulkSelected[task._id] || new Set()).has(toLockPattern(i.date)))}
+                                      onChange={() => toggleSelectAll(task, instances)} title="Select all" disabled={isViewer} />
+                                    <span>Date</span>
+                                    <span>Status</span>
+                                    <span className="text-right">Action</span>
+                                  </div>
+                                  {instances.map((instance, idx) => {
+                                    const dateStr = toLockPattern(instance.date);
+                                    const isChecked = (bulkSelected[task._id] || new Set()).has(dateStr);
+                                    const isActionable = instance.status !== 'Completed' && !isViewer;
+                                    const rowColor = instance.isPast ? 'text-red-500' : instance.isToday ? 'text-amber-500' : 'text-primary';
+
+                                    return (
+                                      <div key={idx}
+                                        className={`grid grid-cols-[auto_1.5fr_1fr_auto] items-center px-3 py-2 border-b border-border/50 transition cursor-pointer ${isChecked ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'hover:bg-muted/20'}`}
+                                        onClick={(e) => { if (e.target.type === 'checkbox') return; if (isActionable) toggleBulkSelect(task._id, dateStr); }}>
+                                        <input type="checkbox" className="w-3.5 h-3.5 mr-3 rounded cursor-pointer accent-emerald-600"
+                                          checked={isChecked} disabled={!isActionable}
+                                          onChange={(e) => { e.stopPropagation(); if (isActionable) toggleBulkSelect(task._id, dateStr); }}
+                                          onClick={e => e.stopPropagation()} />
+                                        <span className="text-sm font-medium text-foreground">
+                                          {instance.date.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                        </span>
+                                        <span className={`text-[10px] font-black uppercase ${rowColor}`}>{instance.status}</span>
+                                        <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                                          {isActionable ? (
+                                            <button onClick={() => handleMarkDone(task, instance.date)}
+                                              className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest text-white hover:opacity-80 active:scale-95 transition-all ${instance.isPast ? 'bg-red-600' : 'bg-emerald-600'}`}>
+                                              DONE
+                                            </button>
+                                          ) : (
+                                            instance.status === 'Completed'
+                                              ? <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">✓ Done</span>
+                                              : <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pending</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </ResponsiveTable>
           </div>
         </div>

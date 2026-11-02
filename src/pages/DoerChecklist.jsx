@@ -1,10 +1,13 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import RevisionPanel from '../components/RevisionPanel';
+import TaskActivityDrawer from '../components/TaskActivityDrawer';
 import { dialog } from '../components/Dialog';
 import { TaskCard, sheetDisplayRows } from './FlowMyTasks';
 import { useChat } from '../components/useChat';
+import useTaskUnread from '../hooks/useTaskUnread';
+import UnreadBadge from '../components/UnreadBadge';
 import { openChatPopup } from '../utils/openChatPopup';
 import ImageLightbox from '../components/ImageLightbox';
 import LocalFileThumb from '../components/LocalFileThumb';
@@ -72,8 +75,16 @@ const fmsDescription = (m) => {
 };
 
 // One shape for every kind of task, so one row renderer serves all four tabs.
-const toChecklistItem = (i) => ({ ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin', assignedToName: i.doerId?.name || 'You', followerNames: [] });
-const toDelegationItem = (i) => ({ ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-', assignedToName: i.doerId?.name || '-', followerNames: (i.followers || []).map((f) => f && f.name).filter(Boolean) });
+const toChecklistItem = (i) => {
+  const rawF = (Array.isArray(i.followers) && i.followers.length ? i.followers : (Array.isArray(i.coworkers) ? i.coworkers : []));
+  const fNames = rawF.map(f => (typeof f === 'object' && f ? f.name : (typeof f === 'string' && !/^[0-9a-fA-F]{24}$/.test(f) ? f : ''))).filter(Boolean);
+  return { ...i, dataType: 'Checklist', uniqueKey: `${i._id}-${i.instanceDate}`, title: i.taskName, description: i.description, deadlineDate: i.instanceDate || i.nextDueDate, statusLabel: i.isDone ? 'Completed' : 'Pending', assignerName: i.createdBy?.name || i.assignerId?.name || 'Admin', assignedToName: i.doerId?.name || 'You', followerNames: fNames };
+};
+const toDelegationItem = (i) => {
+  const rawF = (Array.isArray(i.followers) && i.followers.length ? i.followers : (Array.isArray(i.coworkers) ? i.coworkers : []));
+  const fNames = rawF.map(f => (typeof f === 'object' && f ? f.name : (typeof f === 'string' && !/^[0-9a-fA-F]{24}$/.test(f) ? f : ''))).filter(Boolean);
+  return { ...i, dataType: 'Delegation', uniqueKey: i._id, title: i.title, description: i.description, deadlineDate: i.deadline, statusLabel: i.status, assignerName: i.assignerId?.name || '-', assignedToName: i.doerId?.name || '-', followerNames: fNames };
+};
 const toFmsItem = (i) => ({
   ...i,
   dataType: 'FMS',
@@ -90,6 +101,7 @@ const toFmsItem = (i) => ({
 const DoerChecklist = ({ doerId }) => {
   const { isOn: companyAllows } = useCompanySettings(); // Settings > Functions on / off
   const { openTaskThread, chatEnabled } = useChat();
+  const { unreadFor, markRead } = useTaskUnread();
   const navigate = useNavigate();
   const openTaskChat = useCallback(async (opts) => {
     const conv = await openTaskThread(opts);
@@ -105,6 +117,7 @@ const DoerChecklist = ({ doerId }) => {
   const [gallery, setGallery] = useState(null); // { photos, startIndex, task } | null
   const openGallery = (photos, startIndex, task) => setGallery({ photos, startIndex, task });
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [activeTaskDrawer, setActiveTaskDrawer] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [employees, setEmployees] = useState([]);
 
@@ -114,6 +127,7 @@ const DoerChecklist = ({ doerId }) => {
   const [timeFilter, setTimeFilter] = useState('All');
   const [activeCategory, setActiveCategory] = useState('All Data');
   const [loading, setLoading] = useState(true);
+  const loadedOnce = useRef(false);
 
   // Custom Date Range Filters
   const [startDate, setStartDate] = useState('');
@@ -229,23 +243,30 @@ const DoerChecklist = ({ doerId }) => {
       return;
     }
     try {
-      setLoading(true);
+      // The full-screen spinner only the first time; a refresh after submitting must not blank the screen
+      if (!loadedOnce.current) setLoading(true);
       const userEmail = savedUser.email;
+      // A request that fails keeps what is already on screen (null) instead of showing an empty list and a wrong count
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
-        API.get(`/tasks/checklist/${currentDoerId}?includeDone=1`).catch(() => ({ data: [] })),
-        API.get(`/tasks/doer/${currentDoerId}?includePassedOn=1`).catch(() => ({ data: [] })),
-        API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => ({ data: [] }))
+        API.get(`/tasks/checklist/${currentDoerId}?includeDone=1`, { params: { _: Date.now() } }).catch(() => null),
+        API.get(`/tasks/doer/${currentDoerId}?includePassedOn=1`, { params: { _: Date.now() } }).catch(() => null),
+        API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => null)
       ]);
 
       const employeesRes = await API.get('/tasks/employees').catch(() => ({ data: [] }));
-      setEmployees(employeesRes.data || []);
+      const empData = Array.isArray(employeesRes.data)
+        ? employeesRes.data
+        : (employeesRes.data?.employees || employeesRes.data?.data || []);
+      setEmployees(empData);
 
-      const safeChecklist = Array.isArray(checklistRes.data) ? checklistRes.data : (checklistRes.data?.data || []);
-      const safeDelegated = Array.isArray(delegationRes.data) ? delegationRes.data : (delegationRes.data?.tasks || delegationRes.data?.data || []);
-
-      setChecklist(safeChecklist);
-      setDelegatedTasks(safeDelegated);
-      setFmsMissions(Array.isArray(fmsRes.data) ? fmsRes.data : []);
+      if (checklistRes) {
+        setChecklist(Array.isArray(checklistRes.data) ? checklistRes.data : (checklistRes.data?.data || []));
+      }
+      if (delegationRes) {
+        setDelegatedTasks(Array.isArray(delegationRes.data) ? delegationRes.data : (delegationRes.data?.tasks || delegationRes.data?.data || []));
+      }
+      if (fmsRes) setFmsMissions(Array.isArray(fmsRes.data) ? fmsRes.data : []);
+      loadedOnce.current = true;
     } catch (err) {
       console.error("Sync Error:", err);
     } finally {
@@ -254,6 +275,15 @@ const DoerChecklist = ({ doerId }) => {
   }, [currentDoerId, savedUser.email]);
 
   useEffect(() => { fetchAllTasks(); }, [fetchAllTasks]);
+  // Tasks given to this person while the page is open (a new checklist, a new delegation) appear without a manual reload:
+  // refreshed every minute and whenever the tab / window is brought back.
+  useEffect(() => {
+    const refresh = () => { if (!document.hidden) fetchAllTasks(); };
+    const timer = setInterval(refresh, 60000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh); };
+  }, [fetchAllTasks]);
   useEffect(() => { setSelected({}); }, [activeCategory]);
 
   // Small "Sub tasks 1/3" badges
@@ -486,19 +516,23 @@ const DoerChecklist = ({ doerId }) => {
     return { group: 'Upcoming', text: `In ${days} day${days === 1 ? '' : 's'}`, stripe: 'before:bg-slate-500', dot: 'text-slate-400' };
   };
 
-  const pendingRoutinesCount = checklist.filter(item => {
-    if (item.isDone || item.planId) return false;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
+  // Same rule as the delegation count: every task still waiting for the doer is counted, so the badge
+  // matches the rows in the table. A task that is due now counts once per missed day; a task scheduled
+  // for a later date (for example a new checklist whose first date is ahead) counts as 1.
+  const pendingRoutinesCount = checklist.reduce((n, item) => {
+    if (item.isDone || item.planId) return n;
+    if (item.onHold && item.onHold.isOn) return n;
     const target = new Date(item.instanceDate || item.nextDueDate);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (Number.isNaN(target.getTime())) return n + 1;
     target.setHours(0, 0, 0, 0);
-    return target.getTime() <= now.getTime();
-  }).length;
-
+    return n + (target.getTime() <= today.getTime() ? Math.max(1, Number(item.pendingDue) || 1) : 1);
+  }, 0);
   const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
   // Tasks made from a Planner step get their own tab
   const hasPlanTasks = delegatedTasks.some((t) => t.planId) || checklist.some((t) => t.planId);
   const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && t.myRole !== 'follower').length + checklist.filter((t) => t.planId && !t.isDone).length;
+  const allPendingCount = pendingRoutinesCount + pendingDelegationsCount + fmsMissions.filter(f => f.status !== 'completed').length + (hasPlanTasks ? pendingPlanCount : 0);
 
   const maxFileMb = useUploadLimit();
   const addDelegationFiles = (list) => {
@@ -540,6 +574,20 @@ const DoerChecklist = ({ doerId }) => {
         await API.put(`/tasks/respond`, formData);
       }
 
+      // Show the result at once (Action greyed out, count down) - the refresh below then confirms it from the server.
+      if (modalType === "Checklist") {
+        const sameDay = (a, b) => new Date(a || 0).toDateString() === new Date(b || 0).toDateString();
+        setChecklist((prev) => prev.map((c) => {
+          if (String(c._id) !== String(activeTask._id) || c.isDone) return c;
+          if (!sameDay(c.instanceDate || c.nextDueDate, activeTask.instanceDate || activeTask.nextDueDate)) return c;
+          // One day less waiting. If that was the only day, the row is done and its Action is greyed out;
+          // if more missed days are waiting, the row stays with a lower count until the refresh brings the next day.
+          const due = Math.max(1, Number(c.pendingDue) || 1);
+          return due > 1 ? { ...c, pendingDue: due - 1 } : { ...c, isDone: true, pendingDue: 0 };
+        }));
+      } else if (modalType === "Delegation") {
+        setDelegatedTasks((prev) => prev.map((d) => (d._id === activeTask._id ? { ...d, status: 'Completed' } : d)));
+      }
       setShowModal(false);
       setRemarks("");
       setSelectedFile(null);
@@ -557,7 +605,16 @@ const DoerChecklist = ({ doerId }) => {
   // ───────── My Tasks helpers: selection, hold, sub tasks, one Actions button ─────────
   const isDoneItem = (it) => it.dataType === 'Checklist' ? !!it.isDone : it.dataType === 'Delegation' ? ['Completed', 'Verified'].includes(it.status) : it.status === 'completed';
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
-  const notDueYet = (it) => { if (it.dataType !== 'Checklist' && it.dataType !== 'Delegation') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
+  const notDueYet = (it) => {
+    // Delegation tasks can be completed early based on actual completion date before deadline!
+    if (it.dataType === 'Delegation') return false;
+    if (it.dataType !== 'Checklist') return false;
+    const d = new Date(it.deadlineDate);
+    d.setHours(0, 0, 0, 0);
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return d.getTime() > t.getTime();
+  };
   const isPastDueItem = (it) => !!it.deadlineDate && new Date(it.deadlineDate) < new Date() && !isDoneItem(it) && !isHeld(it);
   const isFmsDelayed = (it) => !!it.isOverdue || (!!it.deadlineDate && it.status !== 'completed' && new Date() > new Date(it.deadlineDate));
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
@@ -568,7 +625,7 @@ const DoerChecklist = ({ doerId }) => {
   };
   // When the task was given to the person (Indian time, AM/PM)
   const givenOf = (it) => it.createdAt || it.startedAt || (it.activeStep && it.activeStep.activatedAt) || null;
-  const givenLine = (it) => (givenOf(it) ? <span className="block mt-0.5 text-[9px] font-bold text-slate-400 normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(givenOf(it))}</span> : null);
+  const givenLine = (it) => (givenOf(it) ? <span className="inline-block mt-1 rounded-lg px-2 py-1 text-[10px] leading-tight font-bold text-white bg-sky-600 shadow-sm normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(givenOf(it))}</span> : null);
   // Mark for ANY date change (not only a doer's own revision). The pause after "On hold" is not a revision.
   const revisedNote = (it) => {
     if (it.dataType !== 'Delegation') return '';
@@ -596,7 +653,7 @@ const DoerChecklist = ({ doerId }) => {
       if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
-      if (notDueYet(it)) return { ok: false, why: 'It is scheduled for a later date.' };
+      // Note: Early completion is allowed before deadline for delegation tasks
       return { ok: true };
     }
     if (notDueYet(it)) return { ok: false, why: 'It is not due yet.' };
@@ -660,7 +717,6 @@ const DoerChecklist = ({ doerId }) => {
       if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
       else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
-      if (reviseCheck(item).ok) menu.push({ key: 'revise', label: 'Revise date', onClick: () => { setSelectedTask(item); setShowRevisionModal(true); } });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
       // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
       if (held && mineDelegation(item)) menu.push({ key: 'resume', label: 'Resume work', hint: 'The deadline moves by the waiting time', onClick: () => resumeTask(item) });
@@ -674,9 +730,7 @@ const DoerChecklist = ({ doerId }) => {
         <ActionsMenu items={menu} disabled={done || passed || follower || menu.length === 0} disabledTitle={done ? 'This task is done' : passed ? 'You passed this task on' : follower ? followerWhy(item) : 'No actions available'} className={cls} />
         {!passed && (
           <>
-            {chatEnabled && (
-              <button type="button" onClick={() => openTaskChat(chatOptsFor(item))} className="p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="Message"><MessageSquare size={12} /></button>
-            )}
+            <button type="button" onClick={() => { setActiveTaskDrawer({ task: item, index: 1 }); markRead(item._id); }} className="relative p-1.5 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="Message"><MessageSquare size={12} /><UnreadBadge count={unreadFor(item._id)} /></button>
             <button type="button" onClick={() => setDetailsModalTask(withHistory(item))} className="p-1.5 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg transition-all active:scale-90 max-lg:w-10 max-lg:h-10 max-lg:flex max-lg:items-center max-lg:justify-center" title="History & files"><History size={12} /></button>
           </>
         )}
@@ -734,6 +788,7 @@ const DoerChecklist = ({ doerId }) => {
         <Calendar size={12} className="text-primary/30 shrink-0" />
         <p className={`uppercase tracking-tighter whitespace-nowrap ${red ? 'text-red-500' : it.isBacklog && !isDoneItem(it) ? 'text-amber-600' : 'text-slate-500'}`}>{dateTextOf(it)}</p>
         {isHeld(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600">Clock paused</span>}
+        {it.dataType === 'Checklist' && !it.isDone && Number(it.pendingDue) > 1 && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="Missed days still waiting to be submitted">{it.pendingDue} days pending</span>}
         {revisedNote(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was changed">{revisedNote(it)}</span>}
       </>
     );
@@ -746,12 +801,21 @@ const DoerChecklist = ({ doerId }) => {
     }
     if (it.dataType === 'Checklist') return <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{it.frequency || 'Daily'} CYCLE</span>;
     return (
-      <>
-        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
-        <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
-      </>
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
+          <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
+        </div>
+        {reviseLink(it)}
+      </div>
     );
   };
+  // "Revise" sits under Priority / Status (it used to be in the Actions menu)
+  const reviseLink = (it) => (it.dataType === 'Delegation' && reviseCheck(it).ok ? (
+    <button type="button" onClick={() => { setSelectedTask(it); setShowRevisionModal(true); }} data-testid="revise-link"
+      className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-colors active:scale-95 max-lg:min-h-8"
+      title="Ask for more time on this task">Revise</button>
+  ) : null);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[300px] bg-transparent">
@@ -777,9 +841,12 @@ const DoerChecklist = ({ doerId }) => {
             <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
           </div>
         </div>
-        <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
-          <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
+          <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
+            <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* CATEGORY TABS SEQUENCE */}
@@ -790,6 +857,11 @@ const DoerChecklist = ({ doerId }) => {
         >
           <LayoutGrid size={16} className="shrink-0" />
           <span className="font-black text-[9px] sm:text-[12px] uppercase tracking-widest truncate min-w-0">All Data</span>
+          {allPendingCount > 0 && (
+            <span className="absolute -top-2 -right-2 z-10 min-w-[20px] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black leading-none rounded-full shadow-md ring-2 ring-background">
+              {allPendingCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -853,7 +925,7 @@ const DoerChecklist = ({ doerId }) => {
         <MobileFilters
           activeCount={[timeFilter && timeFilter !== 'All', !!startDate, !!endDate, sortMode !== 'Default', !!givenFrom, !!givenTo].filter(Boolean).length}
           onClear={() => { setTimeFilter('All'); setStartDate(''); setEndDate(''); setSortMode('Default'); setGivenFrom(''); setGivenTo(''); }}
-          className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 bg-card/40 p-3 rounded-xl border border-border"
+          className="flex flex-col gap-3 bg-card/40 p-3 rounded-xl border border-border"
         >
           <div className="flex flex-wrap items-center gap-2">
             {['All', 'Completed', 'Today', 'Next 7 Days', 'Pending Work', 'Upcoming'].map(range => (
@@ -867,58 +939,57 @@ const DoerChecklist = ({ doerId }) => {
             ))}
           </div>
 
-          {/* Date Filter From - To */}
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Deadline from:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
-                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
-              />
-            </div>
-            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Deadline to:</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
-                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto"
-              />
-            </div>
-            {(startDate || endDate) && (
-              <button
-                onClick={() => { setStartDate(''); setEndDate(''); setTimeFilter('All'); }}
-                className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          {/* Date given to me + order of the list */}
-          <div className="flex flex-wrap items-center gap-2 min-w-0 basis-full">
-            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Given from:</span>
-              <input type="date" aria-label="Given from" value={givenFrom} onChange={(e) => setGivenFrom(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto" />
-            </div>
-            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Given to:</span>
-              <input type="date" aria-label="Given to" value={givenTo} onChange={(e) => setGivenTo(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[108px] sm:w-auto" />
-            </div>
-            <div className="flex items-center gap-1 bg-background border border-border px-2 py-1 rounded-lg min-w-0">
-              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0">Order:</span>
-              <select aria-label="Order" value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0">
+          {/* One row, in this order: Given from | Given to | Order | Deadline from | Deadline to (wraps neatly on small screens) */}
+          <div className="flex flex-wrap items-center gap-2 min-w-0" data-testid="mytasks-filter-row">
+            <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Given from</span>
+              <input type="date" aria-label="Given from" value={givenFrom} onChange={(e) => setGivenFrom(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[100px]" />
+            </label>
+            <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Given to</span>
+              <input type="date" aria-label="Given to" value={givenTo} onChange={(e) => setGivenTo(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[100px]" />
+            </label>
+            <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Order</span>
+              <select aria-label="Order" value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[132px] max-w-full truncate">
                 <option value="Default">Default (overdue first)</option>
                 <option value="Recent first">Recent first (newest given)</option>
                 <option value="Oldest first">Oldest given first</option>
                 <option value="Deadline earliest">Deadline: earliest first</option>
                 <option value="Deadline latest">Deadline: latest first</option>
               </select>
-            </div>
-            {(givenFrom || givenTo || sortMode !== 'Default') && (
-              <button onClick={() => { setGivenFrom(''); setGivenTo(''); setSortMode('Default'); }} className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0">Reset</button>
+            </label>
+            <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Deadline from</span>
+              <input
+                type="date"
+                aria-label="Deadline from"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setTimeFilter(''); }}
+                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[100px]"
+              />
+            </label>
+            <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
+              <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Deadline to</span>
+              <input
+                type="date"
+                aria-label="Deadline to"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setTimeFilter(''); }}
+                className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[100px]"
+              />
+            </label>
+            {(startDate || endDate || givenFrom || givenTo || sortMode !== 'Default') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setGivenFrom(''); setGivenTo(''); setSortMode('Default');
+                  if (startDate || endDate) { setStartDate(''); setEndDate(''); setTimeFilter('All'); }
+                }}
+                className="text-[9px] font-black uppercase text-red-500 hover:underline px-2 shrink-0"
+              >
+                Clear
+              </button>
             )}
           </div>
         </MobileFilters>
@@ -959,7 +1030,6 @@ const DoerChecklist = ({ doerId }) => {
             </div>
           )}
         </div>
-        <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
       </div>
 
       {/* The table scrolls sideways when the columns are wider than the screen; Actions stays in view */}
@@ -1025,6 +1095,7 @@ const DoerChecklist = ({ doerId }) => {
                       {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
                       {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
                       {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
+                      {reviseLink(item) && <span className="basis-full">{reviseLink(item)}</span>}
                     </div>
                     {photoLink(item)}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
@@ -1288,6 +1359,19 @@ const DoerChecklist = ({ doerId }) => {
             />
           </div>
         </div>
+      )}
+
+      {activeTaskDrawer && (
+        <TaskActivityDrawer
+          isOpen={!!activeTaskDrawer}
+          onClose={() => { markRead(activeTaskDrawer.task._id); setActiveTaskDrawer(null); }}
+          task={activeTaskDrawer.task}
+          taskIndex={activeTaskDrawer.index || 1}
+          taskType={activeTaskDrawer.task?.dataType === 'Checklist' ? 'checklist' : activeTaskDrawer.task?.dataType === 'FMS' ? 'flow' : 'delegation'}
+          employees={employees}
+          currentUser={savedUser}
+          onUpdateTask={fetchAllTasks}
+        />
       )}
     </div>
   );
