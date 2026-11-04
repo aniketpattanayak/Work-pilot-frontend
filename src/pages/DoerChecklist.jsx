@@ -99,6 +99,81 @@ const toFmsItem = (i) => ({
   followerNames: [],
 });
 
+const ORDER_OPTIONS = [
+  { value: 'Default', label: 'Default (overdue first)' },
+  { value: 'Recent first', label: 'Recent first (newest given)' },
+  { value: 'Oldest first', label: 'Oldest given first' },
+  { value: 'Deadline earliest', label: 'Deadline: earliest first' },
+  { value: 'Deadline latest', label: 'Deadline: latest first' },
+];
+
+function OrderFilterDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const current = ORDER_OPTIONS.find((o) => o.value === value) || ORDER_OPTIONS[0];
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    if (open) {
+      document.addEventListener('mousedown', handleOutside);
+      document.addEventListener('touchstart', handleOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block min-w-0">
+      <button
+        type="button"
+        aria-label="Order"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center justify-between gap-1.5 bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[136px] max-w-full text-left truncate cursor-pointer hover:text-primary transition-colors py-0.5"
+      >
+        <span className="truncate">{current.label}</span>
+        <ChevronDown size={11} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 top-full mt-1.5 w-60 z-[100] bg-card dark:bg-slate-900 border border-border dark:border-slate-700 rounded-xl shadow-2xl py-1 overflow-hidden backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+        >
+          {ORDER_OPTIONS.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                  isSelected
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary font-bold'
+                    : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="text-primary text-[11px] font-black shrink-0 ml-1">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DoerChecklist = ({ doerId }) => {
   const { isOn: companyAllows } = useCompanySettings(); // Settings > Functions on / off
   const { openTaskThread, chatEnabled } = useChat();
@@ -721,8 +796,8 @@ const DoerChecklist = ({ doerId }) => {
     const held = isHeld(item);
     const menu = [];
     if (!done && !passed && !follower) {
-      if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
-      else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
+      if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
+      else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
       else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
       // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
@@ -963,13 +1038,15 @@ const DoerChecklist = ({ doerId }) => {
             </label>
             <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
               <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Order</span>
-              <select aria-label="Order" value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[132px] max-w-full truncate">
-                <option value="Default">Default (overdue first)</option>
-                <option value="Recent first">Recent first (newest given)</option>
-                <option value="Oldest first">Oldest given first</option>
-                <option value="Deadline earliest">Deadline: earliest first</option>
-                <option value="Deadline latest">Deadline: latest first</option>
-              </select>
+              <OrderFilterDropdown value={sortMode} onChange={setSortMode} />
+
+
+
+
+
+
+
+
             </label>
             <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
               <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Deadline from</span>
@@ -1040,6 +1117,7 @@ const DoerChecklist = ({ doerId }) => {
               )}
               <button type="button" onClick={() => setSelected({})} className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-500">Clear</button>
             </div>
+
           )}
         </div>
       </div>
@@ -1055,6 +1133,7 @@ const DoerChecklist = ({ doerId }) => {
                   ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
                   : c.label}
               </div>
+  
             ))}
           </div>
 
@@ -1076,12 +1155,14 @@ const DoerChecklist = ({ doerId }) => {
                     <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
                       <span>{ci.group} · {groupCount}</span><span className="flex-1 h-px bg-border" />
                     </div>
+        
                   )}
                   {/* Computer row */}
                   <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
                     {ctl.columns.map((c) => (
                       <div key={c.key} className={`${c.cellClassName || 'min-w-0 text-xs font-semibold'} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-card pl-2 -my-3 py-3 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}`} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
                     ))}
+      
                   </div>
                   {/* Phone card */}
                   <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
@@ -1093,6 +1174,7 @@ const DoerChecklist = ({ doerId }) => {
                         : <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Doer</span>)}
                       <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${held ? 'text-amber-600' : item.dataType === 'FMS' && isFmsDelayed(item) && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{held ? 'On hold' : item.dataType === 'FMS' && ci.group !== 'Completed' && isFmsDelayed(item) ? 'Delayed' : ci.text}</span>
                     </div>
+        
                     <span className={`font-extrabold text-[15px] leading-snug text-foreground block [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.title}</span>
                     {tagsOf(item)}
                     <p className={`text-xs text-muted-foreground mt-1 leading-snug [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.description || 'No description provided.'}</p>
@@ -1109,11 +1191,14 @@ const DoerChecklist = ({ doerId }) => {
                       {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
                       {reviseLink(item) && <span className="basis-full">{reviseLink(item)}</span>}
                     </div>
+        
                     {photoLink(item)}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
                       {actionsFor(item, 'min-h-10 flex-1 rounded-xl text-[11px] tracking-[0.14em]')}
                     </div>
                   </div>
+        
+      
                 </React.Fragment>
               );
             })}
@@ -1133,6 +1218,7 @@ const DoerChecklist = ({ doerId }) => {
                   task={activeTask}
                   onComplete={() => { setShowModal(false); fetchAllTasks(); }}
                 />
+  
               </div>
             ) : (
               <form onSubmit={handleFinalSubmit} className="space-y-6">
@@ -1144,6 +1230,7 @@ const DoerChecklist = ({ doerId }) => {
                   <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest px-4 whitespace-normal break-words">
                     {activeTask?.title || activeTask?.taskName || activeTask?.nodeName}
                   </p>
+    
                 </div>
                 <textarea required placeholder="Mission remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-32 bg-background border border-border text-foreground p-4 rounded-2xl outline-none font-bold text-[10px] uppercase shadow-inner" />
                 {modalType === "Delegation" ? (
@@ -1170,6 +1257,7 @@ const DoerChecklist = ({ doerId }) => {
                           onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
                         />
                       </label>
+        
                     </div>
                     {delegationFiles.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3">
@@ -1178,20 +1266,31 @@ const DoerChecklist = ({ doerId }) => {
                         ))}
                       </div>
                     )}
+                    {/*
+                        ))}
+          
+                    )}
+
+                    )}
+                    */}
                     <p className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}</p>
+      
                   </div>
-                ) : (
+            ) : (
                   <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
                     <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     <Upload size={20} className="mx-auto text-slate-400 mb-2" />
                     <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
                     <p className="mt-1 text-[8px] font-bold text-slate-400 normal-case">{uploadHint(maxFileMb)}</p>
                   </div>
+      
                 )}
 
                 <button
                   disabled={uploading}
-                  className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
+                  type="submit"
+                  title="Take Photo"
+                  className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white dark:text-slate-900 shadow-lg active:scale-95 transition-all bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white cursor-pointer disabled:opacity-50"
                 >
                   Finalize Result
                 </button>
@@ -1239,6 +1338,7 @@ const DoerChecklist = ({ doerId }) => {
               <button onClick={() => setOnwardTask(null)} className="px-4 py-2 rounded-xl border border-border text-xs font-bold">Cancel</button>
               <button onClick={submitOnward} disabled={onwardBusy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50">{onwardBusy ? 'Assigning…' : 'Assign Onward'}</button>
             </div>
+
           </div>
         </div>
       )}
@@ -1253,11 +1353,13 @@ const DoerChecklist = ({ doerId }) => {
               <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
               <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
             </div>
+
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {detailsModalTask.remarks && (
                 <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold">
                   Latest remarks: {detailsModalTask.remarks}
                 </div>
+    
               )}
               {/* Each history entry shows its OWN photos inline, right next to who
                   did it and when. groupPhotosByHistory (src/utils/taskPhotos.js,
@@ -1296,10 +1398,19 @@ const DoerChecklist = ({ doerId }) => {
                                 +{h.photos.length - MAX_THUMBS} more
                               </button>
                             )}
+
                           </div>
                         )}
                       </div>
                     ))}
+                    {/*
+                              </button>
+                            )}
+              
+                        )}
+          
+                    ))}
+                      */}
                     {otherPhotos.length > 0 && (
                       <div className="text-xs border-l-2 border-dashed border-amber-400/50 pl-3 pb-1">
                         <div className="font-bold text-amber-600 dark:text-amber-400">Other photos</div>
@@ -1325,10 +1436,21 @@ const DoerChecklist = ({ doerId }) => {
                         </div>
                       </div>
                     )}
+                    {/*
+                              className="w-16 h-16 rounded-xl border border-border bg-background hover:border-primary text-muted-foreground hover:text-primary flex items-center justify-center text-[10px] font-black uppercase tracking-tight transition-all"
+                            >
+                              +{otherPhotos.length - MAX_THUMBS} more
+                            </button>
+                          )}
+            
+          
+                    )}
+                      */}
                   </>
                 );
               })()}
             </div>
+
           </div>
         </div>
       )}
