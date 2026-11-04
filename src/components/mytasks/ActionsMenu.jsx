@@ -38,7 +38,7 @@ export default function ActionsMenu({ items, disabled = false, disabledTitle = '
       <button ref={btn} type="button" disabled={off} aria-haspopup="menu" aria-expanded={open}
         title={off ? (disabledTitle || 'No actions available') : 'Actions'}
         onClick={() => setOpen((o) => !o)}
-        className={`px-3 py-1 rounded font-black text-[8px] uppercase tracking-widest border flex items-center justify-center gap-1 ${off ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 cursor-not-allowed' : 'bg-slate-900 text-white border-slate-900 shadow-md hover:bg-slate-700 active:scale-95'} ${className}`}>
+        className={`px-3 py-1 rounded font-black text-[8px] uppercase tracking-widest border flex items-center justify-center gap-1 ${off ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700 cursor-not-allowed' : 'bg-slate-900 text-white border-slate-900 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700 shadow-md hover:bg-slate-700 dark:hover:bg-slate-700 active:scale-95 cursor-pointer'} ${className}`}>
         Actions <ChevronDown size={10} />
       </button>
       {open && createPortal(
@@ -47,7 +47,7 @@ export default function ActionsMenu({ items, disabled = false, disabledTitle = '
           {list.map((it) => (
             <button key={it.key} type="button" role="menuitem" disabled={it.disabled}
               onClick={() => { setOpen(false); it.onClick && it.onClick(); }}
-              className={`w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-widest hover:bg-muted disabled:opacity-40 ${it.tone === 'danger' ? 'text-red-600' : ''}`}>
+              className={`w-full text-left px-4 py-2 text-[11px] font-black uppercase tracking-widest text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-40 cursor-pointer ${it.tone === 'danger' ? 'text-red-600 dark:text-red-400' : ''}`}>
               {it.label}
               {it.hint && <span className="block normal-case tracking-normal font-medium text-[10px] text-muted-foreground">{it.hint}</span>}
             </button>
