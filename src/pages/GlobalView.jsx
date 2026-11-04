@@ -156,7 +156,10 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [typeFilter, setTypeFilter] = useState('All');
   const [openFms, setOpenFms] = useState([]);
 
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const savedUser = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
+  }, []);
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || savedUser?.tenantId;
 
   const load = useCallback(async () => {
     if (!currentTenantId) return;
@@ -228,51 +231,86 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     if (!from || !to) { setRows([]); return; }
     try {
       setRowsLoading(true);
-      const [deepRes, doerRes, chkRes] = await Promise.all([
+      const [deepRes, doerRes, chkRes, allChkRes] = await Promise.all([
         API.get(`/tasks/employee-deep-dive/${p.employeeId}`, {
           params: { startDate: `${from}T00:00:00.000+05:30`, endDate: `${to}T23:59:59.999+05:30` }
         }),
         API.get(`/tasks/doer/${p.employeeId}?includePassedOn=1`).catch(() => ({ data: [] })),
-        API.get(`/tasks/checklist/${p.employeeId}?includeDone=1`).catch(() => ({ data: [] }))
+        API.get(`/tasks/checklist/${p.employeeId}?includeDone=1`).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist-all/${currentTenantId}`).catch(() => ({ data: [] }))
       ]);
+
+      const cleanName = (val) => {
+        if (!val) return null;
+        const s = String(val).trim();
+        if (!s || /^[-–—―−\s]+$/.test(s) || s.toLowerCase() === 'unassigned' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return null;
+        return s;
+      };
 
       const doerTasks = Array.isArray(doerRes.data) ? doerRes.data : (doerRes.data?.tasks || []);
       const doerTaskMap = new Map();
       doerTasks.forEach(dt => {
-        if (dt && dt._id) {
-          const asg = dt.assignerId?.name || dt.assignerName || '';
-          if (asg) doerTaskMap.set(String(dt._id), asg);
+        if (dt) {
+          const asg = cleanName(dt.assignerId?.name) || cleanName(dt.assignerName) || cleanName(dt.assignedBy) || null;
+          if (dt._id && asg) doerTaskMap.set(String(dt._id), asg);
+          const title = (dt.title || dt.taskName || '').toLowerCase().trim();
+          if (title && asg) doerTaskMap.set(title, asg);
         }
       });
 
-      const chkTasks = Array.isArray(chkRes.data) ? chkRes.data : (chkRes.data?.data || []);
+      const allChkTasks = Array.isArray(allChkRes?.data) ? allChkRes.data : (allChkRes?.data?.data || []);
+      const chkTasks = Array.isArray(chkRes?.data) ? chkRes.data : (chkRes?.data?.data || []);
       const chkTaskMap = new Map();
-      chkTasks.forEach(ct => {
-        if (ct && ct._id) {
+      [...allChkTasks, ...chkTasks].forEach(ct => {
+        if (ct) {
           // Following My Task table (toChecklistItem): i.createdBy?.name || i.assignerId?.name || 'Admin'
-          const asg = ct.createdBy?.name || ct.assignerId?.name || ct.assignerName || 'Admin';
-          chkTaskMap.set(String(ct._id), asg);
+          const asg =
+            cleanName(ct.createdBy?.name) ||
+            cleanName(ct.assignerId?.name) ||
+            cleanName(ct.assignerName) ||
+            cleanName(ct.assignedBy) ||
+            'Admin';
+          if (ct._id && asg) chkTaskMap.set(String(ct._id), asg);
+          const name = (ct.taskName || ct.title || '').toLowerCase().trim();
+          if (name && asg) chkTaskMap.set(name, asg);
         }
       });
 
       const rawRows = Array.isArray(deepRes.data) ? deepRes.data : [];
       const mappedRows = rawRows.map(r => {
         let assignedBy = '—';
-        if (r.type === 'Delegation') {
-          assignedBy = doerTaskMap.get(String(r.id)) || r.assignedBy || r.assignerName || r.assignerId?.name || '—';
-        } else if (r.type === 'Checklist') {
-          // Consistent with My Task checklist tab:
-          assignedBy = chkTaskMap.get(String(r.id)) || (r.assignedBy && r.assignedBy !== '—' ? r.assignedBy : null) || r.createdBy?.name || r.assignerName || r.assignerId?.name || 'Admin';
-        } else if (r.type === 'FMS') {
-          assignedBy = r.assignedBy || 'System';
+        const nameKey = (r.name || '').toLowerCase().trim();
+        const rType = String(r.type || '').trim().toLowerCase();
+
+        if (rType === 'delegation') {
+          assignedBy =
+            cleanName(doerTaskMap.get(String(r.id))) ||
+            cleanName(nameKey ? doerTaskMap.get(nameKey) : null) ||
+            cleanName(r.assignedBy) ||
+            cleanName(r.assignerName) ||
+            cleanName(r.assignerId?.name) ||
+            '—';
+        } else if (rType === 'checklist') {
+          // Consistent with My Task checklist tab (toChecklistItem: i.createdBy?.name || i.assignerId?.name || 'Admin')
+          assignedBy =
+            cleanName(chkTaskMap.get(String(r.id))) ||
+            cleanName(nameKey ? chkTaskMap.get(nameKey) : null) ||
+            cleanName(r.assignedBy) ||
+            cleanName(r.assignerName) ||
+            cleanName(r.createdBy?.name) ||
+            cleanName(r.assignerId?.name) ||
+            'Admin';
+        } else if (rType === 'fms') {
+          assignedBy = cleanName(r.assignedBy) || 'System';
         } else {
-          assignedBy = r.assignedBy || '—';
+          assignedBy = cleanName(r.assignedBy) || '—';
         }
 
         return {
           ...r,
+          type: rType === 'delegation' ? 'Delegation' : rType === 'checklist' ? 'Checklist' : rType === 'fms' ? 'FMS' : (r.type || 'Delegation'),
           assignedBy,
-          assignedTo: r.assignedTo || active?.employeeName || p.employeeName || '—'
+          assignedTo: cleanName(r.assignedTo) || cleanName(active?.employeeName) || cleanName(p.employeeName) || '—'
         };
       });
 

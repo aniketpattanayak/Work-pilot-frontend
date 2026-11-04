@@ -556,8 +556,10 @@ const DoerChecklist = ({ doerId }) => {
 
     try {
       setUploading(true);
+      let isChecklist = false;
 
-      if (modalType === "Checklist") {
+      isChecklist = activeTask.dataType === "Checklist" || (modalType === "Checklist" && activeTask.dataType !== "Delegation");
+      if (isChecklist) {
         formData.append("checklistId", activeTask._id);
         if (activeTask.instanceDate) {
           formData.append("instanceDate", activeTask.instanceDate);
@@ -576,7 +578,8 @@ const DoerChecklist = ({ doerId }) => {
       }
 
       // Show the result at once (Action greyed out, count down) - the refresh below then confirms it from the server.
-      if (modalType === "Checklist") {
+      isChecklist = activeTask.dataType === "Checklist" || (modalType === "Checklist" && activeTask.dataType !== "Delegation");
+      if (isChecklist) {
         const sameDay = (a, b) => new Date(a || 0).toDateString() === new Date(b || 0).toDateString();
         setChecklist((prev) => prev.map((c) => {
           if (String(c._id) !== String(activeTask._id) || c.isDone) return c;
@@ -608,7 +611,7 @@ const DoerChecklist = ({ doerId }) => {
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
   const notDueYet = (it) => {
     // Delegation tasks can be completed early based on actual completion date before deadline!
-    if (it.dataType === 'Delegation') return false;
+    if (!it || it.dataType === 'Delegation' || (!it.frequency && it.deadline)) return false;
     if (it.dataType !== 'Checklist') return false;
     const d = new Date(it.deadlineDate);
     d.setHours(0, 0, 0, 0);
