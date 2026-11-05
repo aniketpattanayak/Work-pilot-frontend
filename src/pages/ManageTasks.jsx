@@ -121,6 +121,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   // Edit form: new files to attach, and the follower search box
   const [editFiles, setEditFiles] = useState([]);
   const [editFollowerSearch, setEditFollowerSearch] = useState('');
+  const editMaxFileMb = useUploadLimit();
 
   // Reason + warnings when the deadline is changed in the edit window
   const { required: reasonRequired } = useDateReasons();
@@ -303,6 +304,16 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     }
   };
 
+  // Followers of a task = the proper followers list plus anyone saved by the old "helper" box.
+  const editStartFollowers = (task) => {
+    const ids = [];
+    const add = (x) => { const id = String((x && x._id) || x || ''); if (id && !ids.includes(id)) ids.push(id); };
+    (Array.isArray(task.coworkers) ? task.coworkers : []).forEach(add);
+    (Array.isArray(task.followers) ? task.followers : []).forEach(add);
+    (Array.isArray(task.helperDoers) ? task.helperDoers : []).forEach((h) => add(h && (h.helperId || h._id)));
+    return ids;
+  };
+
   const handleOpenEdit = (task) => {
     setEditingTask(task);
     setEditFormData({
@@ -311,7 +322,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       doerId: task.doerId?._id || task.doerId || '',
       deadline: toDatetimeLocal(task.deadline),
       priority: task.priority || 'Medium',
-      coworkers: (Array.isArray(task.coworkers) ? task.coworkers : []).map((c) => String((c && c._id) || c)),
+      coworkers: editStartFollowers(task),
       isRevisionAllowed: task.isRevisionAllowed !== false,
       maxExtensionDays: String(Number(task.maxExtensionDays) > 0 ? Number(task.maxExtensionDays) : 3),
       customFields: (task.customFields && typeof task.customFields === 'object') ? { ...task.customFields } : {}
@@ -333,6 +344,21 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     try {
       const deadlineIso = editFormData.deadline && !Number.isNaN(new Date(editFormData.deadline).getTime()) ? new Date(editFormData.deadline).toISOString() : undefined;
       const payload = { ...editFormData, deadlineIso };
+      // Only send what the person actually changed, so an old task is never changed by accident
+      // (for example an old task that "asks the assigner" must not silently become "extend up to 3 days").
+      const startFollowers = editStartFollowers(editingTask).slice().sort().join(',');
+      if ((editFormData.coworkers || []).slice().sort().join(',') === startFollowers) delete payload.coworkers;
+      const startAllow = editingTask.isRevisionAllowed !== false;
+      const startDays = String(Number(editingTask.maxExtensionDays) > 0 ? Number(editingTask.maxExtensionDays) : 3);
+      const revisionTouched = editFormData.isRevisionAllowed !== startAllow || (editFormData.isRevisionAllowed && editFormData.maxExtensionDays !== startDays);
+      if (!revisionTouched) { delete payload.isRevisionAllowed; delete payload.maxExtensionDays; }
+      else if (editFormData.isRevisionAllowed) {
+        const d = Number(editFormData.maxExtensionDays);
+        if (!Number.isInteger(d) || d < 1 || d > 90) {
+          dialog.alert('Deadline change is allowed, so please enter how many days the doer may extend (1 to 90).', { tone: 'error', title: 'Extension days' });
+          return;
+        }
+      }
       const res = await API.put(`/tasks/${editingTask._id}`, dateMoved ? { ...payload, reason: editReason.reason, reasonNote: editReason.note.trim() } : payload);
       let fileWarn = '';
       if (editFiles.length) {
@@ -1101,8 +1127,14 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   </div>
                 )}
                 <div className="relative border border-dashed border-border rounded-xl p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer">
-                  <input type="file" multiple onChange={e => setEditFiles(prev => [...prev, ...Array.from(e.target.files || [])])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <input type="file" multiple onChange={e => {
+                    const { ok, problems } = checkFiles(Array.from(e.target.files || []), editMaxFileMb);
+                    if (problems.length) dialog.alert(problems.join('\n'), { tone: 'error', title: 'File not added' });
+                    setEditFiles(prev => [...prev, ...ok]);
+                    e.target.value = '';
+                  }} className="absolute inset-0 opacity-0 cursor-pointer" />
                   <p className="text-sm text-slate-500">Click to add more files</p>
+                  <p className="text-xs text-slate-400">{uploadHint(editMaxFileMb)}</p>
                 </div>
                 {editFiles.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
