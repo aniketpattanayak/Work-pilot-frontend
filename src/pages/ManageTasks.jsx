@@ -113,8 +113,14 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     doerId: '',
     deadline: '',
     priority: 'Medium',
+    coworkers: [],
+    isRevisionAllowed: true,
+    maxExtensionDays: '3',
     customFields: {}
   });
+  // Edit form: new files to attach, and the follower search box
+  const [editFiles, setEditFiles] = useState([]);
+  const [editFollowerSearch, setEditFollowerSearch] = useState('');
 
   // Reason + warnings when the deadline is changed in the edit window
   const { required: reasonRequired } = useDateReasons();
@@ -305,8 +311,12 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       doerId: task.doerId?._id || task.doerId || '',
       deadline: toDatetimeLocal(task.deadline),
       priority: task.priority || 'Medium',
+      coworkers: (Array.isArray(task.coworkers) ? task.coworkers : []).map((c) => String((c && c._id) || c)),
+      isRevisionAllowed: task.isRevisionAllowed !== false,
+      maxExtensionDays: String(Number(task.maxExtensionDays) > 0 ? Number(task.maxExtensionDays) : 3),
       customFields: (task.customFields && typeof task.customFields === 'object') ? { ...task.customFields } : {}
     });
+    setEditFiles([]); setEditFollowerSearch('');
     setEditReason({ reason: '', note: '' }); setEditWarn([]); setEditShowErr(false);
     setIsEditOpen(true);
   };
@@ -321,12 +331,24 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       if (re) { dialog.alert(re, { tone: 'error', title: 'Reason needed' }); return; }
     }
     try {
-      const res = await API.put(`/tasks/${editingTask._id}`, dateMoved ? { ...editFormData, reason: editReason.reason, reasonNote: editReason.note.trim() } : editFormData);
+      const deadlineIso = editFormData.deadline && !Number.isNaN(new Date(editFormData.deadline).getTime()) ? new Date(editFormData.deadline).toISOString() : undefined;
+      const payload = { ...editFormData, deadlineIso };
+      const res = await API.put(`/tasks/${editingTask._id}`, dateMoved ? { ...payload, reason: editReason.reason, reasonNote: editReason.note.trim() } : payload);
+      let fileWarn = '';
+      if (editFiles.length) {
+        try {
+          const fd = new FormData();
+          editFiles.forEach((f) => fd.append('taskFiles', f));
+          await API.post(`/tasks/${editingTask._id}/add-files`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        } catch (fe) {
+          fileWarn = '\n\nThe task was saved, but the new files could not be uploaded: ' + (fe.response?.data?.message || 'please try again.');
+        }
+      }
       setIsEditOpen(false);
       setEditingTask(null);
       fetchData();
       const warns = (res.data && res.data.warnings) || [];
-      dialog.alert(`The task was updated.${warns.length ? '\n\n' + warns.join('\n') : ''}`, { tone: warns.length ? 'warning' : 'success' });
+      dialog.alert(`The task was updated.${warns.length ? '\n\n' + warns.join('\n') : ''}${fileWarn}`, { tone: (warns.length || fileWarn) ? 'warning' : 'success' });
     } catch (err) {
       console.error("Update error:", err);
       dialog.alert(err.response?.data?.message || "The task could not be updated. Please try again.", { tone: 'error' });
@@ -1032,6 +1054,90 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <option value="High">High</option>
                   <option value="Urgent">Urgent</option>
                 </select>
+              </div>
+              {/* Followers (same as New Task) */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Followers</label>
+                <input
+                  type="text"
+                  value={editFollowerSearch}
+                  onChange={e => setEditFollowerSearch(e.target.value)}
+                  placeholder="Search followers"
+                  className="w-full bg-background border border-border px-4 py-2 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+                <div className="mt-2 max-h-40 overflow-y-auto border border-border rounded-xl p-1 space-y-1">
+                  {employees
+                    .filter(emp => String(emp._id) !== String(editFormData.doerId) && (emp.name || '').toLowerCase().includes(editFollowerSearch.trim().toLowerCase()))
+                    .map(emp => (
+                      <label key={emp._id} className="flex justify-between items-center px-3 py-2 text-sm hover:bg-primary/5 cursor-pointer rounded-md transition">
+                        <span>{emp.name}</span>
+                        <input
+                          type="checkbox"
+                          className="accent-primary"
+                          checked={editFormData.coworkers.includes(String(emp._id))}
+                          onChange={e => setEditFormData(f => ({
+                            ...f,
+                            coworkers: e.target.checked
+                              ? [...f.coworkers, String(emp._id)]
+                              : f.coworkers.filter(id => id !== String(emp._id))
+                          }))}
+                        />
+                      </label>
+                    ))}
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">Followers can only watch and follow up with the doer. They cannot complete the task or change its date.</p>
+              </div>
+              {/* Attachments (same as New Task) */}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Attachments</label>
+                {Array.isArray(editingTask?.files) && editingTask.files.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {editingTask.files.map((f, i) => (
+                      <a key={f.fileUrl || i} href={f.fileUrl} target="_blank" rel="noreferrer"
+                        className="px-3 py-1 text-xs bg-background border border-border rounded-md text-primary hover:underline">
+                        {f.fileName || `File ${i + 1}`}
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <div className="relative border border-dashed border-border rounded-xl p-4 text-center bg-background/50 hover:bg-primary/5 hover:border-primary/50 transition cursor-pointer">
+                  <input type="file" multiple onChange={e => setEditFiles(prev => [...prev, ...Array.from(e.target.files || [])])} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <p className="text-sm text-slate-500">Click to add more files</p>
+                </div>
+                {editFiles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {editFiles.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1 text-xs bg-background border border-border rounded-md">
+                        {f.name}
+                        <button type="button" onClick={() => setEditFiles(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Allow deadline change (same as New Task) */}
+              <div className="flex flex-wrap items-center gap-6 pt-1">
+                <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <input
+                    type="checkbox"
+                    className="accent-primary"
+                    checked={editFormData.isRevisionAllowed}
+                    onChange={e => setEditFormData(f => ({ ...f, isRevisionAllowed: e.target.checked }))}
+                  />
+                  Allow deadline change
+                </label>
+                {editFormData.isRevisionAllowed && (
+                  <label className="flex items-center gap-2 text-sm text-slate-600" title="After the deadline you chose, the doer can move it by up to this many days">
+                    Extend up to
+                    <input
+                      type="number" min="1" max="90" step="1"
+                      value={editFormData.maxExtensionDays}
+                      onChange={e => setEditFormData(f => ({ ...f, maxExtensionDays: e.target.value }))}
+                      className="w-16 bg-background border border-border rounded-lg px-2 py-1 text-center font-bold text-foreground"
+                    />
+                    day(s)
+                  </label>
+                )}
               </div>
               {/* Company-defined extra fields (renders nothing when the company has none) */}
               <DynamicFieldRenderer
