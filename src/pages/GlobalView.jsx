@@ -150,9 +150,9 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [config, setConfig] = useState(null);
   const [periodInfo, setPeriodInfo] = useState(null);
   const [refDate, setRefDate] = useState(new Date().toISOString().split('T')[0]);
-  const [range, setRange] = useState(null);       // null = Current Period by default; { from, to } for custom dates
-  const [fromDraft, setFromDraft] = useState(defaultDates.from);
-  const [toDraft, setToDraft] = useState(defaultDates.to);
+  const [range, setRange] = useState(null);
+  const [fromDraft, setFromDraft] = useState('');
+  const [toDraft, setToDraft] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -364,8 +364,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
 
   return (
     <div className="w-full max-w-[1900px] mx-auto pb-10 text-left">
-      {/* TITLE + PERIOD */}
-      <div className="flex flex-wrap items-center gap-4 mb-3">
+      {/* ROW 1: TITLE + REFRESH */}
+      <div className="flex items-center justify-between gap-4 mb-3">
         <div className="flex items-center gap-3">
           <div className="bg-primary p-2.5 rounded-xl"><Globe className="text-white" size={22} /></div>
           <div>
@@ -373,34 +373,71 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{canEdit ? 'Live compliance ledger' : 'Read-only company review sheet'}</p>
           </div>
         </div>
-        {periodInfo?.startDate && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {!range && <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>}
-            <div className="text-xs font-black uppercase tracking-widest text-foreground px-2">
-              {PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
-            </div>
-            {!range && <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>}
-            <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</span>
-              <input type="date" value={fromDraft} onChange={(e) => setFromDraft(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</span>
-              <input type="date" value={toDraft} min={fromDraft || undefined} onChange={(e) => setToDraft(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
-              <button
-                onClick={() => setRange({ from: fromDraft, to: toDraft })}
-                disabled={!fromDraft || !toDraft || toDraft < fromDraft}
-                title={!fromDraft || !toDraft ? 'Pick both dates' : (toDraft < fromDraft ? 'The "to" date cannot be before the "from" date' : 'Show this date range')}
-                className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
-              >Apply</button>
-              {range && (
-                <button onClick={() => { setRange(null); const def = getDefaultDateRange(); setFromDraft(def.from); setToDraft(def.to); }} className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted">Reset</button>
-              )}
-            </div>
-          </div>
-        )}
-        <button onClick={load} className="ml-auto px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5">
-          <RefreshCcw size={12} /> Refresh
+        <button
+          onClick={load}
+          className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm shrink-0"
+        >
+          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
         </button>
       </div>
+
+      {/* ROW 2: PERIOD & DATE RANGE */}
+      {periodInfo?.startDate && (
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          {!range && (
+            <button
+              onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+            >
+              &larr; Previous
+            </button>
+          )}
+          <div className="text-xs font-black uppercase tracking-widest text-foreground px-2">
+            {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Weekly'} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
+          </div>
+          {!range && (
+            <button
+              onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }}
+              className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+            >
+              Next &rarr;
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</span>
+            <input
+              type="date"
+              value={fromDraft}
+              onChange={(e) => setFromDraft(e.target.value)}
+              className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold"
+            />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</span>
+            <input
+              type="date"
+              value={toDraft}
+              min={fromDraft || undefined}
+              onChange={(e) => setToDraft(e.target.value)}
+              className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold"
+            />
+            <button
+              onClick={() => setRange({ from: fromDraft, to: toDraft })}
+              disabled={!fromDraft || !toDraft || toDraft < fromDraft}
+              title={!fromDraft || !toDraft ? 'Pick both dates' : (toDraft < fromDraft ? 'The "to" date cannot be before the "from" date' : 'Show this date range')}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Apply
+            </button>
+            {range && (
+              <button
+                onClick={() => { setRange(null); setFromDraft(''); setToDraft(''); }}
+                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* FILTERS + LEGEND */}
       <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">

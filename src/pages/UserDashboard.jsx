@@ -124,67 +124,115 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
   const o = data?.stats?.overall;
 
   return (
-    <div className="w-full max-w-[1500px] mx-auto text-left space-y-4 pb-10">
-      {/* TITLE + PICKER + PERIOD */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight uppercase text-foreground leading-none">Dashboard</h1>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">
-            {data && !data.isSelf ? `Viewing ${emp?.name}` : 'My performance'}
-          </p>
-        </div>
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <select
-              value={viewId}
-              onChange={(e) => setViewId(e.target.value)}
-              title="Choose an employee"
-              className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold min-w-[220px]"
-            >
-              <option value={userId}>My dashboard</option>
-              {sortedPeople.filter((p) => String(p._id) !== String(userId)).map((p) => (
-                <option key={p._id} value={p._id}>{p.name}{p.department ? ` · ${p.department}` : ''}{p.location ? ` · ${p.location}` : ''}</option>
-              ))}
-            </select>
-            {String(viewId) !== String(userId) && (
-              <button onClick={() => setViewId(userId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Back to mine</button>
-            )}
+    <div className="w-full max-w-[1500px] mx-auto text-left space-y-3 pb-10">
+      {/* ROW 1: TITLE + PICKER + REFRESH */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-black tracking-tight uppercase text-foreground leading-none">Dashboard</h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">
+              {data && !data.isSelf ? `Viewing ${emp?.name}` : 'My performance'}
+            </p>
           </div>
-        )}
-        <div className="flex-1 flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-wrap">
-            {RANGES.map(([k, label]) => (
-              <button key={k} onClick={() => setRangeMode(k)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${rangeMode === k ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground'}`}>{label}</button>
-            ))}
-          </div>
-          {periodInfo && periodInfo.startDate && (
-            <>
-              {rangeMode === 'current' && (
-                <>
-                  <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>
-                  <span className="text-xs font-black uppercase tracking-widest px-2">{PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
-                  <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>
-
-                </>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <select
+                value={viewId}
+                onChange={(e) => setViewId(e.target.value)}
+                title="Choose an employee"
+                className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold min-w-[220px]"
+              >
+                <option value={userId}>My dashboard</option>
+                {sortedPeople.filter((p) => String(p._id) !== String(userId)).map((p) => (
+                  <option key={p._id} value={p._id}>{p.name}{p.department ? ` · ${p.department}` : ''}{p.location ? ` · ${p.location}` : ''}</option>
+                ))}
+              </select>
+              {String(viewId) !== String(userId) && (
+                <button onClick={() => setViewId(userId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Back to mine</button>
               )}
-              {rangeMode !== 'current' && rangeMode !== 'custom' && (
-                <span className="text-xs font-black uppercase tracking-widest px-2">{fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
-              )}
-            </>
-          )}
-          {rangeMode === 'custom' && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</label>
-              <input type="date" value={customFrom} max={customTo || undefined} onChange={(e) => setCustomFrom(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold" />
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</label>
-              <input type="date" value={customTo} min={customFrom || undefined} onChange={(e) => setCustomTo(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold" />
-              <button disabled={!customFrom || !customTo} onClick={() => setAppliedCustom({ from: customFrom, to: customTo })}
-                className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-black disabled:opacity-40">Apply</button>
             </div>
           )}
-        <button onClick={load} className="ml-auto px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
         </div>
+
+        <button
+          onClick={load}
+          className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm shrink-0"
+        >
+          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        </button>
+      </div>
+
+      {/* ROW 2: FILTERS & DATE NAVIGATION */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-wrap">
+          {RANGES.map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setRangeMode(k)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                rangeMode === k ? 'bg-primary text-white shadow' : 'text-slate-500 hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {periodInfo && periodInfo.startDate && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {rangeMode === 'current' ? (
+              <>
+                <button
+                  onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+                >
+                  &larr; Previous
+                </button>
+                <span className="text-xs font-black uppercase tracking-widest px-2 text-foreground">
+                  {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Weekly'} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
+                </span>
+                <button
+                  onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }}
+                  className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
+                >
+                  Next &rarr;
+                </button>
+              </>
+            ) : rangeMode !== 'custom' ? (
+              <span className="text-xs font-black uppercase tracking-widest px-2 text-foreground">
+                {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {rangeMode === 'custom' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</label>
+            <input
+              type="date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+            />
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</label>
+            <input
+              type="date"
+              value={customTo}
+              min={customFrom || undefined}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+            />
+            <button
+              disabled={!customFrom || !customTo || customTo < customFrom}
+              onClick={() => setAppliedCustom({ from: customFrom, to: customTo })}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-black disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Apply
+            </button>
+          </div>
+        )}
       </div>
 
       {rangeMode === 'custom' && !appliedCustom ? (
