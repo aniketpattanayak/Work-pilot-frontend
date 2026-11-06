@@ -953,7 +953,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* EDIT TASK MODAL */}
       {isEditOpen && (
         <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="mobile-sheet bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -964,10 +964,22 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <p className="text-[9px] text-slate-500 uppercase tracking-widest">Update task parameters & details</p>
                 </div>
               </div>
-              <button onClick={() => setIsEditOpen(false)} className="w-8 h-8 rounded-lg bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group">
+              <button onClick={() => { setIsEditOpen(false); setEditingTask(null); }} className="w-8 h-8 rounded-lg bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group">
                 <X size={15} className="text-slate-400 group-hover:text-red-500 transition-colors" />
               </button>
             </div>
+            <div className="overflow-y-auto flex-1 p-2 sm:p-4">
+              <CreateTask
+                hideHeader
+                tenantId={currentTenantId}
+                assignerId={currentAssignerId}
+                employees={employees}
+                taskToEdit={editingTask}
+                onCancel={() => { setIsEditOpen(false); setEditingTask(null); }}
+                onSuccess={() => { setIsEditOpen(false); setEditingTask(null); fetchData(); }}
+              />
+            </div>
+            {false && (
             <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-4 flex-1">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Task Title</label>
@@ -1056,6 +1068,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}

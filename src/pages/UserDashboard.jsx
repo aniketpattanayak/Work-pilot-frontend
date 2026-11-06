@@ -151,7 +151,7 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
             )}
           </div>
         )}
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
+        <div className="flex-1 flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-wrap">
             {RANGES.map(([k, label]) => (
               <button key={k} onClick={() => setRangeMode(k)}
@@ -165,7 +165,7 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
                   <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>
                   <span className="text-xs font-black uppercase tracking-widest px-2">{PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}</span>
                   <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>
-                  <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>
+
                 </>
               )}
               {rangeMode !== 'current' && rangeMode !== 'custom' && (
@@ -183,7 +183,7 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
                 className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-black disabled:opacity-40">Apply</button>
             </div>
           )}
-          <button onClick={load} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
+        <button onClick={load} className="ml-auto px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
         </div>
       </div>
 

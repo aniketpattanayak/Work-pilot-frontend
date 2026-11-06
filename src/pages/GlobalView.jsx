@@ -4,7 +4,6 @@ import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/re
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 import MobileFilters from '../components/MobileFilters';
-import DateChangesReport from '../components/DateChangesReport';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -132,16 +131,28 @@ const LateTargetInput = ({ value, onSave }) => {
   );
 };
 
+const getDefaultDateRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return {
+    from: `${year}-${month}-01`,
+    to: `${year}-${month}-${day}`
+  };
+};
+
 const GlobalView = ({ tenantId, mode = 'view' }) => {
+  const defaultDates = useMemo(() => getDefaultDateRange(), []);
   // 'view' = read-only (Viewer role). 'review' = Admin Review Meeting: same sheet plus Late Target and delete.
   const canEdit = mode === 'review';
   const [report, setReport] = useState([]);
   const [config, setConfig] = useState(null);
   const [periodInfo, setPeriodInfo] = useState(null);
   const [refDate, setRefDate] = useState(new Date().toISOString().split('T')[0]);
-  const [range, setRange] = useState(null);       // { from, to } custom dates, or null = the company's review period
-  const [fromDraft, setFromDraft] = useState('');
-  const [toDraft, setToDraft] = useState('');
+  const [range, setRange] = useState(null);       // null = Current Period by default; { from, to } for custom dates
+  const [fromDraft, setFromDraft] = useState(defaultDates.from);
+  const [toDraft, setToDraft] = useState(defaultDates.to);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -151,8 +162,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [active, setActive] = useState(null);       // employee row opened in the audit sheet
   const [rows, setRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
-  const [start, setStart] = useState('');
-  const [end, setEnd] = useState('');
+  const [start, setStart] = useState(defaultDates.from);
+  const [end, setEnd] = useState(defaultDates.to);
   const [typeFilter, setTypeFilter] = useState('All');
   const [openFms, setOpenFms] = useState([]);
 
@@ -225,8 +236,10 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     setTypeFilter('All');
     setOpenFms([]);
     const istDay = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
-    const from = s || istDay(p.periodStart);
-    const to = e || istDay(p.periodEnd);
+    const todayStr = new Date(Date.now() + 330 * 60000).toISOString().split('T')[0];
+    const from = s || range?.from || istDay(p.periodStart) || defaultDates.from;
+    const rawTo = e || range?.to || istDay(p.periodEnd) || defaultDates.to;
+    const to = (!range && !e && rawTo > todayStr) ? todayStr : rawTo;
     setStart(from); setEnd(to);
     if (!from || !to) { setRows([]); return; }
     try {
@@ -361,14 +374,12 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           </div>
         </div>
         {periodInfo?.startDate && (
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {!range && <button onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">&larr; Previous</button>}
             <div className="text-xs font-black uppercase tracking-widest text-foreground px-2">
               {PERIOD_LABELS[periodInfo.view] || periodInfo.view} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
             </div>
             {!range && <button onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Next &rarr;</button>}
-            {!range && <button onClick={() => setRefDate(new Date().toISOString().split('T')[0])} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Current</button>}
-            <button onClick={load} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5"><RefreshCcw size={12} /> Refresh</button>
             <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</span>
               <input type="date" value={fromDraft} onChange={(e) => setFromDraft(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
@@ -381,14 +392,15 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
               >Apply</button>
               {range && (
-                <button onClick={() => { setRange(null); setFromDraft(''); setToDraft(''); }} className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted">Clear</button>
+                <button onClick={() => { setRange(null); const def = getDefaultDateRange(); setFromDraft(def.from); setToDraft(def.to); }} className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted">Reset</button>
               )}
             </div>
           </div>
         )}
+        <button onClick={load} className="ml-auto px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted flex items-center gap-1.5">
+          <RefreshCcw size={12} /> Refresh
+        </button>
       </div>
-
-      <DateChangesReport from={range ? range.from : (periodInfo?.startDate ? String(periodInfo.startDate).slice(0, 10) : undefined)} to={range ? range.to : (periodInfo?.endDate ? String(periodInfo.endDate).slice(0, 10) : undefined)} />
 
       {/* FILTERS + LEGEND */}
       <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">
