@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
-import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
+import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate, getPctStyle, setStoredDynamicColors } from '../utils/reviewScore';
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 import MobileFilters from '../components/MobileFilters';
@@ -78,18 +78,23 @@ const BUCKET_CLASS = {
 const cellBase = 'border border-border px-1.5 py-1 text-center tabular-nums';
 
 // Previous period: the Late Target the Admin had set then, next to what the person actually did (late %).
-const PreviousCell = ({ prev }) => {
+const PreviousCell = ({ prev, dynamicColors }) => {
   if (!prev) return <td className={`${cellBase} text-slate-300`}>&mdash;</td>;
   const target = Number(prev.target);
   const actual = Number(prev.latePct) || 0;
-  const tone = !prev.hasTasks ? '' : (actual > target ? TONE_CLASSES.red : TONE_CLASSES.green);
   const tip = `${prev.periodName}: target ${target}%${prev.targetSource === 'current' ? ' (current target; no change recorded)' : ''}, ${prev.hasTasks ? 'actual late ' + actual.toFixed(1) + '%' : 'no tasks in that period'}`;
   return (
     <td className={`${cellBase} whitespace-nowrap`} title={tip}>
       <div className="flex items-center justify-center gap-1.5 text-[10px] font-black">
         <span className="text-slate-500">Target {target}%</span>
         <span className="text-slate-300">&rarr;</span>
-        {prev.hasTasks ? <span className={`px-1.5 py-0.5 rounded ${tone}`}>Late {actual.toFixed(1)}%</span> : <span className="text-slate-400">no tasks</span>}
+        {prev.hasTasks ? (
+          <span style={getPctStyle(actual, dynamicColors)} className="px-1.5 py-0.5 rounded shadow-sm">
+            Late {actual.toFixed(1)}%
+          </span>
+        ) : (
+          <span className="text-slate-400">no tasks</span>
+        )}
       </div>
     </td>
   );
@@ -180,6 +185,9 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
       const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: range ? { from: range.from, to: range.to } : { date: refDate } });
       setReport(Array.isArray(res.data?.report) ? res.data.report : []);
       setConfig(res.data?.config || null);
+      if (res.data?.config?.dynamicColors) {
+        setStoredDynamicColors(res.data.config.dynamicColors);
+      }
       setPeriodInfo({ view: res.data?.view, startDate: res.data?.startDate, endDate: res.data?.endDate });
     } catch (e) {
       setReport([]);
@@ -359,7 +367,12 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   }, [shownRows]);
 
   const pctCell = (v, extra = '') => (
-    <td className={`${cellBase} font-black ${TONE_CLASSES[pctTone(v, thresholds)]} ${extra}`}>{fmtPct(v)}</td>
+    <td
+      className={`${cellBase} font-black ${extra}`}
+      style={getPctStyle(v, config?.dynamicColors)}
+    >
+      {fmtPct(v)}
+    </td>
   );
 
   return (
@@ -468,13 +481,11 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{people.length} people</span>
           <div className="ml-auto flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500 flex-wrap">
             <span>TOT total</span><span>OT on-time done</span><span>LD late done</span><span>PO pending (not due)</span><span>LP late pending</span>
-            {thresholds && (
-              <>
-                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.red}`}>&ge; {thresholds.red}%</span>
-                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.orange}`}>&ge; {thresholds.orange}%</span>
-                <span className={`px-1.5 py-0.5 rounded ${TONE_CLASSES.green}`}>below</span>
-              </>
-            )}
+            <div className="flex items-center gap-1.5 ml-1">
+              <span style={getPctStyle(5, config?.dynamicColors)} className="px-2 py-0.5 rounded text-[9px] font-black">1–10%</span>
+              <span style={getPctStyle(15, config?.dynamicColors)} className="px-2 py-0.5 rounded text-[9px] font-black">11–20%</span>
+              <span style={getPctStyle(25, config?.dynamicColors)} className="px-2 py-0.5 rounded text-[9px] font-black">&ge; 21%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -521,7 +532,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                           <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
                         </td>
                       )}
-                      {canEdit && <PreviousCell prev={p.previous} />}
+                      {canEdit && <PreviousCell prev={p.previous} dynamicColors={config?.dynamicColors} />}
                       {TYPES.map((t) => COLS.map(([f]) => {
                         const v = p[KEYS[t]]?.[f] || 0;
                         const tone = v > 0 && f === 'lateDone' ? 'text-amber-600 font-black' : v > 0 && f === 'latePending' ? 'text-red-600 font-black' : v > 0 ? 'text-foreground font-bold' : 'text-slate-300 dark:text-slate-600';
@@ -589,8 +600,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 ].map(([label, v, cls]) => (
                   <span key={label} className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${cls}`}>{label}: {v}</span>
                 ))}
-                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${TONE_CLASSES[pctTone(counts.latePct, thresholds)]}`}>Late {fmtPct(counts.latePct)}</span>
-                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${TONE_CLASSES[pctTone(counts.notDonePct, thresholds)]}`}>Not done {fmtPct(counts.notDonePct)}</span>
+                <span style={getPctStyle(counts.latePct, config?.dynamicColors)} className="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Late {fmtPct(counts.latePct)}</span>
+                <span style={getPctStyle(counts.notDonePct, config?.dynamicColors)} className="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Not done {fmtPct(counts.notDonePct)}</span>
               </div>
             </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import API from '../api/axiosConfig';
 import ActivityLogPanel from '../components/ActivityLogPanel';
-import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate } from '../utils/reviewScore';
+import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate, getPctStyle, setStoredDynamicColors } from '../utils/reviewScore';
 import { RefreshCcw, Trophy, Star, Medal, Zap, ShieldCheck, Flame, Target, Rocket, Award, MapPin, Briefcase, Mail, Plane } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 
@@ -107,6 +107,9 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
       }
       const res = await API.get(`/tasks/user-dashboard/${viewId}`, { params });
       setData(res.data);
+      if (res.data?.config?.dynamicColors) {
+        setStoredDynamicColors(res.data.config.dynamicColors);
+      }
     } catch (e) {
       setData(null);
       setError(e.response?.data?.message || 'Could not load the dashboard.');
@@ -285,12 +288,20 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
                 ['Not done %', o.notDonePct, true, '(pending + late pending) / all due'],
                 ['Done on time %', o.onTimeDonePct, false, ''],
                 ['Pending %', o.pendingOnTimePct, false, 'not yet due']
-              ].map(([label, v, tone, tip]) => (
-                <div key={label} title={tip} className={`rounded-2xl border border-border p-4 flex flex-col justify-between ${tone ? TONE_CLASSES[pctTone(v, th)] : 'bg-card'}`}>
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{label}</p>
-                  <p className="text-3xl font-black leading-none mt-3">{o.hasTasks ? fmtPct(v) : '—'}</p>
-                </div>
-              ))}
+              ].map(([label, v, tone, tip]) => {
+                const dynamicStyle = tone ? getPctStyle(v, data?.config?.dynamicColors) : undefined;
+                return (
+                  <div
+                    key={label}
+                    title={tip}
+                    style={dynamicStyle}
+                    className={`rounded-2xl border border-border p-4 flex flex-col justify-between transition-all duration-300 ${tone ? 'shadow-sm' : 'bg-card'}`}
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">{label}</p>
+                    <p className="text-3xl font-black leading-none mt-3">{o.hasTasks ? fmtPct(v) : '—'}</p>
+                  </div>
+                );
+              })}
               {TYPES.map(([k, label, bg]) => {
                 const s = data.stats[k];
                 const den = Math.max(s.total, s.onTimeDone + s.lateDone + s.pendingOnTime + s.latePending);
