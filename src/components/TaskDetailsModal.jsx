@@ -1,0 +1,704 @@
+import React, { useState, useEffect } from 'react';
+import API from '../api/axiosConfig';
+import {
+  X,
+  Calendar,
+  Clock,
+  User,
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Layers,
+  ArrowRight,
+  ShieldCheck,
+  RefreshCcw,
+  Tag,
+  Paperclip,
+  History,
+  Building2,
+  Repeat
+} from 'lucide-react';
+import TaskPhotoThumb from './TaskPhotoThumb';
+import ImageLightbox from './ImageLightbox';
+import { fmtIST } from '../utils/istTime';
+import { getPctStyle } from '../utils/reviewScore';
+
+const fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const fmtDateTime = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? '—' : dt.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallbackRow, dynamicColors, onClose }) => {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [lightboxPhotos, setLightboxPhotos] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDetails = async () => {
+      if (!taskId) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const queryParams = new URLSearchParams({ type: taskType });
+        if (instanceDate) queryParams.set('instanceDate', new Date(instanceDate).toISOString());
+        const res = await API.get(`/tasks/detailed-view/${taskId}?${queryParams.toString()}`);
+        if (isMounted) {
+          setData(res.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.response?.data?.message || 'Failed to load task details');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchDetails();
+    return () => { isMounted = false; };
+  }, [taskId, taskType, instanceDate]);
+
+  const task = data || fallbackRow || {};
+  const isChecklist = (taskType || '').toLowerCase() === 'checklist';
+  const isFms = (taskType || '').toLowerCase() === 'fms';
+  const isDelegation = !isChecklist && !isFms;
+
+  // Subtasks info
+  const subTasks = data?.subTasks || [];
+  const completedSubTasks = subTasks.filter(st => st.isCompleted || ['Completed', 'Verified'].includes(st.status));
+  const subTaskProgressPct = subTasks.length > 0 ? Math.round((completedSubTasks.length / subTasks.length) * 100) : null;
+
+  // Status Tone
+  const rawStatus = (task.status || '').toUpperCase();
+  const isCompleted = ['COMPLETED', 'VERIFIED'].includes(rawStatus);
+  const isRevision = ['REVISION REQUESTED', 'SENT BACK'].includes(rawStatus);
+  const isOverdue = rawStatus === 'OVERDUE' || (task.deadline && !isCompleted && new Date(task.deadline) < new Date());
+
+  const statusBadge = (() => {
+    if (isCompleted) {
+      return {
+        label: task.status === 'Verified' ? 'VERIFIED' : 'COMPLETED',
+        cls: 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 dark:bg-emerald-500/20',
+        icon: CheckCircle
+      };
+    }
+    if (isRevision) {
+      return {
+        label: task.status || 'REVISION REQUESTED',
+        cls: 'bg-rose-500/10 text-rose-600 border border-rose-500/30 dark:bg-rose-500/20',
+        icon: AlertTriangle
+      };
+    }
+    if (isOverdue) {
+      return {
+        label: 'OVERDUE',
+        cls: 'bg-red-500/10 text-red-600 border border-red-500/30 dark:bg-red-500/20 font-black',
+        icon: AlertTriangle
+      };
+    }
+    return {
+      label: task.status || 'PENDING',
+      cls: 'bg-sky-500/10 text-sky-600 border border-sky-500/30 dark:bg-sky-500/20',
+      icon: Clock
+    };
+  })();
+
+  const StatusIcon = statusBadge.icon;
+
+  // Priority Tone
+  const priority = task.priority || 'Medium';
+  const priorityCls = {
+    Urgent: 'bg-red-500/10 text-red-600 border border-red-500/20',
+    High: 'bg-orange-500/10 text-orange-600 border border-orange-500/20',
+    Medium: 'bg-amber-500/10 text-amber-600 border border-amber-500/20',
+    Low: 'bg-slate-500/10 text-slate-600 border border-slate-500/20'
+  }[priority] || 'bg-slate-500/10 text-slate-600 border border-slate-500/20';
+
+  // Stepper Calculation
+  const isCreated = true;
+  const isInProgress = !isCompleted;
+  const isSubmitted = isCompleted || !!data?.completion;
+  const isVerified = (task.status || '').toLowerCase() === 'verified' || !!data?.verification;
+
+  // Evidence Photos Collection
+  const allEvidencePhotos = [];
+  if (data?.completion?.files && Array.isArray(data.completion.files)) {
+    data.completion.files.forEach(f => {
+      if (f?.fileUrl) allEvidencePhotos.push({ ...f, stage: 'Completion Evidence', uploadedBy: { name: data.completion.completedBy } });
+    });
+  }
+  if (data?.files && Array.isArray(data.files)) {
+    data.files.forEach(f => {
+      if (f?.fileUrl && !allEvidencePhotos.some(x => x.fileUrl === f.fileUrl)) {
+        allEvidencePhotos.push(f);
+      }
+    });
+  }
+  if (data?.history && Array.isArray(data.history)) {
+    data.history.forEach(h => {
+      (h.files || []).forEach(f => {
+        if (f?.fileUrl && !allEvidencePhotos.some(x => x.fileUrl === f.fileUrl)) {
+          allEvidencePhotos.push({ ...f, stage: h.action, uploadedAt: h.timestamp, uploadedBy: { name: h.performedBy } });
+        }
+      });
+    });
+  }
+
+  const openGallery = (photos, idx) => {
+    setLightboxPhotos(photos);
+    setLightboxIndex(idx);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
+      <div className="absolute inset-0" onClick={onClose} />
+      
+      <div className="relative w-full max-w-4xl bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+        
+        {/* HEADER BAR */}
+        <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                isDelegation ? 'bg-purple-600 text-white' : isChecklist ? 'bg-sky-600 text-white' : 'bg-orange-500 text-white'
+              }`}>
+                {taskType}
+              </span>
+              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1 ${statusBadge.cls}`}>
+                <StatusIcon size={11} /> {statusBadge.label}
+              </span>
+              {isDelegation && (
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${priorityCls}`}>
+                  {priority} Priority
+                </span>
+              )}
+              {isChecklist && data?.frequency && (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-700 border border-sky-500/20 inline-flex items-center gap-1">
+                  <Repeat size={10} /> {data.frequency}
+                </span>
+              )}
+            </div>
+            <h2 className="text-base sm:text-lg font-black text-foreground uppercase tracking-tight leading-snug line-clamp-2">
+              {task.title || task.name || 'Task Details'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl border border-border bg-background hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-colors flex-shrink-0"
+            title="Close"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* PROGRESS STEPPER & KPI BAR */}
+        <div className="px-5 sm:px-6 py-3 border-b border-border bg-background/60 flex flex-col gap-3 flex-shrink-0">
+          {/* Visual 4-Step Stepper */}
+          <div className="grid grid-cols-4 gap-1 sm:gap-2 items-center text-center">
+            {/* Step 1: Created */}
+            <div className="flex flex-col items-center">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
+                isCreated ? 'bg-emerald-600 text-white shadow-sm' : 'bg-muted text-slate-400'
+              }`}>
+                ✓
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">Created</span>
+              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">{fmtDate(task.createdAt)}</span>
+            </div>
+
+            {/* Step 2: In Progress / Active */}
+            <div className="flex flex-col items-center">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
+                isSubmitted ? 'bg-emerald-600 text-white shadow-sm' : 'bg-primary text-white ring-2 ring-primary/30 animate-pulse'
+              }`}>
+                {isSubmitted ? '✓' : '2'}
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">In Progress</span>
+              <span className="text-[9px] text-slate-400 font-bold">Due {fmtDate(task.deadline || task.nextDueDate)}</span>
+            </div>
+
+            {/* Step 3: Submitted / Done */}
+            <div className="flex flex-col items-center">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
+                isSubmitted ? 'bg-emerald-600 text-white shadow-sm' : 'bg-muted text-slate-400'
+              }`}>
+                {isSubmitted ? '✓' : '3'}
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">Completed</span>
+              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">
+                {task.completedAt || data?.completion?.completedAt ? fmtDate(task.completedAt || data?.completion?.completedAt) : 'Pending'}
+              </span>
+            </div>
+
+            {/* Step 4: Verified / Reviewed */}
+            <div className="flex flex-col items-center">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
+                isVerified ? 'bg-emerald-600 text-white shadow-sm' : isRevision ? 'bg-rose-500 text-white' : 'bg-muted text-slate-400'
+              }`}>
+                {isVerified ? '✓' : isRevision ? '!' : '4'}
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">
+                {isRevision ? 'Revision' : 'Verified'}
+              </span>
+              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">
+                {isVerified ? 'Approved' : isRevision ? 'Sent Back' : '—'}
+              </span>
+            </div>
+          </div>
+
+          {/* Subtask Completion Bar (if any subtasks exist) */}
+          {subTasks.length > 0 && (
+            <div className="bg-muted/40 p-2.5 rounded-xl border border-border flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Layers size={14} className="text-primary" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-foreground">
+                  Subtask Progress: {completedSubTasks.length} of {subTasks.length} Completed
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-1 max-w-xs">
+                <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${subTaskProgressPct || 0}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-black tabular-nums text-foreground">{subTaskProgressPct}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* NAVIGATION TABS */}
+        <div className="flex border-b border-border bg-card px-5 sm:px-6 gap-2 sm:gap-4 overflow-x-auto flex-shrink-0">
+          {[
+            { id: 'overview', label: 'Overview & Details', icon: FileText },
+            { id: 'subtasks', label: `Subtasks (${subTasks.length})`, icon: Layers },
+            { id: 'evidence', label: `Evidence & Proof (${allEvidencePhotos.length})`, icon: Paperclip },
+            { id: 'history', label: `Activity History (${(data?.history || []).length})`, icon: History }
+          ].map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 py-3 border-b-2 text-[11px] font-black uppercase tracking-wider transition-colors whitespace-nowrap ${
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-slate-400 hover:text-foreground'
+                }`}
+              >
+                <Icon size={13} /> {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* TAB CONTENTS (SCROLLABLE BODY) */}
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400 font-bold text-xs uppercase tracking-widest">
+              <RefreshCcw className="animate-spin text-primary" size={24} />
+              Loading task details...
+            </div>
+          ) : error ? (
+            <div className="p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 text-center text-xs font-bold">
+              {error}
+            </div>
+          ) : (
+            <>
+              {/* TAB 1: OVERVIEW */}
+              {activeTab === 'overview' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  {/* Task Description */}
+                  <div className="bg-muted/30 border border-border rounded-2xl p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Description / Briefing</p>
+                    <p className="text-xs sm:text-sm text-foreground font-medium leading-relaxed whitespace-pre-wrap">
+                      {task.description || 'No detailed description provided for this task.'}
+                    </p>
+                  </div>
+
+                  {/* Delegation Chain & Key People */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Assignment Flow</p>
+                      
+                      <div className="space-y-2">
+                        {/* Assigner */}
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs">
+                            A
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black uppercase text-foreground truncate">{task.assigner?.name || fallbackRow?.assignedBy || 'Admin'}</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Original Assigner</p>
+                          </div>
+                        </div>
+
+                        {/* Forward Chain (if passed on) */}
+                        {(data?.forwardChain || []).map((fc, idx) => (
+                          <div key={idx} className="flex items-center gap-2.5 pl-3 border-l-2 border-primary/30">
+                            <ArrowRight size={12} className="text-primary shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase text-foreground truncate">{fc.employee?.name || 'Staff'}</p>
+                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Passed On · {fmtDate(fc.forwardedAt)}</p>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* Lead Doer */}
+                        <div className="flex items-center gap-2.5 pt-1">
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 font-black text-xs">
+                            D
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black uppercase text-foreground truncate">{task.doer?.name || fallbackRow?.assignedTo || 'Doer'}</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{task.doer?.department || task.department || 'Primary Doer'}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Followers & Watchers */}
+                    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Followers / Watchers</p>
+                        {Array.isArray(data?.followers) && data.followers.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {data.followers.map(f => (
+                              <span key={f._id} className="px-2.5 py-1 rounded-lg bg-muted border border-border text-[10px] font-bold text-foreground">
+                                👤 {f.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic">No followers assigned to watch this task.</p>
+                        )}
+                      </div>
+
+                      {data?.coordinator && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Quality Coordinator</p>
+                          <p className="text-xs font-black text-foreground uppercase mt-0.5">{data.coordinator.name}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dates & Timeline Metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3.5 rounded-2xl border border-border bg-card">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Created Date</p>
+                      <p className="text-xs font-black text-foreground mt-1">{fmtDate(task.createdAt)}</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-border bg-card">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Official Deadline</p>
+                      <p className="text-xs font-black text-foreground mt-1">{fmtDateTime(task.deadline || task.nextDueDate)}</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-border bg-card">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Original Deadline</p>
+                      <p className="text-xs font-black text-foreground mt-1">
+                        {task.originalDeadline ? fmtDate(task.originalDeadline) : 'Unchanged'}
+                      </p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl border border-border bg-card">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Completion Time</p>
+                      <p className="text-xs font-black text-foreground mt-1">
+                        {task.completedAt || data?.completion?.completedAt ? fmtDateTime(task.completedAt || data?.completion?.completedAt) : 'Not completed yet'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Custom Fields (if configured) */}
+                  {data?.customFields && Object.keys(data.customFields).length > 0 && (
+                    <div className="bg-card border border-border rounded-2xl p-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Custom Fields</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {Object.entries(data.customFields).map(([k, v]) => (
+                          <div key={k} className="p-2.5 rounded-xl bg-muted/40 border border-border">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">{k}</span>
+                            <span className="text-xs font-black text-foreground mt-0.5 block">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: SUBTASKS */}
+              {activeTab === 'subtasks' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                      Total Subtasks: {subTasks.length}
+                    </p>
+                    {subTasks.length > 0 && (
+                      <span className="text-xs font-black text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                        {completedSubTasks.length} Completed
+                      </span>
+                    )}
+                  </div>
+
+                  {subTasks.length === 0 ? (
+                    <div className="py-16 text-center text-slate-400 font-bold text-xs bg-muted/20 border border-border rounded-2xl">
+                      No subtasks assigned under this parent directive.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {subTasks.map((st, i) => {
+                        const done = st.isCompleted || ['Completed', 'Verified'].includes(st.status);
+                        return (
+                          <div
+                            key={st._id || i}
+                            className={`p-3.5 rounded-2xl border transition-all flex items-start justify-between gap-3 ${
+                              done
+                                ? 'bg-emerald-500/5 border-emerald-500/20'
+                                : 'bg-card border-border hover:border-primary/40'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 font-black text-xs ${
+                                done ? 'bg-emerald-600 text-white' : 'border border-border text-slate-400'
+                              }`}>
+                                {done ? '✓' : i + 1}
+                              </div>
+                              <div className="min-w-0">
+                                <p className={`text-xs font-black uppercase tracking-tight ${done ? 'line-through text-slate-400' : 'text-foreground'}`}>
+                                  {st.title}
+                                </p>
+                                {st.description && (
+                                  <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{st.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[10px]">
+                                  <span className="font-bold text-slate-400">Assignee: {st.doer?.name || 'Unassigned'}</span>
+                                  {st.deadline && (
+                                    <>
+                                      <span className="text-slate-300">·</span>
+                                      <span className="font-bold text-slate-400">Due: {fmtDate(st.deadline)}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider shrink-0 ${
+                              done ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-sky-500/10 text-sky-600 border border-sky-500/20'
+                            }`}>
+                              {done ? 'DONE' : st.status || 'PENDING'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: EVIDENCE & VERIFICATION */}
+              {activeTab === 'evidence' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  {/* DOER SUBMISSION CARD */}
+                  <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-border pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={16} className="text-emerald-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Doer Completion & Submission</h4>
+                      </div>
+                      {data?.completion?.completedAt && (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          {fmtDateTime(data.completion.completedAt)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Submitted Remarks</p>
+                      <p className="text-xs sm:text-sm text-foreground font-medium bg-muted/40 p-3 rounded-xl border border-border whitespace-pre-wrap">
+                        {data?.completion?.remarks || (isCompleted ? 'Marked complete without additional text remarks.' : 'Not submitted yet.')}
+                      </p>
+                    </div>
+
+                    {data?.completion?.completedBy && (
+                      <p className="text-[10px] font-bold text-slate-400">
+                        Submitted by: <span className="font-black text-foreground uppercase">{data.completion.completedBy}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* REVIEWER VERIFICATION CARD */}
+                  <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 space-y-3">
+                    <div className="flex items-center justify-between border-b border-border pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck size={16} className={isVerified ? 'text-emerald-500' : 'text-slate-400'} />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-foreground">Assigner Verification</h4>
+                      </div>
+                      {data?.verification?.verifiedAt && (
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          {fmtDateTime(data.verification.verifiedAt)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Verification Status & Feedback</p>
+                      <div className={`p-3 rounded-xl border ${
+                        isVerified
+                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                          : isRevision
+                            ? 'bg-rose-500/10 border-rose-500/20 text-rose-800 dark:text-rose-300'
+                            : 'bg-muted/30 border-border text-slate-400'
+                      }`}>
+                        <p className="text-xs font-bold leading-relaxed">
+                          {isVerified
+                            ? (data?.verification?.remarks || 'Directive verified and confirmed by assigner.')
+                            : isRevision
+                              ? (data?.rejections?.[0]?.remarks || 'Task sent back with revisions requested.')
+                              : 'Awaiting completion before review can be performed.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {data?.verification?.verifiedBy && (
+                      <p className="text-[10px] font-bold text-slate-400">
+                        Verified by: <span className="font-black text-foreground uppercase">{data.verification.verifiedBy}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* EVIDENCE FILES GALLERY */}
+                  <div className="bg-card border border-border rounded-2xl p-4 sm:p-5">
+                    <p className="text-xs font-black uppercase tracking-wider text-foreground mb-3 flex items-center gap-2">
+                      <Paperclip size={14} className="text-primary" />
+                      Uploaded Documents & Proof Photos ({allEvidencePhotos.length})
+                    </p>
+
+                    {allEvidencePhotos.length === 0 ? (
+                      <p className="text-xs text-slate-400 italic py-6 text-center border border-dashed border-border rounded-xl">
+                        No image proof or files uploaded for this task.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        {allEvidencePhotos.map((f, fi) => (
+                          <div key={fi} className="flex flex-col items-center">
+                            <TaskPhotoThumb
+                              file={f}
+                              className="w-20 h-20"
+                              onClick={() => openGallery(allEvidencePhotos, fi)}
+                            />
+                            <span className="text-[9px] font-black uppercase text-slate-400 mt-1 max-w-[80px] truncate text-center">
+                              {f.stage || f.fileName || 'Proof'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: ACTIVITY & AUDIT TRAIL */}
+              {activeTab === 'history' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                    Chronological Activity Timeline
+                  </p>
+
+                  {(!data?.history || data.history.length === 0) ? (
+                    <div className="py-16 text-center text-slate-400 font-bold text-xs bg-muted/20 border border-border rounded-2xl">
+                      No activity history logged for this record.
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                      {data.history.map((h, i) => (
+                        <div key={i} className="relative flex items-start gap-3">
+                          <div className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-primary border-2 border-background shadow-sm" />
+                          <div className="bg-card border border-border rounded-xl p-3.5 flex-1 shadow-sm">
+                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                              <span className="text-xs font-black uppercase tracking-tight text-foreground">
+                                {h.action}
+                              </span>
+                              <span className="text-[9px] font-bold text-slate-400">
+                                {h.timestamp ? fmtIST(h.timestamp) : ''}
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-bold text-primary mb-1">
+                              By: {h.performedBy || 'System'}
+                            </p>
+                            {h.remarks && (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium whitespace-pre-wrap">
+                                {h.remarks}
+                              </p>
+                            )}
+                            {Array.isArray(h.files) && h.files.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border/50">
+                                {h.files.map((f, fi) => (
+                                  <TaskPhotoThumb
+                                    key={fi}
+                                    file={f}
+                                    className="w-14 h-14"
+                                    onClick={() => openGallery(h.files, fi)}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* FOOTER */}
+        <div className="px-5 sm:px-6 py-3 border-t border-border bg-muted/20 flex items-center justify-between flex-shrink-0">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            WorkPilot Protocol Inspector
+          </span>
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-xl border border-border bg-card text-foreground hover:bg-background font-black text-xs uppercase tracking-wider transition"
+          >
+            Close
+          </button>
+        </div>
+
+      </div>
+
+      {/* FULL-SCREEN IMAGE LIGHTBOX */}
+      {lightboxPhotos && (
+        <ImageLightbox
+          photos={lightboxPhotos}
+          startIndex={lightboxIndex}
+          task={task}
+          onClose={() => setLightboxPhotos(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default TaskDetailsModal;
+

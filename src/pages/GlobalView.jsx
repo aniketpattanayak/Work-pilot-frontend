@@ -4,6 +4,7 @@ import { pctTone, TONE_CLASSES, PERIOD_LABELS, neighbourDate, getPctStyle, setSt
 import { Globe, RefreshCcw, Search, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import ResponsiveTable from '../components/ResponsiveTable';
 import MobileFilters from '../components/MobileFilters';
+import TaskDetailsModal from '../components/TaskDetailsModal';
 
 /**
  * GLOBAL VIEW — read-only company-wide Review Meeting sheet (for the Viewer role).
@@ -171,6 +172,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [end, setEnd] = useState(defaultDates.to);
   const [typeFilter, setTypeFilter] = useState('All');
   const [openFms, setOpenFms] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   const savedUser = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('user') || '{}'); } catch { return {}; }
@@ -629,11 +631,30 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                         const f = r.fms || { steps: [], pendingStep: null };
                         return (
                           <React.Fragment key={key}>
-                            <tr className={`odd:bg-background/40 ${isFms ? 'cursor-pointer hover:bg-primary/10' : ''}`} onClick={isFms ? () => setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key])) : undefined}>
+                            <tr
+                              className="odd:bg-background/40 cursor-pointer hover:bg-primary/10 transition-colors"
+                              onClick={() => setSelectedTask(r)}
+                              title="Click to view complete task details & journey"
+                            >
                               <td className="border border-border px-2 py-1 text-slate-400 text-center w-10">{i + 1}</td>
                               <td className="border border-border px-2 py-1 font-black uppercase text-[10px] w-24">{r.type}</td>
                               <td className="border border-border px-2 py-1 font-bold">
-                                <span className="inline-flex items-center gap-1">{isFms && (open ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}{r.name}</span>
+                                <span className="inline-flex items-center gap-1">
+                                  {isFms && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key]));
+                                      }}
+                                      className="p-0.5 hover:bg-muted rounded text-slate-400 hover:text-foreground"
+                                      title={open ? 'Collapse steps' : 'Expand steps'}
+                                    >
+                                      {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                    </button>
+                                  )}
+                                  {r.name}
+                                </span>
                               </td>
                               <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                                 {r.assignedBy || '—'}
@@ -695,6 +716,18 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* TASK DETAILS POPUP */}
+      {selectedTask && (
+        <TaskDetailsModal
+          taskId={selectedTask.id}
+          taskType={selectedTask.type}
+          instanceDate={selectedTask.deadline}
+          fallbackRow={selectedTask}
+          dynamicColors={config?.dynamicColors}
+          onClose={() => setSelectedTask(null)}
+        />
       )}
     </div>
   );

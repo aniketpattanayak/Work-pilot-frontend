@@ -493,7 +493,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     },
     {
       key: 'actions', label: 'Action', width: '160px', pinEnd: true, headerClassName: 'text-right pr-4',
-      cellClassName: 'flex gap-1.5 justify-end items-center min-w-0',
+      cellClassName: 'flex gap-1.5 justify-end items-center min-w-0 mobile-grid-actions',
       render: (task, index) => (
         <>
           {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
@@ -561,7 +561,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-2 sm:px-6">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-2 sm:px-6 has-bottom-nav-space pb-28">
 
       {previewImage && (
         <div className="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl" onClick={() => setPreviewImage(null)}>
@@ -658,7 +658,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* TASK TABLE */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
-          <ResponsiveGrid className="w-[1050px] sm:w-full">
+          <ResponsiveGrid className="w-[1050px] md:w-full max-md:w-full">
             <ConfigurableTable
               controller={taskCtl}
               minWidthClass="md:min-w-[var(--cfg-min)]"

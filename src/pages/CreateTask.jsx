@@ -369,8 +369,8 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
   return (
     <div className="w-full px-1 py-3">
-      <div className="max-w-0.5xl mx-auto">
-        <div className="bg-card/80 backdrop-blur border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6 sm:p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-card/80 backdrop-blur border border-border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-3.5 sm:p-8">
 
           {/* HEADER */}
           {!hideHeader && (
@@ -384,15 +384,15 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
 
             {/* ALL FIELDS: order, names and visibility come from Settings > Form designer */}
             <div className={FIELD_GRID}>
-              <FormField L={L} id="title">
+              <FormField L={L} id="title" full>
                 <div className="relative group">
-                  <label className="text-sm font-medium text-slate-600">{L.label("title", "Title")}</label>
-                  <input
-                    type="text"
+                  <label className="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-300">{L.label("title", "Title")}</label>
+                  <textarea
+                    rows={2}
                     required
                     value={task.title}
                     onChange={(e) => setTask({ ...task, title: e.target.value })}
-                    className="peer w-full px-4 pt-3 pb-2 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all resize-y min-h-[46px] leading-relaxed break-words"
                     placeholder="Enter Title"
                   />
                 </div>
@@ -413,11 +413,11 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
               </FormField>
               <FormField L={L} id="description" full>
                 <div className="relative">
-                  <label className="text-sm font-medium text-slate-600">{L.label("description", "Description")}</label>
+                  <label className="block mb-1 text-sm font-medium text-slate-600 dark:text-slate-300">{L.label("description", "Description")}</label>
                   <textarea
                     value={task.description}
                     onChange={(e) => setTask({ ...task, description: e.target.value })}
-                    className="peer w-full px-4 pt-5 pb-2 rounded-lg border border-border bg-background/70 text-sm min-h-[110px] focus:ring-2 focus:ring-primary/30 outline-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-border bg-background/70 text-sm min-h-[110px] focus:ring-2 focus:ring-primary/30 outline-none"
                     placeholder="Enter Description"
                   />
                 </div>

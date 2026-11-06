@@ -314,7 +314,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       }
     },
     {
-      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item, index) => (
+      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0 mobile-grid-actions', render: (item, index) => (
         <>
           <button onClick={(e) => { e.stopPropagation(); setActiveTaskDrawer({ task: item, index }); markRead(item._id); }} className="relative p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message"><MessageSquare size={14} /><UnreadBadge count={unreadFor(item._id)} /></button>
           <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
@@ -338,7 +338,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30 has-bottom-nav-space pb-28">
       {historyFor && (
         <div className="fixed inset-0 z-[9994] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistoryFor(null)}>
           <div className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>

@@ -541,6 +541,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  @media (max-width: 360px) {
+    .bottom-nav-item {
+      font-size: 9.5px !important;
+      letter-spacing: 0 !important;
+    }
+  }
   /* A sticky in-page action bar (e.g. a form's "Save"/"Commit" button)
      must clear the fixed bottom nav, and the floating launcher must get
      out of its way entirely rather than float on top of it (see the
@@ -696,17 +702,6 @@
   background: hsl(var(--primary));
 }
 
-
-
-
-
-
-
-
-
-
-
-
 /* 🌙 DARK MODE DATEPICKER FIX */
 
 .dark .react-datepicker {
@@ -758,8 +753,8 @@
 
 /* ── PHONE CARDS: Manage Delegation + Manage Checklist ────────────────
    Same card look as My Tasks > All Data. Phones only (<= 768px); the
-   desktop grid is untouched. Cell order in both rows is:
-   1 S.no  2 title  3 assigned-to  4 description  5 deadline|cycle  6 status|schedule  7 actions */
+   desktop grid is untouched. Target cells by data-col attribute for
+   bulletproof layout regardless of column ordering. */
 @media (max-width: 768px) {
   .mobile-grid-row.mgr-card {
     display: grid !important;
@@ -784,70 +779,161 @@
   .mgr-card[data-tone="today"], .mgr-card[data-tone="revision"] { --mgr-stripe: #f59e0b; }
   .mgr-card[data-tone="done"] { --mgr-stripe: #22a06b; }
   .mgr-card[data-tone="chk"] { --mgr-stripe: #38bdf8; }
+
   .mgr-card > * {
     padding: 0 !important; border: 0 !important; margin: 0 !important;
     text-align: left; min-width: 0; order: 0 !important;
   }
   .mgr-card > *::before { content: none !important; }
+
+  /* S.no is hidden on mobile */
+  .mgr-card [data-col="sno"],
   .mgr-card > :nth-child(1) { display: none !important; }
-  .mgr-card > :nth-child(2) { grid-column: 1 / -1; margin-top: 0.55rem !important; font-size: 15px; }
-  .mgr-card > :nth-child(2) > span:first-child {
-    font-size: 15px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere;
+
+  /* ── TOP ROW (Row 1): Status / Cycle on Left, Deadline / Schedule on Right ── */
+  .mgr-card [data-col="status"] {
+    grid-column: 1 !important; grid-row: 1 !important; order: 1 !important;
+    justify-self: start !important; align-self: start !important; min-width: 0 !important;
   }
-  .mgr-card > :nth-child(3) {
-    grid-column: 1 / -1; display: flex !important; flex-direction: row; flex-wrap: wrap;
-    align-items: baseline; gap: 0.1rem 0.45rem; margin-top: 0.55rem !important; order: 4 !important;
+  .mgr-card [data-col="status"] > span {
+    display: inline-flex !important;
+    font-size: 11px !important;
+    padding: 0.25rem 0.55rem !important;
+    white-space: nowrap !important;
+    border-radius: 0.5rem !important;
   }
-  .mgr-card > :nth-child(3)::before {
-    content: "Assigned to" !important; font-size: 9.5px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+
+  .mgr-card [data-col="deadline"] {
+    grid-column: 2 !important; grid-row: 1 !important; order: 1 !important;
+    justify-self: end !important; align-self: start !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: flex-end !important; text-align: right !important;
+    min-width: 0 !important; max-width: 155px !important;
   }
-  .mgr-card > :nth-child(3) > span { font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
-  .mgr-card > :nth-child(3) > span:nth-child(2) { flex-basis: 100%; }
-  .mgr-card > :nth-child(4) { grid-column: 1 / -1; margin-top: 0.3rem !important; }
-  .mgr-card > :nth-child(4) p {
-    font-size: 12px; line-height: 1.4; text-transform: none; font-weight: 500; opacity: 1;
-    color: hsl(var(--muted-foreground)); overflow-wrap: anywhere;
+  .mgr-card [data-col="deadline"] [data-testid="deadline-pill"] {
+    margin-left: auto !important;
+    padding: 0.25rem 0.55rem !important;
+    font-size: 11px !important;
+    border-radius: 0.5rem !important;
+    text-align: center !important;
   }
-  .mgr-card > .mobile-grid-actions {
-    grid-column: 1 / -1; display: flex !important; flex-direction: row; flex-wrap: wrap;
-    justify-content: flex-start; gap: 0.5rem; order: 9 !important;
-    margin-top: 0.8rem !important; padding-top: 0.8rem !important;
-    border-top: 1px solid hsl(var(--border)) !important;
+  .mgr-card [data-col="deadline"] > span:not([data-testid="deadline-pill"]) {
+    display: block !important;
+    text-align: right !important;
+    margin-left: auto !important;
+    max-width: 145px !important;
+    font-size: 9.5px !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+    margin-top: 0.25rem !important;
   }
-  .mgr-card > .mobile-grid-actions > button {
-    min-width: 2.5rem; min-height: 2.5rem; display: inline-flex;
-    align-items: center; justify-content: center; border-radius: 0.75rem;
+
+  .mgr-card [data-col="cycle"] {
+    grid-column: 1 !important; grid-row: 1 !important; order: 1 !important;
+    justify-self: start !important; align-self: center !important;
   }
-  /* Delegation: status chip on the left, deadline on the right, above the title */
-  .mgr-card--task > :nth-child(6) { grid-column: 1; grid-row: 1; order: -2 !important; }
-  .mgr-card--task > :nth-child(5) {
-    grid-column: 2; grid-row: 1; order: -2 !important; text-align: right; font-size: 11px;
-    color: hsl(var(--muted-foreground));
-  }
-  .mgr-card--task > :nth-child(6) span {
-    font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px;
-  }
-  .mgr-card--task > :nth-child(5) { display: block !important; }
-  /* Delegation: followers under the description (hidden when there are none) */
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions) {
-    grid-column: 1 / -1; display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.45rem;
-    margin-top: 0.4rem !important; order: 4 !important;
-  }
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions)::before {
-    content: "Followers" !important; font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
-    text-transform: uppercase; color: hsl(var(--muted-foreground));
-  }
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions):has(.follow-none) { display: none !important; }
-  /* Checklist: cycle chip on top, next dates under the description */
-  .mgr-card--chk > :nth-child(5) { grid-column: 1 / -1; grid-row: 1; }
-  .mgr-card--chk > :nth-child(5) span {
+  .mgr-card [data-col="cycle"] span {
     display: inline-block; font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
     padding: 3px 8px; border-radius: 6px; background: hsl(var(--primary) / 0.1); border: 1px solid hsl(var(--primary) / 0.25);
   }
-  .mgr-card--chk > :nth-child(6) { grid-column: 1 / -1; margin-top: 0.7rem !important; order: 5 !important; }
-  .mgr-card--chk > :nth-child(6)::before {
-    content: "Next dates" !important; display: block; font-size: 9.5px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;
+  .mgr-card [data-col="schedule"] {
+    grid-column: 2 !important; grid-row: 1 !important; order: 1 !important;
+    justify-self: end !important; align-self: center !important; max-width: 170px !important;
+  }
+
+  /* ── ROW 2: Title (Full width, wraps cleanly, never overlaps top row) ── */
+  .mgr-card [data-col="title"] {
+    grid-column: 1 / -1 !important; grid-row: 2 !important; order: 2 !important;
+    width: 100% !important; min-width: 0 !important;
+    margin-top: 0.55rem !important; font-size: 15px;
+  }
+  .mgr-card [data-col="title"] span:first-child {
+    font-size: 15px; font-weight: 800; line-height: 1.35;
+    overflow-wrap: anywhere; word-break: break-word; display: block;
+  }
+
+  /* ── ROW 3: Description (Full width, italic, wraps cleanly) ── */
+  .mgr-card [data-col="description"] {
+    grid-column: 1 / -1 !important; grid-row: 3 !important; order: 3 !important;
+    width: 100% !important; min-width: 0 !important;
+    margin-top: 0.35rem !important; text-align: left !important;
+  }
+  .mgr-card [data-col="description"] p {
+    font-size: 12.5px; line-height: 1.45; text-transform: none; font-weight: 500; font-style: italic;
+    color: hsl(var(--muted-foreground)); overflow-wrap: anywhere; word-break: break-word;
+  }
+
+  /* ── ROW 4: Assigned By (Given by) ── */
+  .mgr-card [data-col="assignedBy"] {
+    grid-column: 1 / -1 !important; order: 4 !important;
+    width: 100% !important; min-width: 0 !important;
+    display: flex !important; flex-direction: row; flex-wrap: wrap;
+    align-items: baseline; gap: 0.15rem 0.45rem; margin-top: 0.45rem !important;
+  }
+  .mgr-card [data-col="assignedBy"]::before {
+    content: "Given by:" !important; font-size: 9.5px; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+    min-width: 72px;
+  }
+  .mgr-card [data-col="assignedBy"] > span {
+    font-size: 12px; font-weight: 700; overflow-wrap: anywhere; word-break: break-word;
+  }
+
+  /* ── ROW 5: Assigned To (Doer) ── */
+  .mgr-card [data-col="assignedTo"],
+  .mgr-card [data-col="doer"] {
+    grid-column: 1 / -1 !important; order: 5 !important;
+    width: 100% !important; min-width: 0 !important;
+    display: flex !important; flex-direction: row; flex-wrap: wrap;
+    align-items: baseline; gap: 0.15rem 0.45rem; margin-top: 0.3rem !important;
+  }
+  .mgr-card [data-col="assignedTo"]::before,
+  .mgr-card [data-col="doer"]::before {
+    content: "Assigned to:" !important; font-size: 9.5px; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+    min-width: 72px;
+  }
+  .mgr-card [data-col="assignedTo"] > span,
+  .mgr-card [data-col="doer"] > span {
+    font-size: 12px; font-weight: 700; overflow-wrap: anywhere; word-break: break-word;
+  }
+
+  /* ── ROW 6: Followers (Hidden if none) ── */
+  .mgr-card [data-col="followers"] {
+    grid-column: 1 / -1 !important; order: 6 !important;
+    width: 100% !important; min-width: 0 !important;
+    display: flex !important; flex-direction: row; flex-wrap: wrap;
+    align-items: baseline; gap: 0.15rem 0.45rem; margin-top: 0.35rem !important;
+  }
+  .mgr-card [data-col="followers"]::before {
+    content: "Followers:" !important; font-size: 9.5px; font-weight: 800;
+    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+    min-width: 72px;
+  }
+  .mgr-card [data-col="followers"]:has(.follow-none) {
+    display: none !important;
+  }
+
+  /* Custom columns (if any added) */
+  .mgr-card [data-col]:not([data-col="sno"]):not([data-col="status"]):not([data-col="deadline"]):not([data-col="cycle"]):not([data-col="schedule"]):not([data-col="title"]):not([data-col="description"]):not([data-col="assignedBy"]):not([data-col="assignedTo"]):not([data-col="doer"]):not([data-col="followers"]):not([data-col="actions"]) {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.35rem !important;
+  }
+
+  /* ── ROW 7: Actions ── */
+  .mgr-card [data-col="actions"],
+  .mgr-card > .mobile-grid-actions {
+    grid-column: 1 / -1 !important; order: 9 !important;
+    width: 100% !important; display: flex !important; flex-direction: row; flex-wrap: wrap;
+    justify-content: flex-start; gap: 0.5rem;
+    margin-top: 0.75rem !important; padding-top: 0.75rem !important;
+    border-top: 1px solid hsl(var(--border)) !important;
+  }
+  .mgr-card [data-col="actions"] button,
+  .mgr-card > .mobile-grid-actions > button {
+    min-width: 2.5rem; min-height: 2.5rem; display: inline-flex;
+    align-items: center; justify-content: center; border-radius: 0.75rem;
   }
 }
