@@ -56,7 +56,6 @@ import useCompanySettings from '../hooks/useCompanySettings';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { fmtIST, fmtISTDate, fmtISTTime } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
-import ExcelReportButton from '../components/ExcelReportButton';
 import ActionsMenu from '../components/mytasks/ActionsMenu';
 import HoldModal from '../components/mytasks/HoldModal';
 import SubTaskModal from '../components/mytasks/SubTaskModal';
@@ -925,11 +924,6 @@ const DoerChecklist = ({ doerId }) => {
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={ctl} className="w-full sm:w-auto justify-center" /></div>
-          <div className="col-span-1 sm:flex-none"><ExcelReportButton scope="mytasks" className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
-            getRows={() => rowsNow.filter(excelOk).map((i) => ({ id: excelId(i), label: i.title || '', sub: `${i.dataType}${i.statusLabel ? ' · ' + i.statusLabel : ''}` }))}
-            selectedIds={bulkOn ? selectedItems.filter(excelOk).map(excelId) : undefined}
-            filtersActive={(!!timeFilter && timeFilter !== 'All') || !!startDate || !!endDate || !!givenFrom || !!givenTo || activeCategory !== 'All Data'}
-            onClearFilters={() => { setGivenFrom(''); setGivenTo(''); setStartDate(''); setEndDate(''); setTimeFilter('All'); setActiveCategory('All Data'); }} /></div>
           <button onClick={fetchAllTasks} className="col-span-2 sm:col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
