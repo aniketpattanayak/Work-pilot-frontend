@@ -912,26 +912,26 @@ const DoerChecklist = ({ doerId }) => {
   return (
     <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 px-2 sm:px-6">
 
-      {/* HEADER SECTION */}
-      <div className="flex flex-row justify-between items-center mb-3 py-2 border-b border-border gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0">
-            <ClipboardCheck size={20} className="text-primary" />
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="shrink-0"><ClipboardCheck size={20} className="text-primary" />
+
           </div>
-          <div className="min-w-0">
-            <h2 className="text-foreground text-lg sm:text-xl font-black tracking-tighter uppercase leading-none truncate">My Tasks</h2>
-            <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
+          <div className="my-tasks-title-wrap min-w-0">
+          <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">My Tasks</h2>
+
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
-          <ExcelReportButton scope="mytasks" className="min-h-[44px] lg:min-h-[40px] shrink-0"
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={ctl} className="w-full sm:w-auto justify-center" /></div>
+          <div className="col-span-1 sm:flex-none"><ExcelReportButton scope="mytasks" className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
             getRows={() => rowsNow.filter(excelOk).map((i) => ({ id: excelId(i), label: i.title || '', sub: `${i.dataType}${i.statusLabel ? ' · ' + i.statusLabel : ''}` }))}
             selectedIds={bulkOn ? selectedItems.filter(excelOk).map(excelId) : undefined}
             filtersActive={(!!timeFilter && timeFilter !== 'All') || !!startDate || !!endDate || !!givenFrom || !!givenTo || activeCategory !== 'All Data'}
-            onClearFilters={() => { setGivenFrom(''); setGivenTo(''); setStartDate(''); setEndDate(''); setTimeFilter('All'); setActiveCategory('All Data'); }} />
-          <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
-            <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+            onClearFilters={() => { setGivenFrom(''); setGivenTo(''); setStartDate(''); setEndDate(''); setTimeFilter('All'); setActiveCategory('All Data'); }} /></div>
+          <button onClick={fetchAllTasks} className="col-span-2 sm:col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+            <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
         </div>
       </div>
@@ -1184,9 +1184,9 @@ const DoerChecklist = ({ doerId }) => {
                     <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
                       {givenOf(item) && <span className="basis-full text-[10px] text-slate-400">Given: {fmtIST(givenOf(item))}</span>}
-                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
-                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
-                      {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
+                      <span className="flex items-baseline gap-1.5 min-w-0"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">GIVEN BY:</span><span className="text-xs font-bold text-foreground overflow-wrap-anywhere">{who}</span></span>
+                      <span className="flex items-baseline gap-1.5 min-w-0"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">ASSIGNED TO:</span><span className="text-xs font-bold text-foreground overflow-wrap-anywhere">{item.assignedToName || '-'}</span></span>
+                      {item.followerNames && item.followerNames.length > 0 && <span className="flex items-baseline gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">FOLLOWERS:</span><span className="text-xs font-bold overflow-wrap-anywhere">{item.followerNames.join(', ')}</span></span>}
                       {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
                       {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
                       {reviseLink(item) && <span className="basis-full">{reviseLink(item)}</span>}

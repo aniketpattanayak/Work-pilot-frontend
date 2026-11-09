@@ -248,8 +248,11 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     setActive(p);
     setTypeFilter('All');
     setOpenFms([]);
-    const from = s || range?.from || defaultWeekRange.from;
-    const to = e || range?.to || defaultWeekRange.to;
+    const istYmd = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
+    const todayStr = new Date(Date.now() + 330 * 60000).toISOString().split('T')[0];
+    const from = s || range?.from || istYmd(periodInfo?.startDate) || defaultWeekRange.from;
+    const rawTo = e || range?.to || istYmd(periodInfo?.endDate) || defaultWeekRange.to;
+    const to = (!range && !e && rawTo > todayStr) ? todayStr : rawTo;
     setStart(from); setEnd(to);
     if (!from || !to) { setRows([]); return; }
     try {
@@ -380,19 +383,26 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   return (
     <div className="w-full max-w-[1900px] mx-auto pb-10 text-left">
       {/* ROW 1: TITLE + REFRESH */}
-      <div className="flex items-center justify-between gap-4 mb-3">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary p-2.5 rounded-xl"><Globe className="text-white" size={22} /></div>
-          <div>
-            <h2 className="text-foreground text-2xl font-black tracking-tight uppercase leading-none">{canEdit ? 'Review Meeting' : 'Global View'}</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{canEdit ? 'Live compliance ledger' : 'Read-only company review sheet'}</p>
+      <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="bg-primary p-2 sm:p-2.5 rounded-xl shrink-0 shadow-sm flex items-center justify-center">
+            <Globe className="text-white w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 text-left">
+            <h2 className="text-foreground text-lg sm:text-2xl font-black tracking-tight uppercase leading-tight whitespace-nowrap">
+              {canEdit ? 'Review Meeting' : 'Global View'}
+            </h2>
+            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+              {canEdit ? 'Live compliance ledger' : 'Read-Only Company Review Sheet'}
+            </p>
           </div>
         </div>
         <button
           onClick={load}
-          className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm shrink-0"
+          className="group bg-card hover:bg-background border border-border px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-foreground font-black text-[9.5px] sm:text-[10px] uppercase tracking-wider sm:tracking-widest transition-all flex items-center justify-center gap-1.5 sm:gap-2 active:scale-95 shadow-sm shrink-0"
         >
-          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+          <RefreshCcw size={13} className="group-hover:rotate-180 transition-transform duration-700 text-primary shrink-0" />
+          <span>Refresh</span>
         </button>
       </div>
 
@@ -589,105 +599,104 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
 
             {/* MOBILE CARD VIEW (<= 768px) */}
             <div className="gv-mobile-cards block md:hidden space-y-3 p-2.5 bg-muted/20">
-              {people.map((p, i) => (
-                <div
-                  key={String(p.employeeId)}
-                  onClick={() => openAudit(p)}
-                  className="bg-card border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.99] transition cursor-pointer hover:border-primary/50 relative overflow-hidden"
-                >
-                  {/* Left accent border by latePct tone */}
+              {people.map((p, i) => {
+                const lateScore = Number(p.overall?.latePct) || 0;
+                const stripeCls =
+                  lateScore <= 10 ? 'border-l-emerald-500' :
+                    lateScore <= 20 ? 'border-l-amber-500' :
+                      'border-l-red-500';
+
+                const scoreTone =
+                  lateScore <= 10 ? 'bg-emerald-600 text-white' :
+                    lateScore <= 20 ? 'bg-amber-500 text-white' :
+                      'bg-red-500 text-white';
+
+                return (
                   <div
-                    className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={getPctStyle(p.overall?.latePct || 0, config?.dynamicColors)}
-                  />
-
-                  {/* Header: Employee Name, Dept/Loc, Late % badges */}
-                  <div className="flex items-start justify-between gap-2 pl-1 mb-2.5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-black text-muted-foreground">#{i + 1}</span>
-                        <h4 className="font-black text-sm uppercase text-foreground truncate">{p.employeeName}</h4>
-                      </div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5 truncate">
-                        {[p.department, p.location].filter(Boolean).join(' · ') || 'No dept/location'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span
-                        style={getPctStyle(p.overall?.latePct || 0, config?.dynamicColors)}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm uppercase tracking-wide"
-                      >
-                        Late {fmtPct(p.overall?.latePct || 0)}
-                      </span>
-                      <span
-                        style={getPctStyle(p.overall?.notDonePct || 0, config?.dynamicColors)}
-                        className="px-2 py-0.5 rounded-md text-[9px] font-bold opacity-90 uppercase tracking-wide"
-                      >
-                        Not Done {fmtPct(p.overall?.notDonePct || 0)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Admin Target & Previous Period if canEdit */}
-                  {canEdit && (
-                    <div className="pl-1 mb-2.5 p-2 bg-muted/40 rounded-xl flex items-center justify-between gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Late Target:</span>
-                        <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
-                      </div>
-                      {p.previous && (
-                        <div className="text-[9px] font-bold flex items-center gap-1">
-                          <span className="text-muted-foreground">Prev:</span>
-                          <span>{p.previous.target}% &rarr;</span>
-                          <span style={getPctStyle(p.previous.latePct || 0, config?.dynamicColors)} className="px-1 py-0.5 rounded">
-                            {p.previous.hasTasks ? `${Number(p.previous.latePct).toFixed(1)}%` : 'no tasks'}
-                          </span>
+                    key={String(p.employeeId)}
+                    onClick={() => openAudit(p)}
+                    className={`bg-card border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.99] transition cursor-pointer hover:border-primary/50 relative overflow-hidden border-l-4 ${stripeCls}`}
+                  >
+                    {/* Header: Employee Name, Dept/Loc, Late % badges */}
+                    <div className="flex items-start justify-between gap-2 mb-2.5">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black text-muted-foreground">#{i + 1}</span>
+                          <h4 className="font-black text-sm uppercase text-foreground truncate">{p.employeeName}</h4>
                         </div>
-                      )}
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5 truncate">
+                          {[p.department, p.location].filter(Boolean).join(' · ') || 'No dept/location'}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <div className={`inline-flex flex-col items-center leading-tight rounded-lg px-2.5 py-1 font-bold shadow-sm ${scoreTone}`}>
+                          <span className="text-[10px] font-black uppercase">Late {fmtPct(lateScore)}</span>
+                          <span className="text-[8.5px] font-semibold opacity-90">Not Done {fmtPct(p.overall?.notDonePct || 0)}</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Module breakdown (Delegation, Checklist, FMS) */}
-                  <div className="pl-1 space-y-2">
-                    {TYPES.map((t) => {
-                      const k = KEYS[t];
-                      const d = p[k] || EMPTY;
-                      return (
-                        <div key={t} className="rounded-xl border border-border/60 overflow-hidden text-[10px]">
-                          <div className={`px-2.5 py-1 font-black uppercase flex items-center justify-between ${GROUP_STYLE[k].head}`}>
-                            <span>{t}</span>
-                            <span className="text-[9px] opacity-90">TOT: {d.total}</span>
+                    {/* Admin Target & Previous Period if canEdit */}
+                    {canEdit && (
+                      <div className="pl-1 mb-2.5 p-2 bg-muted/40 rounded-xl flex items-center justify-between gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Late Target:</span>
+                          <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
+                        </div>
+                        {p.previous && (
+                          <div className="text-[9px] font-bold flex items-center gap-1">
+                            <span className="text-muted-foreground">Prev:</span>
+                            <span>{p.previous.target}% &rarr;</span>
+                            <span style={getPctStyle(p.previous.latePct || 0, config?.dynamicColors)} className="px-1 py-0.5 rounded">
+                              {p.previous.hasTasks ? `${Number(p.previous.latePct).toFixed(1)}%` : 'no tasks'}
+                            </span>
                           </div>
-                          <div className={`grid grid-cols-4 text-center divide-x divide-border/40 py-1.5 ${GROUP_STYLE[k].sub}`}>
-                            <div title="On Time Done">
-                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">OT</div>
-                              <div className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">{d.onTimeDone}</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Module breakdown (Delegation, Checklist, FMS) */}
+                    <div className="pl-1 space-y-2">
+                      {TYPES.map((t) => {
+                        const k = KEYS[t];
+                        const d = p[k] || EMPTY;
+                        return (
+                          <div key={t} className="rounded-xl border border-border/60 overflow-hidden text-[10px]">
+                            <div className={`px-2.5 py-1 font-black uppercase flex items-center justify-between ${GROUP_STYLE[k].head}`}>
+                              <span>{t}</span>
+                              <span className="text-[9px] opacity-90">TOT: {d.total}</span>
                             </div>
-                            <div title="Late Done">
-                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LD</div>
-                              <div className={`font-bold text-[11px] ${d.lateDone > 0 ? 'text-amber-600 font-black' : ''}`}>{d.lateDone}</div>
-                            </div>
-                            <div title="Pending (On Time)">
-                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">PO</div>
-                              <div className="font-bold text-[11px]">{d.pendingOnTime}</div>
-                            </div>
-                            <div title="Late Pending">
-                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LP</div>
-                              <div className={`font-bold text-[11px] ${d.latePending > 0 ? 'text-red-600 font-black' : ''}`}>{d.latePending}</div>
+                            <div className={`grid grid-cols-4 text-center divide-x divide-border/40 py-1.5 ${GROUP_STYLE[k].sub}`}>
+                              <div title="On Time Done">
+                                <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">OT</div>
+                                <div className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">{d.onTimeDone}</div>
+                              </div>
+                              <div title="Late Done">
+                                <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LD</div>
+                                <div className={`font-bold text-[11px] ${d.lateDone > 0 ? 'text-amber-600 font-black' : ''}`}>{d.lateDone}</div>
+                              </div>
+                              <div title="Pending (On Time)">
+                                <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">PO</div>
+                                <div className="font-bold text-[11px]">{d.pendingOnTime}</div>
+                              </div>
+                              <div title="Late Pending">
+                                <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LP</div>
+                                <div className={`font-bold text-[11px] ${d.latePending > 0 ? 'text-red-600 font-black' : ''}`}>{d.latePending}</div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
 
-                  {/* Bottom row: Tap hint */}
-                  <div className="pl-1 mt-2.5 pt-2 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-primary">
-                    <span>View Task Audit Details</span>
-                    <span>&rarr;</span>
+                    {/* Bottom row: Tap hint */}
+                    <div className="pl-1 mt-2.5 pt-2 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-primary">
+                      <span>View Task Audit Details</span>
+                      <span>&rarr;</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {people.length === 0 && (
                 <div className="py-12 text-center text-slate-400 font-bold text-sm bg-card border border-border rounded-xl">
                   No people match
@@ -703,39 +712,52 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-3">
           <div className="absolute inset-0" onClick={() => setActive(null)} />
           <div className="relative w-full max-w-full h-full sm:max-w-[98vw] sm:h-[95vh] bg-card rounded-none sm:rounded-2xl border-0 sm:border border-border shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border bg-background">
-              <div className="min-w-0 flex items-center justify-between sm:block">
-                <div>
-                  <h3 className="text-base font-black uppercase leading-tight truncate">{active.employeeName}</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{[active.department, active.location].filter(Boolean).join(' · ') || 'No department / location'}</p>
+            <div className="flex flex-col gap-2.5 px-3.5 sm:px-5 py-3 border-b border-border bg-background">
+              {/* Row 1: Employee info + Close button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-black uppercase leading-tight truncate text-foreground">{active.employeeName}</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5 truncate">
+                    {[active.department, active.location].filter(Boolean).join(' · ') || 'No department / location'}
+                  </p>
                 </div>
-                <button onClick={() => setActive(null)} className="sm:hidden p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-500"><X size={18} /></button>
-              </div>
-              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
-                <input
-                  type="date"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold flex-1 min-w-0 sm:w-32"
-                />
-                <span className="text-slate-400 text-xs font-bold shrink-0">to</span>
-                <input
-                  type="date"
-                  value={end}
-                  onChange={(e) => setEnd(e.target.value)}
-                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold flex-1 min-w-0 sm:w-32"
-                />
-                <button
-                  onClick={() => openAudit(active, start, end)}
-                  className="px-3.5 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition shrink-0 shadow-sm"
-                >
-                  Run
-                </button>
                 <button
                   onClick={() => setActive(null)}
-                  className="hidden sm:inline-flex p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-500 shrink-0"
+                  className="p-1.5 rounded-lg border border-border bg-card hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition shrink-0"
+                  title="Close"
                 >
                   <X size={18} />
+                </button>
+              </div>
+
+              {/* Row 2: Date filter bar - perfectly responsive, inputs never get cut off */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 pt-2 border-t border-border/60">
+                <div className="grid grid-cols-2 gap-2 flex-1">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">From Date</span>
+                    <input
+                      type="date"
+                      value={start}
+                      onChange={(e) => setStart(e.target.value)}
+                      className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold text-foreground focus:border-primary outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">To Date</span>
+                    <input
+                      type="date"
+                      value={end}
+                      min={start || undefined}
+                      onChange={(e) => setEnd(e.target.value)}
+                      className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold text-foreground focus:border-primary outline-none"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => openAudit(active, start, end)}
+                  className="w-full sm:w-auto px-5 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-black uppercase tracking-wider active:scale-95 transition shadow-sm shrink-0 flex items-center justify-center gap-1.5"
+                >
+                  Run Filter
                 </button>
               </div>
             </div>
@@ -748,11 +770,10 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                     <button
                       key={f}
                       onClick={() => setTypeFilter(f)}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition active:scale-95 text-center ${
-                        typeFilter === f
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition active:scale-95 text-center ${typeFilter === f
                           ? 'bg-primary text-white border-primary shadow-sm'
                           : 'bg-card text-slate-500 border-border hover:text-foreground'
-                      }`}
+                        }`}
                     >
                       {f} ({n})
                     </button>
@@ -780,74 +801,75 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
               ) : shownRows.length === 0 ? (
                 <div className="py-24 text-center text-slate-400 font-bold text-sm">No tasks in this range</div>
               ) : (
-                <ResponsiveTable>
-                  <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1100px]">
-                    <thead className="sticky top-0 z-20 bg-background">
-                      <tr className="text-[10px] font-black uppercase tracking-wider">
-                        {['S.no', 'Type', 'Task', 'Assigned By', 'Assigned To', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
-                          <th key={h} className="border border-border px-2 py-1 text-left bg-background">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shownRows.map((r, i) => {
-                        const b = bucketOf(r);
-                        const key = `${r.id}-${i}`;
-                        const isFms = r.type === 'FMS';
-                        const open = openFms.includes(key);
-                        const f = r.fms || { steps: [], pendingStep: null };
-                        return (
-                          <React.Fragment key={key}>
-                            <tr
-                              className="odd:bg-background/40 cursor-pointer hover:bg-primary/10 transition-colors"
-                              onClick={() => setSelectedTask(r)}
-                              title="Click to view complete task details & journey"
-                            >
-                              <td className="border border-border px-2 py-1 text-slate-400 text-center w-10">{i + 1}</td>
-                              <td className="border border-border px-2 py-1 font-black uppercase text-[10px] w-24">{r.type}</td>
-                              <td className="border border-border px-2 py-1 font-bold">
-                                <span className="inline-flex items-center gap-1">
-                                  {isFms && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key]));
-                                      }}
-                                      className="p-0.5 hover:bg-muted rounded text-slate-400 hover:text-foreground"
-                                      title={open ? 'Collapse steps' : 'Expand steps'}
-                                    >
-                                      {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                    </button>
-                                  )}
-                                  {r.name}
-                                </span>
-                              </td>
-                              <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                {r.assignedBy || '—'}
-                              </td>
-                              <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{r.assignedTo || active?.employeeName || '—'}</td>
-                              <td className="border border-border px-2 py-1 whitespace-nowrap">{fmtDate(r.deadline)}</td>
-                              <td className="border border-border px-2 py-1 whitespace-nowrap">{r.completedAt ? fmtDateTime(r.completedAt) : '—'}</td>
-                              <td className="border border-border px-2 py-1 whitespace-nowrap font-bold"><span className={`px-1.5 py-0.5 rounded ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>{drift(r.deadline, r.completedAt)}</span></td>
-                              <td className="border border-border px-2 py-1 text-center w-28">
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
-                              </td>
-                              {canEdit && (
-                                <td className="border border-border px-2 py-1 text-center w-16" onClick={(e) => e.stopPropagation()}>
-                                  {r.type === 'FMS' ? '—' : (
-                                    <button type="button" title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'} onClick={() => deleteRecord(r)} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
-                                  )}
+                <>
+                  {/* DESKTOP TABLE VIEW (> 768px) */}
+                  <div className="hidden md:block overflow-auto">
+                    <table className="w-full border-collapse text-[11px] min-w-[1100px]">
+                      <thead className="sticky top-0 z-20 bg-background">
+                        <tr className="text-[10px] font-black uppercase tracking-wider">
+                          {['S.no', 'Type', 'Task', 'Assigned By', 'Assigned To', 'Deadline', 'Completed', 'Drift', 'Status', ...(canEdit ? ['Action'] : [])].map((h) => (
+                            <th key={h} className="border border-border px-2 py-1 text-left bg-background">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shownRows.map((r, i) => {
+                          const b = bucketOf(r);
+                          const key = `${r.id}-${i}`;
+                          const isFms = r.type === 'FMS';
+                          const open = openFms.includes(key);
+                          const f = r.fms || { steps: [], pendingStep: null };
+                          return (
+                            <React.Fragment key={key}>
+                              <tr
+                                className="odd:bg-background/40 cursor-pointer hover:bg-primary/10 transition-colors"
+                                onClick={() => setSelectedTask(r)}
+                                title="Click to view complete task details & journey"
+                              >
+                                <td className="border border-border px-2 py-1 text-slate-400 text-center w-10">{i + 1}</td>
+                                <td className="border border-border px-2 py-1 font-black uppercase text-[10px] w-24">{r.type}</td>
+                                <td className="border border-border px-2 py-1 font-bold">
+                                  <span className="inline-flex items-center gap-1">
+                                    {isFms && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key]));
+                                        }}
+                                        className="p-0.5 hover:bg-muted rounded text-slate-400 hover:text-foreground"
+                                        title={open ? 'Collapse steps' : 'Expand steps'}
+                                      >
+                                        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                      </button>
+                                    )}
+                                    {r.name}
+                                  </span>
                                 </td>
-                              )}
-                            </tr>
-                            {isFms && open && (
-                              <tr>
-                                <td colSpan={canEdit ? 10 : 9} className="border border-border bg-muted/40 px-4 py-2">
-                                  {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
-                                  {f.steps.length > 0 && (
-                                    <ResponsiveTable>
-                                      <table className="mobile-card-table w-full border-collapse text-[11px] mb-2">
+                                <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                  {r.assignedBy || '—'}
+                                </td>
+                                <td className="border border-border px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{r.assignedTo || active?.employeeName || '—'}</td>
+                                <td className="border border-border px-2 py-1 whitespace-nowrap">{fmtDate(r.deadline)}</td>
+                                <td className="border border-border px-2 py-1 whitespace-nowrap">{r.completedAt ? fmtDateTime(r.completedAt) : '—'}</td>
+                                <td className="border border-border px-2 py-1 whitespace-nowrap font-bold"><span className={`px-1.5 py-0.5 rounded ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>{drift(r.deadline, r.completedAt)}</span></td>
+                                <td className="border border-border px-2 py-1 text-center w-28">
+                                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${BUCKET_CLASS[b]}`}>{BUCKET_LABEL[b]}</span>
+                                </td>
+                                {canEdit && (
+                                  <td className="border border-border px-2 py-1 text-center w-16" onClick={(e) => e.stopPropagation()}>
+                                    {r.type === 'FMS' ? '—' : (
+                                      <button type="button" title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'} onClick={() => deleteRecord(r)} className="p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                              {isFms && open && (
+                                <tr>
+                                  <td colSpan={canEdit ? 10 : 9} className="border border-border bg-muted/40 px-4 py-2">
+                                    {f.steps.length === 0 && !f.pendingStep && <span className="text-slate-400 font-bold">No steps yet.</span>}
+                                    {f.steps.length > 0 && (
+                                      <table className="w-full border-collapse text-[11px] mb-2">
                                         <thead><tr className="text-[9px] font-black uppercase text-slate-500">
                                           {['Step', 'Done by', 'Planned', 'Completed', 'Result'].map((h) => <th key={h} className="border border-border px-2 py-0.5 text-left bg-card">{h}</th>)}
                                         </tr></thead>
@@ -863,22 +885,167 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                                           ))}
                                         </tbody>
                                       </table>
-                                    </ResponsiveTable>
-                                  )}
-                                  {f.pendingStep && (
-                                    <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
-                                      Pending step: {f.pendingStep.nodeName} · with {f.pendingStep.assignedToName || '—'}{f.pendingStep.mine ? ' (this person)' : ''} · due {fmtDateTime(f.pendingStep.plannedDeadline)}{f.pendingStep.overdue ? ' · OVERDUE' : ''}
-                                    </p>
-                                  )}
-                                </td>
-                              </tr>
+                                    )}
+                                    {f.pendingStep && (
+                                      <p className={`font-bold ${f.pendingStep.overdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                        Pending step: {f.pendingStep.nodeName} · with {f.pendingStep.assignedToName || '—'}{f.pendingStep.mine ? ' (this person)' : ''} · due {fmtDateTime(f.pendingStep.plannedDeadline)}{f.pendingStep.overdue ? ' · OVERDUE' : ''}
+                                      </p>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* MOBILE CARD VIEW (<= 768px) - MATCHES MANAGE DELEGATION CARD LAYOUT */}
+                  <div className="block md:hidden overflow-y-auto space-y-3 p-2.5 bg-muted/20">
+                    {shownRows.map((r, i) => {
+                      const b = bucketOf(r);
+                      const key = `mob-${r.id}-${i}`;
+                      const isFms = r.type === 'FMS';
+                      const open = openFms.includes(key);
+                      const f = r.fms || { steps: [], pendingStep: null };
+
+                      // Border stripe matching status tone
+                      const stripeColor =
+                        b === 'onTimeDone' ? 'border-l-emerald-500' :
+                          b === 'lateDone' ? 'border-l-amber-500' :
+                            b === 'latePending' ? 'border-l-red-500' :
+                              'border-l-sky-500';
+
+                      // Deadline pill tone
+                      const deadlineTone =
+                        b === 'onTimeDone' || b === 'lateDone' ? 'bg-emerald-600' :
+                          b === 'latePending' ? 'bg-red-500' :
+                            'bg-amber-500';
+
+                      // Status badge pill tone
+                      const statusBadgeCls =
+                        b === 'onTimeDone' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30' :
+                          b === 'lateDone' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' :
+                            b === 'latePending' ? 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 font-black' :
+                              'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30';
+
+                      const typeBadgeCls =
+                        r.type === 'Delegation' ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30' :
+                          r.type === 'Checklist' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-500/30' :
+                            'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30';
+
+                      return (
+                        <div
+                          key={key}
+                          onClick={() => setSelectedTask(r)}
+                          className={`bg-card border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.99] transition cursor-pointer hover:border-primary/50 relative overflow-hidden border-l-4 ${stripeColor}`}
+                        >
+                          {/* ROW 1: [Left: Status Badge Pill] [Right: Deadline Badge Pill] */}
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className={`inline-flex items-center text-xs px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider ${statusBadgeCls}`}>
+                              {BUCKET_LABEL[b]}
+                            </span>
+                            <div className={`inline-flex flex-col items-center leading-tight rounded-lg px-2.5 py-1 text-white font-bold shadow-sm shrink-0 ${deadlineTone}`}>
+                              <span className="text-[10.5px] font-black">{fmtDate(r.deadline)}</span>
+                              {r.deadline && (() => {
+                                const dt = new Date(r.deadline);
+                                const hasTime = dt.getHours() !== 0 || dt.getMinutes() !== 0;
+                                return hasTime ? (
+                                  <span className="text-[9px] font-semibold opacity-90">
+                                    {dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
+                          </div>
+
+                          {/* ROW 2: Task Name + Type Badge */}
+                          <div className="mb-2">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${typeBadgeCls}`}>
+                                {r.type}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-[9.5px] font-bold ${DRIFT_TONE[driftTone(r.deadline, r.completedAt, driftBands)]}`}>
+                                {drift(r.deadline, r.completedAt)}
+                              </span>
+                            </div>
+                            <h4 className="font-black text-sm uppercase text-foreground leading-snug break-words">
+                              {r.name}
+                            </h4>
+                          </div>
+
+                          {/* ROW 3: Description / Remarks in italics */}
+                          {(r.remarks || r.description) && (
+                            <p className="text-xs text-foreground/80 italic mb-2 break-words">
+                              {r.remarks || r.description}
+                            </p>
+                          )}
+
+                          {/* ROW 4 & 5: GIVEN BY & ASSIGNED TO */}
+                          <div className="space-y-1 text-xs mb-2">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-muted-foreground shrink-0">GIVEN BY:</span>
+                              <span className="font-bold text-foreground break-words">{r.assignedBy || '—'}</span>
+                            </div>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-[9.5px] font-black uppercase tracking-wider text-muted-foreground shrink-0">ASSIGNED TO:</span>
+                              <span className="font-bold text-foreground break-words">{r.assignedTo || active?.employeeName || '—'}</span>
+                            </div>
+                            {r.completedAt && (
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-[9.5px] font-black uppercase tracking-wider text-muted-foreground shrink-0">COMPLETED:</span>
+                                <span className="font-bold text-foreground">{fmtDateTime(r.completedAt)}</span>
+                              </div>
                             )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </ResponsiveTable>
+                          </div>
+
+                          {/* FMS Steps Accordion if FMS */}
+                          {isFms && f.steps.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => setOpenFms((p) => (p.includes(key) ? p.filter((x) => x !== key) : [...p, key]))}
+                                className="text-[10px] font-black uppercase tracking-wider text-primary flex items-center gap-1 hover:underline"
+                              >
+                                {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                {open ? 'Hide FMS Steps' : `View FMS Steps (${f.steps.length})`}
+                              </button>
+                              {open && (
+                                <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-primary/30">
+                                  {f.steps.map((st, j) => (
+                                    <div key={j} className="text-[10.5px] p-1.5 rounded-lg bg-muted/40">
+                                      <div className="font-black text-foreground">{st.nodeName}{st.mine && <span className="ml-1 text-[8.5px] text-primary uppercase">(this person)</span>}</div>
+                                      <div className="text-slate-500 font-bold">{st.completedByName || st.assignedToName || '—'} · {fmtDateTime(st.completedAt || st.plannedDeadline)}</div>
+                                      <div className={`font-black ${st.onTime ? 'text-emerald-600' : 'text-red-500'}`}>{st.onTime ? 'On time' : 'Late'}{st.decision ? ` · ${st.decision}` : ''}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* BOTTOM ROW: Tap hint & Actions */}
+                          <div className="mt-2.5 pt-2 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-wider">
+                            <span className="text-primary flex items-center gap-1">
+                              View Task Details & Journey <span>&rarr;</span>
+                            </span>
+                            {canEdit && r.type !== 'FMS' && (
+                              <button
+                                type="button"
+                                title={r.type === 'Checklist' ? 'Delete this whole checklist task' : 'Delete this task'}
+                                onClick={(e) => { e.stopPropagation(); deleteRecord(r); }}
+                                className="p-1 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-600"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>

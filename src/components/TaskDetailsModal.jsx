@@ -317,35 +317,35 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
   };
 
   return (
-    <div className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/75 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/75 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="absolute inset-0" onClick={onClose} />
       
-      <div className="relative w-full max-w-4xl bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+      <div className="no-auto-sheet relative w-full max-w-4xl h-full sm:h-auto max-h-full sm:max-h-[92vh] bg-card border-0 sm:border border-border rounded-none sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden z-10 animate-in zoom-in-95 duration-200">
         
         {/* HEADER BAR */}
-        <div className="flex items-start justify-between gap-3 px-5 sm:px-6 py-4 border-b border-border bg-muted/20 flex-shrink-0">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-muted/20 flex-shrink-0">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+            <div className="flex items-center gap-1.5 flex-wrap mb-1">
+              <span className={`px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider ${
                 isDelegation ? 'bg-purple-600 text-white' : isChecklist ? 'bg-sky-600 text-white' : 'bg-orange-500 text-white'
               }`}>
                 {taskType}
               </span>
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1 ${statusBadge.cls}`}>
+              <span className={`px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider inline-flex items-center gap-1 ${statusBadge.cls}`}>
                 <StatusIcon size={11} /> {statusBadge.label}
               </span>
               {isDelegation && (
-                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${priorityCls}`}>
+                <span className={`px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider ${priorityCls}`}>
                   {priority} Priority
                 </span>
               )}
               {isChecklist && data?.frequency && (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-700 border border-sky-500/20 inline-flex items-center gap-1">
+                <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-700 border border-sky-500/20 inline-flex items-center gap-1">
                   <Repeat size={10} /> {data.frequency}
                 </span>
               )}
             </div>
-            <h2 className="text-base sm:text-lg font-black text-foreground uppercase tracking-tight leading-snug line-clamp-2">
+            <h2 className="text-sm sm:text-base md:text-lg font-black text-foreground uppercase tracking-tight leading-snug line-clamp-2">
               {task.title || task.name || 'Task Details'}
             </h2>
           </div>
@@ -359,110 +359,116 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
         </div>
 
         {/* PROGRESS STEPPER & KPI BAR */}
-        <div className="px-5 sm:px-6 py-3 border-b border-border bg-background/60 flex flex-col gap-3 flex-shrink-0">
-          {/* Visual 4-Step Stepper */}
-          <div className="grid grid-cols-4 gap-1 sm:gap-2 items-center text-center">
-            {/* Step 1: Created */}
-            <div className="flex flex-col items-center">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
-                isCreated ? 'bg-emerald-600 text-white shadow-sm' : 'bg-muted text-slate-400'
-              }`}>
-                ✓
+        <div className="px-3.5 sm:px-6 py-2.5 sm:py-3 border-b border-border bg-background/60 flex flex-col gap-2.5 flex-shrink-0">
+          {/* Visual 4-Step Stepper with connecting line */}
+          <div className="relative">
+            <div className="absolute top-2.5 sm:top-3 left-[12%] right-[12%] h-0.5 bg-border -z-0" />
+            <div className="grid grid-cols-4 gap-1 sm:gap-2 items-center text-center relative z-10">
+              {/* Step 1: Created */}
+              <div className="flex flex-col items-center min-w-0">
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black mb-1 transition-all ${
+                  isCreated ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-background' : 'bg-muted text-slate-400 ring-2 ring-background'
+                }`}>
+                  ✓
+                </div>
+                <span className="text-[8.5px] sm:text-[10px] font-black uppercase tracking-wider text-foreground truncate max-w-full">Created</span>
+                <span className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold truncate max-w-full">{fmtDate(task.createdAt)}</span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">Created</span>
-              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">{fmtDate(task.createdAt)}</span>
-            </div>
 
-            {/* Step 2: In Progress / Active */}
-            <div className="flex flex-col items-center">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
-                isSubmitted ? 'bg-emerald-600 text-white shadow-sm' : 'bg-primary text-white ring-2 ring-primary/30 animate-pulse'
-              }`}>
-                {isSubmitted ? '✓' : '2'}
+              {/* Step 2: In Progress / Active */}
+              <div className="flex flex-col items-center min-w-0">
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black mb-1 transition-all ${
+                  isSubmitted ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-background' : 'bg-primary text-white ring-2 ring-primary/30 animate-pulse'
+                }`}>
+                  {isSubmitted ? '✓' : '2'}
+                </div>
+                <span className="text-[8.5px] sm:text-[10px] font-black uppercase tracking-wider text-foreground truncate max-w-full">In Progress</span>
+                <span className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold truncate max-w-full">Due {fmtDate(task.deadline || task.nextDueDate)}</span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">In Progress</span>
-              <span className="text-[9px] text-slate-400 font-bold">Due {fmtDate(task.deadline || task.nextDueDate)}</span>
-            </div>
 
-            {/* Step 3: Submitted / Done */}
-            <div className="flex flex-col items-center">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
-                isSubmitted ? 'bg-emerald-600 text-white shadow-sm' : 'bg-muted text-slate-400'
-              }`}>
-                {isSubmitted ? '✓' : '3'}
+              {/* Step 3: Submitted / Done */}
+              <div className="flex flex-col items-center min-w-0">
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black mb-1 transition-all ${
+                  isSubmitted ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-background' : 'bg-muted text-slate-400 ring-2 ring-background'
+                }`}>
+                  {isSubmitted ? '✓' : '3'}
+                </div>
+                <span className="text-[8.5px] sm:text-[10px] font-black uppercase tracking-wider text-foreground truncate max-w-full">Completed</span>
+                <span className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold truncate max-w-full">
+                  {task.completedAt || data?.completion?.completedAt ? fmtDate(task.completedAt || data?.completion?.completedAt) : 'Pending'}
+                </span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">Completed</span>
-              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">
-                {task.completedAt || data?.completion?.completedAt ? fmtDate(task.completedAt || data?.completion?.completedAt) : 'Pending'}
-              </span>
-            </div>
 
-            {/* Step 4: Verified / Reviewed */}
-            <div className="flex flex-col items-center">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black mb-1 transition-all ${
-                isVerified ? 'bg-emerald-600 text-white shadow-sm' : isRevision ? 'bg-rose-500 text-white' : 'bg-muted text-slate-400'
-              }`}>
-                {isVerified ? '✓' : isRevision ? '!' : '4'}
+              {/* Step 4: Verified / Reviewed */}
+              <div className="flex flex-col items-center min-w-0">
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-black mb-1 transition-all ${
+                  isVerified ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-background' : isRevision ? 'bg-rose-500 text-white ring-2 ring-background' : 'bg-muted text-slate-400 ring-2 ring-background'
+                }`}>
+                  {isVerified ? '✓' : isRevision ? '!' : '4'}
+                </div>
+                <span className="text-[8.5px] sm:text-[10px] font-black uppercase tracking-wider text-foreground truncate max-w-full">
+                  {isRevision ? 'Revision' : 'Verified'}
+                </span>
+                <span className="text-[8px] sm:text-[9px] text-muted-foreground font-semibold truncate max-w-full">
+                  {isVerified ? 'Approved' : isRevision ? 'Sent Back' : '—'}
+                </span>
               </div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-foreground">
-                {isRevision ? 'Revision' : 'Verified'}
-              </span>
-              <span className="text-[9px] text-slate-400 font-bold truncate max-w-full">
-                {isVerified ? 'Approved' : isRevision ? 'Sent Back' : '—'}
-              </span>
             </div>
           </div>
 
           {/* Subtask Completion Bar (if any subtasks exist) */}
           {subTasks.length > 0 && (
-            <div className="bg-muted/40 p-2.5 rounded-xl border border-border flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Layers size={14} className="text-primary" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-foreground">
-                  Subtask Progress: {completedSubTasks.length} of {subTasks.length} Completed
+            <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Layers size={13} className="text-primary shrink-0" />
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-foreground truncate">
+                  Subtask Progress: {completedSubTasks.length} of {subTasks.length}
                 </span>
               </div>
-              <div className="flex items-center gap-2 flex-1 max-w-xs">
-                <div className="w-full bg-border rounded-full h-2 overflow-hidden">
+              <div className="flex items-center gap-2 flex-1 max-w-[120px] sm:max-w-xs shrink-0">
+                <div className="w-full bg-border rounded-full h-1.5 sm:h-2 overflow-hidden">
                   <div
-                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                     style={{ width: `${subTaskProgressPct || 0}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-black tabular-nums text-foreground">{subTaskProgressPct}%</span>
+                <span className="text-[9.5px] sm:text-[10px] font-black tabular-nums text-foreground">{subTaskProgressPct}%</span>
               </div>
             </div>
           )}
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex items-center border-b border-border bg-card px-4 sm:px-6 gap-3 sm:gap-4 overflow-x-auto flex-nowrap flex-shrink-0 scrollbar-none">
+        <div className="w-full min-w-0 flex items-center border-b border-border bg-card px-3 sm:px-6 gap-1.5 sm:gap-2.5 overflow-x-auto flex-nowrap flex-shrink-0 scrollbar-none py-2">
           {[
-            { id: 'overview', label: 'Overview & Details', icon: FileText },
-            { id: 'subtasks', label: `Subtasks (${subTasks.length})`, icon: Layers },
-            { id: 'evidence', label: `Evidence & Proof (${allEvidencePhotos.length})`, icon: Paperclip },
-            { id: 'history', label: `Activity History (${(data?.history || []).length})`, icon: History }
+            { id: 'overview', shortLabel: 'Overview', label: 'Overview & Details', icon: FileText },
+            { id: 'subtasks', shortLabel: `Subtasks (${subTasks.length})`, label: `Subtasks (${subTasks.length})`, icon: Layers },
+            { id: 'evidence', shortLabel: `Evidence (${allEvidencePhotos.length})`, label: `Evidence & Proof (${allEvidencePhotos.length})`, icon: Paperclip },
+            { id: 'history', shortLabel: `History (${(data?.history || []).length})`, label: `Activity History (${(data?.history || []).length})`, icon: History }
           ].map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`shrink-0 flex items-center gap-1.5 py-3 border-b-2 text-[11px] font-black uppercase tracking-wider transition-colors whitespace-nowrap ${
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all select-none ${
                   active
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-slate-400 hover:text-foreground'
+                    ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                    : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                <Icon size={13} /> {tab.label}
+                <Icon size={12} className="shrink-0" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel}</span>
               </button>
             );
           })}
         </div>
 
         {/* TAB CONTENTS (SCROLLABLE BODY) */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3 sm:space-y-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400 font-bold text-xs uppercase tracking-widest">
               <RefreshCcw className="animate-spin text-primary" size={24} />
@@ -476,102 +482,120 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
             <>
               {/* TAB 1: OVERVIEW */}
               {activeTab === 'overview' && (
-                <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="space-y-3 sm:space-y-4 animate-in fade-in duration-200">
                   {/* Task Description */}
-                  <div className="bg-muted/30 border border-border rounded-2xl p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Description / Briefing</p>
+                  <div className="bg-card border border-border rounded-2xl p-3.5 sm:p-4 shadow-sm">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-1.5">
+                      <FileText size={13} className="text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Description / Briefing</span>
+                    </div>
                     <p className="text-xs sm:text-sm text-foreground font-medium leading-relaxed whitespace-pre-wrap">
                       {task.description || 'No detailed description provided for this task.'}
                     </p>
                   </div>
 
-                  {/* Delegation Chain & Key People */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Assignment Flow</p>
-                      
-                      <div className="space-y-2">
-                        {/* Assigner */}
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs">
-                            A
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-black uppercase text-foreground truncate">{task.assigner?.name || fallbackRow?.assignedBy || 'Admin'}</p>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Original Assigner</p>
-                          </div>
-                        </div>
+                  {/* Assignment Flow & Team */}
+                  <div className="bg-card border border-border rounded-2xl p-3.5 sm:p-4 shadow-sm">
+                    <div className="flex items-center gap-1.5 text-muted-foreground mb-2.5">
+                      <User size={13} className="text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Assignment & Team</span>
+                    </div>
 
-                        {/* Forward Chain (if passed on) */}
-                        {(data?.forwardChain || []).map((fc, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 pl-3 border-l-2 border-primary/30">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Assigner */}
+                      <div className="p-2.5 rounded-xl bg-muted/40 border border-border/70 flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-black text-xs shrink-0">
+                          A
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black uppercase text-foreground truncate">{task.assigner?.name || fallbackRow?.assignedBy || 'Admin'}</p>
+                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Original Assigner</p>
+                        </div>
+                      </div>
+
+                      {/* Lead Doer */}
+                      <div className="p-2.5 rounded-xl bg-muted/40 border border-border/70 flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 font-black text-xs shrink-0">
+                          D
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-black uppercase text-foreground truncate">{task.doer?.name || fallbackRow?.assignedTo || 'Doer'}</p>
+                          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">{task.doer?.department || task.department || 'Primary Doer'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Forward Chain (if passed on) */}
+                    {Array.isArray(data?.forwardChain) && data.forwardChain.length > 0 && (
+                      <div className="mt-2.5 pt-2.5 border-t border-border/60 space-y-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground block">Delegation Chain</span>
+                        {data.forwardChain.map((fc, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
                             <ArrowRight size={12} className="text-primary shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-black uppercase text-foreground truncate">{fc.employee?.name || 'Staff'}</p>
-                              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Passed On · {fmtDate(fc.forwardedAt)}</p>
-                            </div>
+                            <span className="font-bold text-foreground">{fc.employee?.name || 'Staff'}</span>
+                            <span className="text-[10px] text-muted-foreground font-medium">passed on {fmtDate(fc.forwardedAt)}</span>
                           </div>
                         ))}
-
-                        {/* Lead Doer */}
-                        <div className="flex items-center gap-2.5 pt-1">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 font-black text-xs">
-                            D
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-black uppercase text-foreground truncate">{task.doer?.name || fallbackRow?.assignedTo || 'Doer'}</p>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{task.doer?.department || task.department || 'Primary Doer'}</p>
-                          </div>
-                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Followers & Watchers */}
-                    <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Followers / Watchers</p>
-                        {Array.isArray(data?.followers) && data.followers.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {data.followers.map(f => (
-                              <span key={f._id} className="px-2.5 py-1 rounded-lg bg-muted border border-border text-[10px] font-bold text-foreground">
-                                👤 {f.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic">No followers assigned to watch this task.</p>
-                        )}
-                      </div>
-
-                      {data?.coordinator && (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Quality Coordinator</p>
-                          <p className="text-xs font-black text-foreground uppercase mt-0.5">{data.coordinator.name}</p>
+                    {Array.isArray(data?.followers) && data.followers.length > 0 && (
+                      <div className="mt-2.5 pt-2.5 border-t border-border/60">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground block mb-1">Followers</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {data.followers.map(f => (
+                            <span key={f._id} className="px-2 py-0.5 rounded-lg bg-muted border border-border text-[9.5px] font-bold text-foreground">
+                              👤 {f.name}
+                            </span>
+                          ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+
+                    {data?.coordinator && (
+                      <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-xs">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Coordinator</span>
+                        <span className="font-bold text-foreground">{data.coordinator.name}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Dates & Timeline Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3.5 rounded-2xl border border-border bg-card">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Created Date</p>
-                      <p className="text-xs font-black text-foreground mt-1">{fmtDate(task.createdAt)}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="p-3 rounded-xl border border-border bg-card shadow-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <Calendar size={11} className="text-primary" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Created</span>
+                      </div>
+                      <p className="text-xs font-black text-foreground">{fmtDate(task.createdAt)}</p>
                     </div>
-                    <div className="p-3.5 rounded-2xl border border-border bg-card">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Official Deadline</p>
-                      <p className="text-xs font-black text-foreground mt-1">{fmtDateTime(task.deadline || task.nextDueDate)}</p>
+
+                    <div className="p-3 rounded-xl border border-border bg-card shadow-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <Clock size={11} className="text-amber-500" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Deadline</span>
+                      </div>
+                      <p className="text-xs font-black text-foreground">{fmtDateTime(task.deadline || task.nextDueDate)}</p>
                     </div>
-                    <div className="p-3.5 rounded-2xl border border-border bg-card">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Original Deadline</p>
-                      <p className="text-xs font-black text-foreground mt-1">
+
+                    <div className="p-3 rounded-xl border border-border bg-card shadow-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <Calendar size={11} className="text-slate-400" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Original Due</span>
+                      </div>
+                      <p className="text-xs font-black text-foreground">
                         {task.originalDeadline ? fmtDate(task.originalDeadline) : 'Unchanged'}
                       </p>
                     </div>
-                    <div className="p-3.5 rounded-2xl border border-border bg-card">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Completion Time</p>
-                      <p className="text-xs font-black text-foreground mt-1">
-                        {task.completedAt || data?.completion?.completedAt ? fmtDateTime(task.completedAt || data?.completion?.completedAt) : 'Not completed yet'}
+
+                    <div className="p-3 rounded-xl border border-border bg-card shadow-sm">
+                      <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                        <CheckCircle2 size={11} className="text-emerald-500" />
+                        <span className="text-[9px] font-black uppercase tracking-wider">Completed</span>
+                      </div>
+                      <p className="text-xs font-black text-foreground">
+                        {task.completedAt || data?.completion?.completedAt ? fmtDateTime(task.completedAt || data?.completion?.completedAt) : 'Pending'}
                       </p>
                     </div>
                   </div>
@@ -821,13 +845,16 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
         </div>
 
         {/* FOOTER */}
-        <div className="px-5 sm:px-6 py-3 border-t border-border bg-muted/20 flex items-center justify-between flex-shrink-0">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            WorkPilot Protocol Inspector
-          </span>
+        <div className="px-4 sm:px-6 py-2.5 sm:py-3 border-t border-border bg-card flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <ShieldCheck size={14} className="text-primary" />
+            <span className="text-[10px] font-black uppercase tracking-wider">
+              WorkPilot Inspector
+            </span>
+          </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl border border-border bg-card text-foreground hover:bg-background font-black text-xs uppercase tracking-wider transition"
+            className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-sm"
           >
             Close
           </button>
