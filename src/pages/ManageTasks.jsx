@@ -47,7 +47,6 @@ import MobileFilters from '../components/MobileFilters';
 import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
 import ColumnCustomizer from '../components/ColumnCustomizer';
-import ExcelReportButton from '../components/ExcelReportButton';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import DateReasonFields from '../components/mytasks/DateReasonFields';
@@ -578,12 +577,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={taskCtl} /></div>
-          <div className="col-span-1 sm:flex-none">
-            <ExcelReportButton scope="delegation" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
-              getRows={() => filteredTasks.map((t) => ({ id: String(t._id), label: t.title || '', sub: `${t.doerId?.name || ''} · ${displayStatus(t)}` }))}
-              filtersActive={timeFilter !== 'All' || statusFilter !== 'All' || !!nameFilter.trim()}
-              onClearFilters={() => { setTimeFilter('All'); setStatusFilter('All'); setNameFilter(''); }} />
-          </div>
           <button onClick={fetchData} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
