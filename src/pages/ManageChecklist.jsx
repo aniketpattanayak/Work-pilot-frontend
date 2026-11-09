@@ -36,7 +36,6 @@ import ResponsiveGrid from '../components/ResponsiveGrid';
 import ConfigurableTable from '../components/ConfigurableTable';
 import { fmtIST } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
-import ExcelReportButton from '../components/ExcelReportButton';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import DynamicFieldRenderer from '../components/DynamicFieldRenderer';
 import useTaskUnread from '../hooks/useTaskUnread';
@@ -369,12 +368,6 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={checklistCtl} /></div>
-          <div className="col-span-1 sm:flex-none">
-            <ExcelReportButton scope="checklist" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
-              getRows={() => filteredChecklists.map((c) => ({ id: String(c._id), label: c.taskName || '', sub: `${c.doerId?.name || ''} · ${c.frequency || ''}` }))}
-              filtersActive={!!searchTerm.trim() || activeTab !== 'All'}
-              onClearFilters={() => { setSearchTerm(''); setActiveTab('All'); }} />
-          </div>
           <button
             onClick={handleRefresh}
             className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
@@ -678,4 +671,4 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   );
 };
 
-export default ManageChecklist;
+export default ManageChecklist;
