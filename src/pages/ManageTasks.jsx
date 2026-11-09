@@ -576,17 +576,19 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <LucideClipboard size={20} className="text-primary shrink-0" />
           <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Manage Delegation</h2>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="hidden md:block"><ColumnCustomizer ctl={taskCtl} /></div>
-          <ExcelReportButton scope="delegation" tenantId={currentTenantId} className="flex-1 md:flex-none"
-            getRows={() => filteredTasks.map((t) => ({ id: String(t._id), label: t.title || '', sub: `${t.doerId?.name || ''} · ${displayStatus(t)}` }))}
-            filtersActive={timeFilter !== 'All' || statusFilter !== 'All' || !!nameFilter.trim()}
-            onClearFilters={() => { setTimeFilter('All'); setStatusFilter('All'); setNameFilter(''); }} />
-          <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={taskCtl} /></div>
+          <div className="col-span-1 sm:flex-none">
+            <ExcelReportButton scope="delegation" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
+              getRows={() => filteredTasks.map((t) => ({ id: String(t._id), label: t.title || '', sub: `${t.doerId?.name || ''} · ${displayStatus(t)}` }))}
+              filtersActive={timeFilter !== 'All' || statusFilter !== 'All' || !!nameFilter.trim()}
+              onClearFilters={() => { setTimeFilter('All'); setStatusFilter('All'); setNameFilter(''); }} />
+          </div>
+          <button onClick={fetchData} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
           {!isViewer && (
-            <button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
+            <button onClick={() => setIsCreateOpen(true)} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
               <Plus size={14} /> New Task
             </button>
           )}
@@ -600,7 +602,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           onClear={() => { setTimeFilter('All'); setStatusFilter('All'); }}
           className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
           alwaysVisible={
-            <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -658,7 +660,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* TASK TABLE */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
-          <ResponsiveGrid className="w-[1050px] md:w-full max-md:w-full">
+          <ResponsiveGrid className="w-full min-w-0 md:min-w-[1050px]">
             <ConfigurableTable
               controller={taskCtl}
               minWidthClass="md:min-w-[var(--cfg-min)]"
@@ -692,7 +694,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <div className="border-b border-border/50 last:border-0 max-md:border-0">
                     <div
                       data-tone={cardTone}
-                      style={style}
+                      style={typeof window !== 'undefined' && window.innerWidth <= 768 ? undefined : style}
                       className={`mobile-grid-row mgr-card mgr-card--task grid items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >

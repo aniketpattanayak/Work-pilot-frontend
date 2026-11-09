@@ -61,21 +61,169 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
         const queryParams = new URLSearchParams({ type: taskType });
         if (instanceDate) queryParams.set('instanceDate', new Date(instanceDate).toISOString());
         const res = await API.get(`/tasks/detailed-view/${taskId}?${queryParams.toString()}`);
-        if (isMounted) {
+        if (isMounted && res.data) {
           setData(res.data);
+          setLoading(false);
+          return;
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err.response?.data?.message || 'Failed to load task details');
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+        // Detailed view endpoint 404s or fails (e.g. if not yet deployed on remote API or model lookup)
+        console.warn('Detailed view endpoint returned error, using fallback resolution:', err.message);
       }
+
+      // ─── GRACEFUL FALLBACK RESOLUTION ───────────────────────────────────────
+      try {
+        const currentTenantId = localStorage.getItem('tenantId');
+        const isChk = (taskType || '').toLowerCase() === 'checklist';
+        const isDel = !isChk && (taskType || '').toLowerCase() !== 'fms';
+
+        if (isChk) {
+          // Look up from existing checklist routes
+          let foundTask = null;
+          try {
+            const chkRes = await API.get(`/tasks/checklist-all/${currentTenantId}`);
+            const list = Array.isArray(chkRes.data) ? chkRes.data : (chkRes.data?.data || []);
+            foundTask = list.find(t => String(t._id) === String(taskId));
+          } catch (e) { /* ignore */ }
+
+          if (foundTask && isMounted) {
+            const history = foundTask.history || [];
+            const completedEntries = history.filter(h => h && (h.action === 'Completed' || h.action === 'Administrative Completion'));
+            const targetDate = instanceDate ? new Date(instanceDate) : null;
+            let matchedDone = null;
+            if (targetDate && !isNaN(targetDate.getTime())) {
+              const targetStr = targetDate.toDateString();
+              matchedDone = completedEntries.find(h => {
+                const d = new Date(h.instanceDate || h.timestamp);
+                return d.toDateString() === targetStr;
+              });
+            }
+            const latestDone = matchedDone || (completedEntries.length ? completedEntries[completedEntries.length - 1] : null);
+
+            setData({
+              type: 'Checklist',
+              _id: foundTask._id,
+              title: foundTask.taskName || foundTask.title || fallbackRow?.name || 'Checklist Directive',
+              description: foundTask.description || fallbackRow?.remarks || '',
+              frequency: foundTask.frequency || 'Daily',
+              frequencyConfig: foundTask.frequencyConfig || {},
+              status: fallbackRow?.status || foundTask.status || 'Active',
+              startDate: foundTask.startDate,
+              nextDueDate: foundTask.nextDueDate || fallbackRow?.deadline,
+              lastCompleted: foundTask.lastCompleted || fallbackRow?.completedAt,
+              createdAt: foundTask.createdAt,
+              department: foundTask.doerId?.department || fallbackRow?.department || '',
+              assigner: foundTask.createdBy ? {
+                name: foundTask.createdBy.name,
+                email: foundTask.createdBy.email
+              } : (foundTask.assignerId ? {
+                name: foundTask.assignerId.name
+              } : { name: fallbackRow?.assignedBy || 'Admin' }),
+              doer: foundTask.doerId ? {
+                name: foundTask.doerId.name,
+                email: foundTask.doerId.email,
+                department: foundTask.doerId.department
+              } : { name: fallbackRow?.assignedTo || 'Assigned Staff' },
+              customFields: foundTask.customFields || {},
+              files: [],
+              subTasks: [],
+              completion: latestDone ? {
+                completedAt: latestDone.timestamp,
+                completedBy: foundTask.doerId?.name || fallbackRow?.assignedTo || 'Doer',
+                remarks: latestDone.remarks || fallbackRow?.remarks || 'Directive Completed',
+                files: latestDone.attachmentUrl ? [{ fileName: 'Evidence', fileUrl: latestDone.attachmentUrl }] : []
+              } : (fallbackRow?.completedAt ? {
+                completedAt: fallbackRow.completedAt,
+                completedBy: fallbackRow.assignedTo || 'Doer',
+                remarks: fallbackRow.remarks || 'Completed'
+              } : null),
+              verification: null,
+              rejections: [],
+              history: history.map(h => ({
+                action: h.action,
+                timestamp: h.timestamp,
+                instanceDate: h.instanceDate,
+                performedBy: foundTask.doerId?.name || 'Staff',
+                remarks: h.remarks || '',
+                files: h.attachmentUrl ? [{ fileName: 'Evidence', fileUrl: h.attachmentUrl }] : []
+              }))
+            });
+            setLoading(false);
+            return;
+          }
+        } else if (isDel) {
+          try {
+            const delRes = await API.get(`/tasks/${taskId}`);
+            if (delRes.data && isMounted) {
+              const dt = delRes.data;
+              setData({
+                type: 'Delegation',
+                _id: dt._id,
+                title: dt.title || fallbackRow?.name || 'Delegation Task',
+                description: dt.description || '',
+                priority: dt.priority || 'Medium',
+                status: dt.status || fallbackRow?.status || 'Pending',
+                deadline: dt.deadline || fallbackRow?.deadline,
+                originalDeadline: dt.originalDeadline,
+                createdAt: dt.createdAt,
+                assigner: dt.assignerId ? { name: dt.assignerId.name } : { name: fallbackRow?.assignedBy || 'Assigner' },
+                doer: dt.doerId ? { name: dt.doerId.name } : { name: fallbackRow?.assignedTo || 'Doer' },
+                followers: dt.followers || [],
+                files: dt.files || [],
+                subTasks: [],
+                completion: fallbackRow?.completedAt ? {
+                  completedAt: fallbackRow.completedAt,
+                  completedBy: fallbackRow.assignedTo || 'Doer',
+                  remarks: fallbackRow.remarks || 'Completed'
+                } : null,
+                history: dt.history || []
+              });
+              setLoading(false);
+              return;
+            }
+          } catch (e) { /* ignore */ }
+        }
+      } catch (fallbackErr) {
+        console.warn('Fallback fetch failed:', fallbackErr);
+      }
+
+      // ─── FINAL CLIENT FALLBACK: Render clean details using Global View row data ─
+      if (fallbackRow && isMounted) {
+        setData({
+          type: fallbackRow.type || taskType || 'Task',
+          _id: taskId,
+          title: fallbackRow.name || fallbackRow.title || 'Task Details',
+          description: fallbackRow.description || fallbackRow.remarks || 'Task record from Company Review sheet.',
+          status: fallbackRow.status || 'Active',
+          deadline: fallbackRow.deadline,
+          completedAt: fallbackRow.completedAt,
+          assigner: { name: fallbackRow.assignedBy || 'Admin' },
+          doer: { name: fallbackRow.assignedTo || 'Assigned Staff' },
+          completion: fallbackRow.completedAt ? {
+            completedAt: fallbackRow.completedAt,
+            completedBy: fallbackRow.assignedTo || 'Doer',
+            remarks: fallbackRow.remarks || 'Completed'
+          } : null,
+          history: fallbackRow.completedAt ? [{
+            action: 'Completed',
+            timestamp: fallbackRow.completedAt,
+            performedBy: fallbackRow.assignedTo || 'Doer',
+            remarks: fallbackRow.remarks || ''
+          }] : [],
+          files: [],
+          subTasks: []
+        });
+        setError(null);
+      } else if (isMounted) {
+        setError('Task details could not be loaded.');
+      }
+
+      if (isMounted) setLoading(false);
     };
 
     fetchDetails();
     return () => { isMounted = false; };
-  }, [taskId, taskType, instanceDate]);
+  }, [taskId, taskType, instanceDate, fallbackRow]);
 
   const task = data || fallbackRow || {};
   const isChecklist = (taskType || '').toLowerCase() === 'checklist';
@@ -288,7 +436,7 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex border-b border-border bg-card px-5 sm:px-6 gap-2 sm:gap-4 overflow-x-auto flex-shrink-0">
+        <div className="flex items-center border-b border-border bg-card px-4 sm:px-6 gap-3 sm:gap-4 overflow-x-auto flex-nowrap flex-shrink-0 scrollbar-none">
           {[
             { id: 'overview', label: 'Overview & Details', icon: FileText },
             { id: 'subtasks', label: `Subtasks (${subTasks.length})`, icon: Layers },
@@ -301,7 +449,7 @@ const TaskDetailsModal = ({ taskId, taskType = 'Delegation', instanceDate, fallb
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 py-3 border-b-2 text-[11px] font-black uppercase tracking-wider transition-colors whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-1.5 py-3 border-b-2 text-[11px] font-black uppercase tracking-wider transition-colors whitespace-nowrap ${
                   active
                     ? 'border-primary text-primary'
                     : 'border-transparent text-slate-400 hover:text-foreground'

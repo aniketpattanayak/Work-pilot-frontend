@@ -137,19 +137,22 @@ const LateTargetInput = ({ value, onSave }) => {
   );
 };
 
-const getDefaultDateRange = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return {
-    from: `${year}-${month}-01`,
-    to: `${year}-${month}-${day}`
-  };
+const getCurrentWeekRange = () => {
+  const now = new Date(Date.now() + 330 * 60000); // IST time
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const d = now.getUTCDate();
+  const day = now.getUTCDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+  // Monday of current week. If today is Monday (day === 1), user expects 02/11/2026 to 09/11/2026 (completed 7-day cycle)
+  const diffDays = day === 0 ? 6 : (day === 1 ? 7 : day - 1);
+  const monday = new Date(Date.UTC(y, m, d - diffDays));
+  const fromStr = `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`;
+  const toStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return { from: fromStr, to: toStr };
 };
 
 const GlobalView = ({ tenantId, mode = 'view' }) => {
-  const defaultDates = useMemo(() => getDefaultDateRange(), []);
+  const defaultWeekRange = useMemo(() => getCurrentWeekRange(), []);
   // 'view' = read-only (Viewer role). 'review' = Admin Review Meeting: same sheet plus Late Target and delete.
   const canEdit = mode === 'review';
   const [report, setReport] = useState([]);
@@ -157,8 +160,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [periodInfo, setPeriodInfo] = useState(null);
   const [refDate, setRefDate] = useState(new Date().toISOString().split('T')[0]);
   const [range, setRange] = useState(null);
-  const [fromDraft, setFromDraft] = useState('');
-  const [toDraft, setToDraft] = useState('');
+  const [fromDraft, setFromDraft] = useState(defaultWeekRange.from);
+  const [toDraft, setToDraft] = useState(defaultWeekRange.to);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -168,8 +171,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
   const [active, setActive] = useState(null);       // employee row opened in the audit sheet
   const [rows, setRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
-  const [start, setStart] = useState(defaultDates.from);
-  const [end, setEnd] = useState(defaultDates.to);
+  const [start, setStart] = useState(defaultWeekRange.from);
+  const [end, setEnd] = useState(defaultWeekRange.to);
   const [typeFilter, setTypeFilter] = useState('All');
   const [openFms, setOpenFms] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -184,7 +187,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     try {
       setLoading(true);
       setError('');
-      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: range ? { from: range.from, to: range.to } : { date: refDate } });
+      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: range ? { from: range.from, to: range.to, view: 'Custom' } : { date: refDate, view: 'Weekly' } });
       setReport(Array.isArray(res.data?.report) ? res.data.report : []);
       setConfig(res.data?.config || null);
       if (res.data?.config?.dynamicColors) {
@@ -245,11 +248,8 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     setActive(p);
     setTypeFilter('All');
     setOpenFms([]);
-    const istDay = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
-    const todayStr = new Date(Date.now() + 330 * 60000).toISOString().split('T')[0];
-    const from = s || range?.from || istDay(p.periodStart) || defaultDates.from;
-    const rawTo = e || range?.to || istDay(p.periodEnd) || defaultDates.to;
-    const to = (!range && !e && rawTo > todayStr) ? todayStr : rawTo;
+    const from = s || range?.from || defaultWeekRange.from;
+    const to = e || range?.to || defaultWeekRange.to;
     setStart(from); setEnd(to);
     if (!from || !to) { setRows([]); return; }
     try {
@@ -397,62 +397,87 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
       </div>
 
       {/* ROW 2: PERIOD & DATE RANGE */}
-      {periodInfo?.startDate && (
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          {!range && (
-            <button
-              onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }}
-              className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
-            >
-              &larr; Previous
-            </button>
-          )}
-          <div className="text-xs font-black uppercase tracking-widest text-foreground px-2">
-            {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Weekly'} &middot; {fmtDate(periodInfo.startDate)} &ndash; {fmtDate(periodInfo.endDate)}
+      {periodInfo?.startDate && (() => {
+        const displayEnd = (!range && new Date(periodInfo.endDate) > new Date()) ? new Date() : periodInfo.endDate;
+        return (
+          <div className="bg-card border border-border rounded-xl p-3 mb-3 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="text-xs font-black uppercase tracking-widest text-foreground">
+                {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Weekly'} &middot; {fmtDate(range ? range.from : periodInfo.startDate)} to {fmtDate(range ? range.to : displayEnd)}
+              </div>
+              {!range && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => { const d = neighbourDate(periodInfo, -1); if (d) setRefDate(d); }}
+                    className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted active:scale-95 transition"
+                  >
+                    &larr; Previous
+                  </button>
+                  <button
+                    onClick={() => setRefDate(new Date().toISOString().split('T')[0])}
+                    className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted active:scale-95 transition"
+                  >
+                    Current
+                  </button>
+                  <button
+                    onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }}
+                    className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted active:scale-95 transition"
+                  >
+                    Next &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2.5 border-t border-border">
+              <div className="grid grid-cols-2 gap-2 flex-1">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">From</span>
+                  <input
+                    type="date"
+                    value={fromDraft}
+                    onChange={(e) => setFromDraft(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">To</span>
+                  <input
+                    type="date"
+                    value={toDraft}
+                    min={fromDraft || undefined}
+                    onChange={(e) => setToDraft(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1 sm:pt-0 sm:self-end">
+                <button
+                  onClick={() => setRange({ from: fromDraft, to: toDraft })}
+                  disabled={!fromDraft || !toDraft || toDraft < fromDraft}
+                  title={!fromDraft || !toDraft ? 'Pick both dates' : (toDraft < fromDraft ? 'The "to" date cannot be before the "from" date' : 'Show this date range')}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition"
+                >
+                  Apply
+                </button>
+                {range && (
+                  <button
+                    onClick={() => {
+                      const fresh = getCurrentWeekRange();
+                      setRange(null);
+                      setFromDraft(fresh.from);
+                      setToDraft(fresh.to);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted active:scale-95 transition"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-          {!range && (
-            <button
-              onClick={() => { const d = neighbourDate(periodInfo, 1); if (d) setRefDate(d); }}
-              className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted"
-            >
-              Next &rarr;
-            </button>
-          )}
-          <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</span>
-            <input
-              type="date"
-              value={fromDraft}
-              onChange={(e) => setFromDraft(e.target.value)}
-              className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold"
-            />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</span>
-            <input
-              type="date"
-              value={toDraft}
-              min={fromDraft || undefined}
-              onChange={(e) => setToDraft(e.target.value)}
-              className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold"
-            />
-            <button
-              onClick={() => setRange({ from: fromDraft, to: toDraft })}
-              disabled={!fromDraft || !toDraft || toDraft < fromDraft}
-              title={!fromDraft || !toDraft ? 'Pick both dates' : (toDraft < fromDraft ? 'The "to" date cannot be before the "from" date' : 'Show this date range')}
-              className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Apply
-            </button>
-            {range && (
-              <button
-                onClick={() => { setRange(null); setFromDraft(''); setToDraft(''); }}
-                className="px-3 py-1.5 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted"
-              >
-                Reset
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* FILTERS + LEGEND */}
       <div className="bg-card border border-border rounded-xl px-3 py-2 mb-3">
@@ -499,9 +524,10 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
         ) : error ? (
           <div className="py-24 text-center text-sm font-bold text-red-500">{error}</div>
         ) : (
-          <div className="overflow-auto max-h-[calc(100vh-250px)]">
-            <ResponsiveTable>
-              <table className="mobile-card-table w-full border-collapse text-[11px] min-w-[1250px]">
+          <>
+            {/* DESKTOP TABLE VIEW (> 768px) */}
+            <div className="gv-desktop-table hidden md:block overflow-auto max-h-[calc(100vh-250px)]">
+              <table className="w-full border-collapse text-[11px] min-w-[1250px]">
                 <thead className="sticky top-0 z-30">
                   <tr className="text-[10px] font-black uppercase tracking-wider">
                     <th rowSpan={2} className="sticky left-0 z-40 border-b border-border bg-background px-2 py-1 w-10 min-w-[40px] max-w-[40px]">S.no</th>
@@ -559,40 +585,181 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                   </tfoot>
                 )}
               </table>
-            </ResponsiveTable>
-          </div>
+            </div>
+
+            {/* MOBILE CARD VIEW (<= 768px) */}
+            <div className="gv-mobile-cards block md:hidden space-y-3 p-2.5 bg-muted/20">
+              {people.map((p, i) => (
+                <div
+                  key={String(p.employeeId)}
+                  onClick={() => openAudit(p)}
+                  className="bg-card border border-border rounded-2xl p-3.5 shadow-sm active:scale-[0.99] transition cursor-pointer hover:border-primary/50 relative overflow-hidden"
+                >
+                  {/* Left accent border by latePct tone */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={getPctStyle(p.overall?.latePct || 0, config?.dynamicColors)}
+                  />
+
+                  {/* Header: Employee Name, Dept/Loc, Late % badges */}
+                  <div className="flex items-start justify-between gap-2 pl-1 mb-2.5">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black text-muted-foreground">#{i + 1}</span>
+                        <h4 className="font-black text-sm uppercase text-foreground truncate">{p.employeeName}</h4>
+                      </div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-0.5 truncate">
+                        {[p.department, p.location].filter(Boolean).join(' · ') || 'No dept/location'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span
+                        style={getPctStyle(p.overall?.latePct || 0, config?.dynamicColors)}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-black shadow-sm uppercase tracking-wide"
+                      >
+                        Late {fmtPct(p.overall?.latePct || 0)}
+                      </span>
+                      <span
+                        style={getPctStyle(p.overall?.notDonePct || 0, config?.dynamicColors)}
+                        className="px-2 py-0.5 rounded-md text-[9px] font-bold opacity-90 uppercase tracking-wide"
+                      >
+                        Not Done {fmtPct(p.overall?.notDonePct || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Admin Target & Previous Period if canEdit */}
+                  {canEdit && (
+                    <div className="pl-1 mb-2.5 p-2 bg-muted/40 rounded-xl flex items-center justify-between gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">Late Target:</span>
+                        <LateTargetInput value={p.weeklyLateTarget} onSave={(v) => saveTarget(p.employeeId, v)} />
+                      </div>
+                      {p.previous && (
+                        <div className="text-[9px] font-bold flex items-center gap-1">
+                          <span className="text-muted-foreground">Prev:</span>
+                          <span>{p.previous.target}% &rarr;</span>
+                          <span style={getPctStyle(p.previous.latePct || 0, config?.dynamicColors)} className="px-1 py-0.5 rounded">
+                            {p.previous.hasTasks ? `${Number(p.previous.latePct).toFixed(1)}%` : 'no tasks'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Module breakdown (Delegation, Checklist, FMS) */}
+                  <div className="pl-1 space-y-2">
+                    {TYPES.map((t) => {
+                      const k = KEYS[t];
+                      const d = p[k] || EMPTY;
+                      return (
+                        <div key={t} className="rounded-xl border border-border/60 overflow-hidden text-[10px]">
+                          <div className={`px-2.5 py-1 font-black uppercase flex items-center justify-between ${GROUP_STYLE[k].head}`}>
+                            <span>{t}</span>
+                            <span className="text-[9px] opacity-90">TOT: {d.total}</span>
+                          </div>
+                          <div className={`grid grid-cols-4 text-center divide-x divide-border/40 py-1.5 ${GROUP_STYLE[k].sub}`}>
+                            <div title="On Time Done">
+                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">OT</div>
+                              <div className="font-bold text-[11px] text-emerald-600 dark:text-emerald-400">{d.onTimeDone}</div>
+                            </div>
+                            <div title="Late Done">
+                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LD</div>
+                              <div className={`font-bold text-[11px] ${d.lateDone > 0 ? 'text-amber-600 font-black' : ''}`}>{d.lateDone}</div>
+                            </div>
+                            <div title="Pending (On Time)">
+                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">PO</div>
+                              <div className="font-bold text-[11px]">{d.pendingOnTime}</div>
+                            </div>
+                            <div title="Late Pending">
+                              <div className="text-[8.5px] font-black uppercase tracking-tight opacity-75">LP</div>
+                              <div className={`font-bold text-[11px] ${d.latePending > 0 ? 'text-red-600 font-black' : ''}`}>{d.latePending}</div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom row: Tap hint */}
+                  <div className="pl-1 mt-2.5 pt-2 border-t border-border flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-primary">
+                    <span>View Task Audit Details</span>
+                    <span>&rarr;</span>
+                  </div>
+                </div>
+              ))}
+              {people.length === 0 && (
+                <div className="py-12 text-center text-slate-400 font-bold text-sm bg-card border border-border rounded-xl">
+                  No people match
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
       {/* AUDIT SHEET */}
       {active && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-3">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-3">
           <div className="absolute inset-0" onClick={() => setActive(null)} />
-          <div className="relative w-full max-w-[98vw] h-[95vh] bg-card rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-border bg-background">
-              <div className="min-w-0">
-                <h3 className="text-base font-black uppercase leading-tight truncate">{active.employeeName}</h3>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{[active.department, active.location].filter(Boolean).join(' · ') || 'No department / location'}</p>
+          <div className="relative w-full max-w-full h-full sm:max-w-[98vw] sm:h-[95vh] bg-card rounded-none sm:rounded-2xl border-0 sm:border border-border shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border bg-background">
+              <div className="min-w-0 flex items-center justify-between sm:block">
+                <div>
+                  <h3 className="text-base font-black uppercase leading-tight truncate">{active.employeeName}</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{[active.department, active.location].filter(Boolean).join(' · ') || 'No department / location'}</p>
+                </div>
+                <button onClick={() => setActive(null)} className="sm:hidden p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-500"><X size={18} /></button>
               </div>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
-                <span className="text-slate-400 text-xs">to</span>
-                <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="bg-card border border-border rounded-lg px-2 py-1 text-xs font-bold" />
-                <button onClick={() => openAudit(active, start, end)} className="px-3 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest">Run</button>
-                <button onClick={() => setActive(null)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-500"><X size={18} /></button>
+              <div className="flex items-center gap-1.5 w-full sm:w-auto justify-between sm:justify-end">
+                <input
+                  type="date"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold flex-1 min-w-0 sm:w-32"
+                />
+                <span className="text-slate-400 text-xs font-bold shrink-0">to</span>
+                <input
+                  type="date"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold flex-1 min-w-0 sm:w-32"
+                />
+                <button
+                  onClick={() => openAudit(active, start, end)}
+                  className="px-3.5 py-1.5 rounded-lg bg-primary text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition shrink-0 shadow-sm"
+                >
+                  Run
+                </button>
+                <button
+                  onClick={() => setActive(null)}
+                  className="hidden sm:inline-flex p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-500 shrink-0"
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
-            <div className="px-5 py-2 border-b border-border flex flex-wrap items-center gap-2">
-              {['All', ...TYPES].map((f) => {
-                const n = f === 'All' ? rows.length : rows.filter((r) => r.type === f).length;
-                return (
-                  <button key={f} onClick={() => setTypeFilter(f)} className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${typeFilter === f ? 'bg-primary text-white border-primary' : 'bg-card text-slate-500 border-border hover:text-foreground'}`}>
-                    {f} ({n})
-                  </button>
-                );
-              })}
-              <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+            <div className="px-4 sm:px-5 py-2.5 border-b border-border flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center">
+                {['All', ...TYPES].map((f) => {
+                  const n = f === 'All' ? rows.length : rows.filter((r) => r.type === f).length;
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setTypeFilter(f)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition active:scale-95 text-center ${
+                        typeFilter === f
+                          ? 'bg-primary text-white border-primary shadow-sm'
+                          : 'bg-card text-slate-500 border-border hover:text-foreground'
+                      }`}
+                    >
+                      {f} ({n})
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   ['Total', counts.total, 'bg-muted text-foreground'],
                   ['Done on time', counts.onTimeDone, BUCKET_CLASS.onTimeDone],
@@ -600,10 +767,10 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                   ['Pending', counts.pendingOnTime, BUCKET_CLASS.pendingOnTime],
                   ['Late pending', counts.latePending, BUCKET_CLASS.latePending]
                 ].map(([label, v, cls]) => (
-                  <span key={label} className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${cls}`}>{label}: {v}</span>
+                  <span key={label} className={`px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider ${cls}`}>{label}: {v}</span>
                 ))}
-                <span style={getPctStyle(counts.latePct, config?.dynamicColors)} className="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Late {fmtPct(counts.latePct)}</span>
-                <span style={getPctStyle(counts.notDonePct, config?.dynamicColors)} className="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Not done {fmtPct(counts.notDonePct)}</span>
+                <span style={getPctStyle(counts.latePct, config?.dynamicColors)} className="px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider">Late {fmtPct(counts.latePct)}</span>
+                <span style={getPctStyle(counts.notDonePct, config?.dynamicColors)} className="px-2 py-0.5 rounded-md text-[9.5px] font-black uppercase tracking-wider">Not done {fmtPct(counts.notDonePct)}</span>
               </div>
             </div>
 

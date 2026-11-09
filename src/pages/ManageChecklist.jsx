@@ -367,15 +367,17 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Manage Checklist</h2>
         </div>
 
-        <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
-          <div className="hidden md:block"><ColumnCustomizer ctl={checklistCtl} /></div>
-          <ExcelReportButton scope="checklist" tenantId={currentTenantId} className="flex-1 lg:flex-none"
-            getRows={() => filteredChecklists.map((c) => ({ id: String(c._id), label: c.taskName || '', sub: `${c.doerId?.name || ''} · ${c.frequency || ''}` }))}
-            filtersActive={!!searchTerm.trim() || activeTab !== 'All'}
-            onClearFilters={() => { setSearchTerm(''); setActiveTab('All'); }} />
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={checklistCtl} /></div>
+          <div className="col-span-1 sm:flex-none">
+            <ExcelReportButton scope="checklist" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
+              getRows={() => filteredChecklists.map((c) => ({ id: String(c._id), label: c.taskName || '', sub: `${c.doerId?.name || ''} · ${c.frequency || ''}` }))}
+              filtersActive={!!searchTerm.trim() || activeTab !== 'All'}
+              onClearFilters={() => { setSearchTerm(''); setActiveTab('All'); }} />
+          </div>
           <button
             onClick={handleRefresh}
-            className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
+            className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
             Refresh
@@ -384,7 +386,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setShowBulk(true)}
-              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
+              className="col-span-1 sm:flex-none min-w-0 sm:min-w-[120px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
             >
               <Upload size={14} />
               Bulk Upload
@@ -394,7 +396,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+              className="col-span-2 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
             >
               <Plus size={14} />
               New Task
@@ -455,7 +457,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         {/* SCROLL AREA */}
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
-          <ResponsiveGrid className="w-[1000px] sm:w-full text-sm">
+          <ResponsiveGrid className="w-full min-w-0 md:min-w-[1000px] text-sm">
             <ConfigurableTable
               controller={checklistCtl}
               minWidthClass="md:min-w-[var(--cfg-min)]"
@@ -470,7 +472,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
               renderRow={({ row: item, cells, style }) => (
                 <div
                   data-tone="chk"
-                  style={style}
+                  style={typeof window !== 'undefined' && window.innerWidth <= 768 ? undefined : style}
                   className="mobile-grid-row mgr-card mgr-card--chk grid items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
                 >
                   {cells}

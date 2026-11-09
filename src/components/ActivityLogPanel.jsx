@@ -10,6 +10,10 @@ import ResponsiveTable from './ResponsiveTable';
  */
 const PAGE = 100;
 const todayIST = () => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+const firstDayOfMonthIST = () => {
+  const d = new Date(Date.now() + 330 * 60000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`;
+};
 const fmtAt = (iso) => new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 const MODULE_TONE = {
   Login: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
@@ -20,7 +24,7 @@ const MODULE_TONE = {
 
 const ActivityLogPanel = ({ tenantId, showTable = true }) => {
   const tid = tenantId || localStorage.getItem('tenantId');
-  const [from, setFrom] = useState(todayIST());
+  const [from, setFrom] = useState(firstDayOfMonthIST());
   const [to, setTo] = useState(todayIST());
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
