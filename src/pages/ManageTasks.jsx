@@ -207,22 +207,17 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     }
     try {
       setLoading(true);
-      const isEmployee = user?.role === 'employee';
-      const taskEndpoint = isEmployee
-        ? `/tasks/doer/${currentAssignerId}`
-        : `/tasks/assigner/${currentAssignerId}`;
+      const taskEndpoint = `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
         API.get(taskEndpoint).catch((err) => {
           console.error("Task fetch error:", err);
           return { data: [] };
         }),
-        !isEmployee
-          ? API.get(`/tasks/employees/${currentTenantId}`).catch((err) => {
-            console.error("Employee fetch error:", err);
-            return { data: [] };
-          })
-          : Promise.resolve({ data: [] })
+        API.get(`/tasks/employees/${currentTenantId}`).catch((err) => {
+          console.error("Employee fetch error:", err);
+          return { data: [] };
+        })
       ]);
 
       const rawTaskData = Array.isArray(taskRes.data)
@@ -232,7 +227,10 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      const sorted = rawTaskData
+      // Strict role-independent filter: only tasks assigned by the logged-in user
+      const assignedByMe = rawTaskData.filter(t => idOf(t.assignerId) === String(currentAssignerId));
+
+      const sorted = assignedByMe
         .map(t => ({ ...t, taskType: 'Delegation' }))
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
@@ -578,17 +576,11 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={taskCtl} /></div>
-          <div className="col-span-1 sm:flex-none">
-            <ExcelReportButton scope="delegation" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
-              getRows={() => filteredTasks.map((t) => ({ id: String(t._id), label: t.title || '', sub: `${t.doerId?.name || ''} · ${displayStatus(t)}` }))}
-              filtersActive={timeFilter !== 'All' || statusFilter !== 'All' || !!nameFilter.trim()}
-              onClearFilters={() => { setTimeFilter('All'); setStatusFilter('All'); setNameFilter(''); }} />
-          </div>
           <button onClick={fetchData} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
           {!isViewer && (
-            <button onClick={() => setIsCreateOpen(true)} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
+            <button onClick={() => setIsCreateOpen(true)} className="col-span-2 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
               <Plus size={14} /> New Task
             </button>
           )}

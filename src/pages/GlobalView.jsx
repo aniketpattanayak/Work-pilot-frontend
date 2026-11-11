@@ -137,6 +137,8 @@ const LateTargetInput = ({ value, onSave }) => {
   );
 };
 
+const istYmd = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
+
 const getCurrentWeekRange = () => {
   const now = new Date(Date.now() + 330 * 60000); // IST time
   const y = now.getUTCFullYear();
@@ -187,13 +189,26 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     try {
       setLoading(true);
       setError('');
-      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, { params: range ? { from: range.from, to: range.to, view: 'Custom' } : { date: refDate, view: 'Weekly' } });
+      const res = await API.get(`/tasks/review-analytics/${currentTenantId}`, {
+        params: {
+          ...(range ? { from: range.from, to: range.to, view: 'Custom' } : { date: refDate }),
+          _: Date.now()
+        }
+      });
       setReport(Array.isArray(res.data?.report) ? res.data.report : []);
       setConfig(res.data?.config || null);
       if (res.data?.config?.dynamicColors) {
         setStoredDynamicColors(res.data.config.dynamicColors);
       }
       setPeriodInfo({ view: res.data?.view, startDate: res.data?.startDate, endDate: res.data?.endDate });
+      if (!range && res.data?.startDate && res.data?.endDate) {
+        const pStart = istYmd(res.data.startDate);
+        const pEnd = istYmd(res.data.endDate);
+        if (pStart) setFromDraft(pStart);
+        if (pEnd) setToDraft(pEnd);
+        if (pStart) setStart(pStart);
+        if (pEnd) setEnd(pEnd);
+      }
     } catch (e) {
       setReport([]);
       setError(e.response?.data?.message || 'Could not load the review data.');
@@ -248,7 +263,6 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
     setActive(p);
     setTypeFilter('All');
     setOpenFms([]);
-    const istYmd = (iso) => (iso ? new Date(new Date(iso).getTime() + 330 * 60000).toISOString().split('T')[0] : '');
     const todayStr = new Date(Date.now() + 330 * 60000).toISOString().split('T')[0];
     const from = s || range?.from || istYmd(periodInfo?.startDate) || defaultWeekRange.from;
     const rawTo = e || range?.to || istYmd(periodInfo?.endDate) || defaultWeekRange.to;
@@ -389,7 +403,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
             <Globe className="text-white w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0 text-left">
-            <h2 className="text-foreground text-lg sm:text-2xl font-black tracking-tight uppercase leading-tight whitespace-nowrap">
+            <h2 className="text-foreground text-base sm:text-2xl font-black tracking-tight uppercase leading-tight whitespace-nowrap">
               {canEdit ? 'Review Meeting' : 'Global View'}
             </h2>
             <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
@@ -399,10 +413,11 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
         </div>
         <button
           onClick={load}
+          disabled={loading}
           className="group bg-card hover:bg-background border border-border px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-foreground font-black text-[9.5px] sm:text-[10px] uppercase tracking-wider sm:tracking-widest transition-all flex items-center justify-center gap-1.5 sm:gap-2 active:scale-95 shadow-sm shrink-0"
         >
-          <RefreshCcw size={13} className="group-hover:rotate-180 transition-transform duration-700 text-primary shrink-0" />
-          <span>Refresh</span>
+          <RefreshCcw size={13} className={`text-primary shrink-0 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+          <span>{loading ? 'Refreshing…' : 'Refresh'}</span>
         </button>
       </div>
 
@@ -413,7 +428,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
           <div className="bg-card border border-border rounded-xl p-3 mb-3 space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="text-xs font-black uppercase tracking-widest text-foreground">
-                {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Weekly'} &middot; {fmtDate(range ? range.from : periodInfo.startDate)} to {fmtDate(range ? range.to : displayEnd)}
+                {PERIOD_LABELS[periodInfo.view] || periodInfo.view || 'Review Period'} &middot; {fmtDate(range ? range.from : periodInfo.startDate)} to {fmtDate(range ? range.to : displayEnd)}
               </div>
               {!range && (
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -447,7 +462,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                     type="date"
                     value={fromDraft}
                     onChange={(e) => setFromDraft(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+                    className="w-full min-w-0 bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] sm:text-xs font-bold focus:border-primary outline-none"
                   />
                 </div>
                 <div className="flex flex-col gap-1">
@@ -457,7 +472,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                     value={toDraft}
                     min={fromDraft || undefined}
                     onChange={(e) => setToDraft(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-2 py-1.5 text-xs font-bold"
+                    className="w-full min-w-0 bg-background border border-border rounded-lg px-1.5 py-1 text-[11px] sm:text-xs font-bold focus:border-primary outline-none"
                   />
                 </div>
               </div>
@@ -473,10 +488,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                 {range && (
                   <button
                     onClick={() => {
-                      const fresh = getCurrentWeekRange();
                       setRange(null);
-                      setFromDraft(fresh.from);
-                      setToDraft(fresh.to);
                     }}
                     className="px-3 py-2 rounded-lg border border-border text-[10px] font-black uppercase tracking-widest hover:bg-muted active:scale-95 transition"
                   >
@@ -739,7 +751,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                       type="date"
                       value={start}
                       onChange={(e) => setStart(e.target.value)}
-                      className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold text-foreground focus:border-primary outline-none"
+                      className="w-full min-w-0 bg-card border border-border rounded-lg px-1.5 sm:px-2 py-1.5 text-[11px] sm:text-xs font-bold text-foreground focus:border-primary outline-none"
                     />
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
@@ -749,7 +761,7 @@ const GlobalView = ({ tenantId, mode = 'view' }) => {
                       value={end}
                       min={start || undefined}
                       onChange={(e) => setEnd(e.target.value)}
-                      className="w-full bg-card border border-border rounded-lg px-2 py-1.5 text-xs font-bold text-foreground focus:border-primary outline-none"
+                      className="w-full min-w-0 bg-card border border-border rounded-lg px-1.5 sm:px-2 py-1.5 text-[11px] sm:text-xs font-bold text-foreground focus:border-primary outline-none"
                     />
                   </div>
                 </div>

@@ -115,11 +115,11 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
     try {
       setLoading(true);
       setError('');
-      let params = { date: refDate, view: 'Monthly' };
-      if (rangeMode === '7' || rangeMode === '30' || rangeMode === '90') params = lastNDays(Number(rangeMode));
+      let params = { date: refDate, _: Date.now() };
+      if (rangeMode === '7' || rangeMode === '30' || rangeMode === '90') params = { ...lastNDays(Number(rangeMode)), _: Date.now() };
       else if (rangeMode === 'custom') {
         if (!appliedCustom) { setLoading(false); return; } // wait until the dates are chosen and Apply is pressed
-        params = appliedCustom;
+        params = { ...appliedCustom, _: Date.now() };
       }
       const res = await API.get(`/tasks/user-dashboard/${viewId}`, { params });
       setData(res.data);
@@ -144,42 +144,44 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
 
   return (
     <div className="w-full max-w-[1500px] mx-auto text-left space-y-3 pb-10">
-      {/* ROW 1: TITLE + PICKER + REFRESH */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-black tracking-tight uppercase text-foreground leading-none">Dashboard</h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">
-              {data && !data.isSelf ? `Viewing ${emp?.name}` : 'My performance'}
-            </p>
-          </div>
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <select
-                value={viewId}
-                onChange={(e) => setViewId(e.target.value)}
-                title="Choose an employee"
-                className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold min-w-[220px]"
-              >
-                <option value={userId}>My dashboard</option>
-                {sortedPeople.filter((p) => String(p._id) !== String(userId)).map((p) => (
-                  <option key={p._id} value={p._id}>{p.name}{p.department ? ` · ${p.department}` : ''}{p.location ? ` · ${p.location}` : ''}</option>
-                ))}
-              </select>
-              {String(viewId) !== String(userId) && (
-                <button onClick={() => setViewId(userId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Back to mine</button>
-              )}
-            </div>
-          )}
+      {/* ROW 1: TITLE + REFRESH (Matches Global View mobile & desktop header layout) */}
+      <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3">
+        <div className="min-w-0 text-left">
+          <h1 className="text-foreground text-lg sm:text-2xl font-black tracking-tight uppercase leading-tight whitespace-nowrap">Dashboard</h1>
+          <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5 leading-tight truncate">
+            {data && !data.isSelf ? `Viewing ${emp?.name}` : 'My performance'}
+          </p>
         </div>
 
         <button
           onClick={load}
-          className="group bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm shrink-0"
+          disabled={loading}
+          className="group bg-card hover:bg-background border border-border px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-foreground font-black text-[9.5px] sm:text-[10px] uppercase tracking-wider sm:tracking-widest transition-all flex items-center justify-center gap-1.5 sm:gap-2 active:scale-95 shadow-sm shrink-0"
         >
-          <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+          <RefreshCcw size={13} className={`text-primary shrink-0 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+          <span>{loading ? 'Refreshing…' : 'Refresh'}</span>
         </button>
       </div>
+
+      {/* ROW 1.5: ADMIN EMPLOYEE SELECTOR (if Admin) */}
+      {isAdmin && (
+        <div className="flex items-center gap-2 flex-wrap mb-2">
+          <select
+            value={viewId}
+            onChange={(e) => setViewId(e.target.value)}
+            title="Choose an employee"
+            className="bg-card border border-border rounded-lg px-3 py-1.5 text-xs font-bold w-full sm:w-auto sm:min-w-[220px]"
+          >
+            <option value={userId}>My dashboard</option>
+            {sortedPeople.filter((p) => String(p._id) !== String(userId)).map((p) => (
+              <option key={p._id} value={p._id}>{p.name}{p.department ? ` · ${p.department}` : ''}{p.location ? ` · ${p.location}` : ''}</option>
+            ))}
+          </select>
+          {String(viewId) !== String(userId) && (
+            <button onClick={() => setViewId(userId)} className="px-3 py-1.5 rounded-lg border border-border text-xs font-black hover:bg-muted">Back to mine</button>
+          )}
+        </div>
+      )}
 
       {/* ROW 2: FILTERS & DATE NAVIGATION */}
       <div className="flex flex-wrap items-center gap-3">
@@ -275,7 +277,7 @@ const UserDashboard = ({ tenantId, userId, isAdmin }) => {
 
       {rangeMode === 'custom' && !appliedCustom ? (
         <div className="py-20 text-center text-sm font-bold text-slate-500">Choose the From and To dates, then press Apply.</div>
-      ) : loading && !data ? (
+      ) : loading ? (
         <div className="flex items-center justify-center gap-3 py-24 text-slate-500 text-xs font-black uppercase tracking-widest"><RefreshCcw className="animate-spin text-primary" size={20} /> Loading...</div>
       ) : error ? (
         <div className="py-20 text-center text-sm font-bold text-red-500">{error}</div>

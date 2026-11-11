@@ -568,7 +568,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
                 <Route path="create-task" element={<CreateTask tenantId={currentTenantId} assignerId={userId} />} />
                 <Route path="manage-tasks" element={<ManageTasks assignerId={userId} tenantId={currentTenantId} />} />
                 <Route path="checklist-setup" element={<CreateChecklist tenantId={currentTenantId} />} />
-                <Route path="manage-checklist" element={<ManageChecklist tenantId={currentTenantId} />} />
+                <Route path="manage-checklist" element={<ManageChecklist tenantId={currentTenantId} assignerId={userId} />} />
                 <Route path="checklist-monitor" element={<ChecklistMonitor tenantId={currentTenantId} />} />
                 <Route path="my-tasks" element={<DoerChecklist doerId={userId} />} />
                 <Route path="checklist" element={<DoerChecklist doerId={userId} />} />

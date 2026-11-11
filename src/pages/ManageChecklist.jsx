@@ -208,18 +208,24 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     try {
       setLoading(true);
       const [checkRes, empRes, settingsRes] = await Promise.all([
-        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { _: Date.now() } }).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { assignerId: currentAssignerId, _: Date.now() } }).catch(() => ({ data: [] })),
         API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
-      setChecklists(Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []));
+      const rawChecklists = Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []);
+      // Strict role-independent filter: only checklists assigned/created by the logged-in user
+      const assignedByMe = rawChecklists.filter(item => {
+        const creatorId = String((item.createdBy && item.createdBy._id) || item.createdBy || '');
+        return creatorId === String(currentAssignerId);
+      });
+      setChecklists(assignedByMe);
       setEmployees((Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || empRes.data?.data || [])).filter(e => {
         const roles = Array.isArray(e.roles) ? e.roles : [e.role || ''];
         return roles.some(r => r === 'Doer' || r === 'Admin');
       }));
       setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
     } catch (err) { console.error("Fetch error:", err); } finally { setLoading(false); }
-  }, [currentTenantId]);
+  }, [currentTenantId, currentAssignerId]);
 
   // Refresh button: same as Manage Delegation - clear the filters and reload everything.
   const handleRefresh = () => { setSearchTerm(''); setSelectedDate(''); setActiveTab('All'); fetchData(); };
@@ -369,12 +375,6 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={checklistCtl} /></div>
-          <div className="col-span-1 sm:flex-none">
-            <ExcelReportButton scope="checklist" tenantId={currentTenantId} className="w-full sm:w-auto min-w-0 sm:min-w-[120px]"
-              getRows={() => filteredChecklists.map((c) => ({ id: String(c._id), label: c.taskName || '', sub: `${c.doerId?.name || ''} · ${c.frequency || ''}` }))}
-              filtersActive={!!searchTerm.trim() || activeTab !== 'All'}
-              onClearFilters={() => { setSearchTerm(''); setActiveTab('All'); }} />
-          </div>
           <button
             onClick={handleRefresh}
             className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
@@ -396,7 +396,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="col-span-2 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+              className="col-span-1 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
             >
               <Plus size={14} />
               New Task
