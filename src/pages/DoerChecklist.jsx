@@ -56,7 +56,6 @@ import useCompanySettings from '../hooks/useCompanySettings';
 import useConfigurableColumns from '../hooks/useConfigurableColumns';
 import { fmtIST, fmtISTDate, fmtISTTime } from '../utils/istTime';
 import ColumnCustomizer from '../components/ColumnCustomizer';
-import ExcelReportButton from '../components/ExcelReportButton';
 import ActionsMenu from '../components/mytasks/ActionsMenu';
 import HoldModal from '../components/mytasks/HoldModal';
 import SubTaskModal from '../components/mytasks/SubTaskModal';
@@ -313,19 +312,19 @@ const DoerChecklist = ({ doerId }) => {
   };
 
 
-  const fetchAllTasks = useCallback(async (isManual = false) => {
+  const fetchAllTasks = useCallback(async () => {
     if (!currentDoerId) {
       setLoading(false);
       return;
     }
     try {
       // The full-screen spinner only the first time; a refresh after submitting must not blank the screen
-      if (!loadedOnce.current || isManual) setLoading(true);
+      if (!loadedOnce.current) setLoading(true);
       const userEmail = savedUser.email;
       // A request that fails keeps what is already on screen (null) instead of showing an empty list and a wrong count
       const [checklistRes, delegationRes, fmsRes] = await Promise.all([
         API.get(`/tasks/checklist/${currentDoerId}?includeDone=1`, { params: { _: Date.now() } }).catch(() => null),
-        API.get(`/tasks/doer/${currentDoerId}`, { params: { _: Date.now() } }).catch(() => null),
+        API.get(`/tasks/doer/${currentDoerId}?includePassedOn=1`, { params: { _: Date.now() } }).catch(() => null),
         API.get(`/fms2/my-tasks-full/${currentDoerId}`).catch(() => null)
       ]);
 
@@ -480,7 +479,6 @@ const DoerChecklist = ({ doerId }) => {
     };
 
     const assignmentsKept = delegatedTasks.filter(item => {
-      if (idOf(item.doerId) !== String(currentDoerId)) return false;
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
       return !item.planId && givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
@@ -489,7 +487,6 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(assignmentsKept, (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified', (i) => !!(i.onHold && i.onHold.isOn)));
 
     const checklistKept = checklist.filter(item => {
-      if (idOf(item.doerId) !== String(currentDoerId)) return false;
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
       return !item.planId && givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
@@ -498,8 +495,6 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(checklistKept, (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone));
 
     const fmsKept = fmsMissions.filter(item => {
-      const stepAssignedTo = idOf(item.activeStep?.assignedToId) || idOf(item.assignedToId);
-      if (stepAssignedTo && stepAssignedTo !== String(currentDoerId)) return false;
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
@@ -510,8 +505,8 @@ const DoerChecklist = ({ doerId }) => {
 
     // Tasks made from a Planner step live on their own "Planner" tab, not in the lists above
     const planKept = [
-      ...delegatedTasks.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
-      ...checklist.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
+      ...delegatedTasks.filter((i) => i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
+      ...checklist.filter((i) => i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
     ];
     const planN = sortSeq(planKept, (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : (i.status === 'Completed' || i.status === 'Verified')), (i) => !!(i.onHold && i.onHold.isOn));
     const routinesN = filteredChecklist.map(toChecklistItem);
@@ -929,18 +924,8 @@ const DoerChecklist = ({ doerId }) => {
         </div>
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
           <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={ctl} className="w-full sm:w-auto justify-center" /></div>
-
-
-
-
-
-          <button
-            onClick={() => fetchAllTasks(true)}
-            disabled={loading}
-            className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm"
-          >
-            <RefreshCcw size={14} className={`text-primary shrink-0 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-            <span>{loading ? 'Refreshing…' : 'Refresh'}</span>
+          <button onClick={fetchAllTasks} className="col-span-2 sm:col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+            <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
         </div>
       </div>
