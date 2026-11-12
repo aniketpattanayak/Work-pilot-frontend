@@ -249,7 +249,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     } finally {
       setLoading(false);
     }
-  }, [currentAssignerId, currentTenantId, user?.role]);
+  }, [currentAssignerId, currentTenantId, myRoles.join(',')]);
 
   useEffect(() => {
     fetchData();

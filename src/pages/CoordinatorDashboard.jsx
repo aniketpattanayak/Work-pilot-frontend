@@ -183,8 +183,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             return e?.whatsappNumber || '';
           })()
         },
-        assignerId: { name: adminEmp?.name || 'Admin' },
-        assignerName: adminEmp?.name || 'Admin',
+        assignerId: { name: inst.templateName || adminEmp?.name || 'Admin' },
+        assignerName: inst.templateName || adminEmp?.name || 'Admin',
         deadline: inst.activeStep?.plannedDeadline,
         flowName: inst.templateName,
         orderIdentifier: inst.orderIdentifier,
@@ -213,8 +213,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             return e?.whatsappNumber || '';
           })()
         },
-        assignerId: { name: adminEmp?.name || 'Admin' },
-        assignerName: adminEmp?.name || 'Admin',
+        assignerId: { name: inst.templateName || adminEmp?.name || 'Admin' },
+        assignerName: inst.templateName || adminEmp?.name || 'Admin',
         flowName: inst.templateName,
         deadline: inst.completedAt,
         completedAt: inst.completedAt,
@@ -711,7 +711,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                           <td className="px-2 py-1.5 min-w-0 break-words">
                             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
                               <UserCheck size={12} className="text-emerald-500 shrink-0" />
-                              {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.createdBy?.name || task.assignerId?.name || '—')}
+                              {task.taskType === 'FMS' ? (task.flowName || task.assignerName || '—') : (task.assignerId?.name || task.createdBy?.name || task.assignerName || '—')}
                             </div>
                           </td>
                           <td className="px-2 py-1.5 min-w-0">
