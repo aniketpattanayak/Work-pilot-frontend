@@ -226,8 +226,15 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      // Strict role-independent filter: only tasks assigned by the logged-in user
-      const assignedByMe = rawTaskData.filter(t => idOf(t.assignerId) === String(currentAssignerId));
+      // Admin sees all tasks for the tenant (backend already returns them all for Admin).
+      // Non-admin: show only tasks this user assigned or forwarded.
+      const isAdmin = myRoles.includes('Admin');
+      const assignedByMe = isAdmin
+        ? rawTaskData
+        : rawTaskData.filter(t =>
+            idOf(t.assignerId) === String(currentAssignerId) ||
+            (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId))
+          );
 
       const sorted = assignedByMe
         .map(t => ({ ...t, taskType: 'Delegation' }))
