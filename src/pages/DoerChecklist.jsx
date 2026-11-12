@@ -479,6 +479,8 @@ const DoerChecklist = ({ doerId }) => {
     };
 
     const assignmentsKept = delegatedTasks.filter(item => {
+      const isMine = idOf(item.doerId) === String(currentDoerId);
+      if (!isMine) return false;
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
       return !item.planId && givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
@@ -487,6 +489,8 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(assignmentsKept, (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified', (i) => !!(i.onHold && i.onHold.isOn)));
 
     const checklistKept = checklist.filter(item => {
+      const isMine = idOf(item.doerId) === String(currentDoerId);
+      if (!isMine) return false;
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
       return !item.planId && givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
@@ -495,6 +499,8 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(checklistKept, (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone));
 
     const fmsKept = fmsMissions.filter(item => {
+      const isMine = !item.activeStep?.assignedToId || String(item.activeStep.assignedToId) === String(currentDoerId);
+      if (!isMine) return false;
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
@@ -505,8 +511,8 @@ const DoerChecklist = ({ doerId }) => {
 
     // Tasks made from a Planner step live on their own "Planner" tab, not in the lists above
     const planKept = [
-      ...delegatedTasks.filter((i) => i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
-      ...checklist.filter((i) => i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
+      ...delegatedTasks.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
+      ...checklist.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
     ];
     const planN = sortSeq(planKept, (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : (i.status === 'Completed' || i.status === 'Verified')), (i) => !!(i.onHold && i.onHold.isOn));
     const routinesN = filteredChecklist.map(toChecklistItem);

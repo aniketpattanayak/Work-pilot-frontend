@@ -226,10 +226,20 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      // Strict role-independent filter: only tasks assigned by the logged-in user
-      const assignedByMe = rawTaskData.filter(t => idOf(t.assignerId) === String(currentAssignerId));
+      const isAdmin = myRoles.some(r => r && r.toLowerCase() === 'admin');
+      const loggedInName = (user?.name || '').trim().toLowerCase();
+      const displayedTasks = rawTaskData.filter(t => {
+        const aId = idOf(t.assignerId);
+        const aName = (t.assignerName || t.assignerId?.name || '').trim().toLowerCase();
+        const forwardedByMe = (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId));
+        if (forwardedByMe) return true;
+        if (aId && aId === String(currentAssignerId)) return true;
+        if (loggedInName && aName === loggedInName) return true;
+        if (isAdmin && (!aId || aName === 'admin')) return true;
+        return false;
+      });
 
-      const sorted = assignedByMe
+      const sorted = displayedTasks
         .map(t => ({ ...t, taskType: 'Delegation' }))
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 

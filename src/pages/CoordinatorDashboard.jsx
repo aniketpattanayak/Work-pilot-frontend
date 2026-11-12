@@ -37,6 +37,7 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
   });
   const [showCoordColConfig, setShowCoordColConfig] = useState(false);
   const [allTemplates, setAllTemplates] = useState([]);
+  const [adminEmp, setAdminEmp] = useState(null);
 
   const savedUser = JSON.parse(localStorage.getItem('user'));
   const tenantId = localStorage.getItem('tenantId') || savedUser?.tenantId;
@@ -167,7 +168,14 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
       });
       const fetchedTemplates = Array.isArray(tmplRes.data) ? tmplRes.data : [];
       setAllTemplates(fetchedTemplates);
-      const adminEmp = allEmp.find(e => (e.roles || []).includes('Admin'));
+      const foundAdmin = allEmp.find(e =>
+        (Array.isArray(e.roles) && e.roles.some(r => r && r.toLowerCase() === 'admin')) ||
+        (typeof e.role === 'string' && e.role.toLowerCase() === 'admin')
+      ) || (savedUser?.roles?.some(r => r && r.toLowerCase() === 'admin') ? savedUser : null);
+      setAdminEmp(foundAdmin);
+      const safeAdminName = (foundAdmin?.name && foundAdmin.name.trim().toLowerCase() !== 'admin')
+        ? foundAdmin.name
+        : (savedUser?.name && savedUser.name.trim().toLowerCase() !== 'admin' ? savedUser.name : '—');
       const fmsRawList = fmsRes.data?.instances || [];
       const fmsTasks = fmsRawList.map(inst => ({
         _id: inst.instanceId || inst._id,
@@ -183,8 +191,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             return e?.whatsappNumber || '';
           })()
         },
-        assignerId: { name: adminEmp?.name || 'Admin' },
-        assignerName: adminEmp?.name || 'Admin',
+        assignerId: { name: safeAdminName },
+        assignerName: safeAdminName,
         deadline: inst.activeStep?.plannedDeadline,
         flowName: inst.templateName,
         orderIdentifier: inst.orderIdentifier,
@@ -213,8 +221,8 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
             return e?.whatsappNumber || '';
           })()
         },
-        assignerId: { name: adminEmp?.name || 'Admin' },
-        assignerName: adminEmp?.name || 'Admin',
+        assignerId: { name: safeAdminName },
+        assignerName: safeAdminName,
         flowName: inst.templateName,
         deadline: inst.completedAt,
         completedAt: inst.completedAt,
@@ -711,7 +719,19 @@ const CoordinatorDashboard = ({ coordinatorId: propCoordId }) => {
                           <td className="px-2 py-1.5 min-w-0 break-words">
                             <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
                               <UserCheck size={12} className="text-emerald-500 shrink-0" />
-                              {task.taskType === 'FMS' ? (task.flowName || task.assignerId?.name || '—') : (task.createdBy?.name || task.assignerId?.name || (task.taskType === 'Checklist' ? 'Admin' : '—'))}
+                              {(() => {
+                                if (task.taskType === 'FMS') {
+                                  return task.flowName || task.assignerId?.name || task.assignerName || '—';
+                                }
+                                const raw = task.createdBy?.name || task.assignerId?.name || task.assignerName;
+                                if (raw && raw.trim().toLowerCase() !== 'admin') {
+                                  return raw;
+                                }
+                                const fallbackAdmin = (adminEmp?.name && adminEmp.name.trim().toLowerCase() !== 'admin')
+                                  ? adminEmp.name
+                                  : (savedUser?.name && savedUser.name.trim().toLowerCase() !== 'admin' ? savedUser.name : '—');
+                                return fallbackAdmin;
+                              })()}
                             </div>
                           </td>
                           <td className="px-2 py-1.5 min-w-0">

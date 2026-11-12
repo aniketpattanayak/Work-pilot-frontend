@@ -212,12 +212,16 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
         API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
       const rawChecklists = Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []);
-      // Strict role-independent filter: only checklists assigned/created by the logged-in user
-      const assignedByMe = rawChecklists.filter(item => {
+      const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+      const userRoles = Array.isArray(userObj.roles) ? userObj.roles : (userObj.role ? [userObj.role] : []);
+      const isAdmin = userRoles.some(r => r && r.toLowerCase() === 'admin');
+      const displayedChecklists = rawChecklists.filter(item => {
         const creatorId = String((item.createdBy && item.createdBy._id) || item.createdBy || '');
-        return creatorId === String(currentAssignerId);
+        if (creatorId && creatorId === String(currentAssignerId)) return true;
+        if (isAdmin && !creatorId) return true;
+        return false;
       });
-      setChecklists(assignedByMe);
+      setChecklists(displayedChecklists);
       setEmployees((Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || empRes.data?.data || [])).filter(e => {
         const roles = Array.isArray(e.roles) ? e.roles : [e.role || ''];
         return roles.some(r => r === 'Doer' || r === 'Admin');
