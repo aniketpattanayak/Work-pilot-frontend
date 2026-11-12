@@ -280,8 +280,15 @@ const DoerChecklist = ({ doerId }) => {
     idOf(t.doerId) !== String(currentDoerId) &&
     (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentDoerId));
   // A task I only FOLLOW (the doer is someone else): I can watch it, chat with the doer and read its history, nothing else
-  const isFollowerRow = (t) => t.dataType === 'Delegation' && t.myRole === 'follower';
-  const followerWhy = (t) => `You only follow this task. Only ${(t.doerId && t.doerId.name) || 'the doer'} can do this.`;
+  const isFollowerRow = (t) => (!t.dataType || t.dataType === 'Delegation') && (
+    t.myRole === 'follower' ||
+    (idOf(t.doerId) !== String(currentDoerId) && (
+      (t.followers || []).some(f => idOf(f) === String(currentDoerId) || idOf(f._id) === String(currentDoerId)) ||
+      (t.coworkers || []).some(c => idOf(c) === String(currentDoerId) || idOf(c._id) === String(currentDoerId)) ||
+      (t.helperDoers || []).some(h => idOf(h.helperId) === String(currentDoerId))
+    ))
+  );
+  const followerWhy = (t) => `You only follow this task. Only ${(t.doerId && t.doerId.name) || t.assignedToName || 'the doer'} can do this.`;
   const canForward = (t) =>
     companyAllows('delegation_assignOnward') &&
     myRoles.includes('Assigner') &&
@@ -480,7 +487,9 @@ const DoerChecklist = ({ doerId }) => {
 
     const assignmentsKept = delegatedTasks.filter(item => {
       const isMine = idOf(item.doerId) === String(currentDoerId);
-      if (!isMine) return false;
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
       return !item.planId && givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
@@ -490,7 +499,9 @@ const DoerChecklist = ({ doerId }) => {
 
     const checklistKept = checklist.filter(item => {
       const isMine = idOf(item.doerId) === String(currentDoerId);
-      if (!isMine) return false;
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
       return !item.planId && givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
@@ -500,7 +511,9 @@ const DoerChecklist = ({ doerId }) => {
 
     const fmsKept = fmsMissions.filter(item => {
       const isMine = !item.activeStep?.assignedToId || String(item.activeStep.assignedToId) === String(currentDoerId);
-      if (!isMine) return false;
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
@@ -541,7 +554,7 @@ const DoerChecklist = ({ doerId }) => {
     if (bulkOn) {
       cols.push({
         key: 'select', label: 'Select', width: '28px', locked: true, cellClassName: 'min-w-0',
-        render: (it) => <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
+        render: (it) => isFollowerRow(it) ? <span title={followerWhy(it)} className="inline-block w-4 h-4" /> : <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
       });
     }
     cols.push(
@@ -609,10 +622,10 @@ const DoerChecklist = ({ doerId }) => {
     target.setHours(0, 0, 0, 0);
     return n + (target.getTime() <= today.getTime() ? Math.max(1, Number(item.pendingDue) || 1) : 1);
   }, 0);
-  const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
+  const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && !isFollowerRow(t)).length;
   // Tasks made from a Planner step get their own tab
   const hasPlanTasks = delegatedTasks.some((t) => t.planId) || checklist.some((t) => t.planId);
-  const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && t.myRole !== 'follower').length + checklist.filter((t) => t.planId && !t.isDone).length;
+  const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isFollowerRow(t)).length + checklist.filter((t) => t.planId && !t.isDone).length;
   const allPendingCount = pendingRoutinesCount + pendingDelegationsCount + fmsMissions.filter(f => f.status !== 'completed').length + (hasPlanTasks ? pendingPlanCount : 0);
 
   const maxFileMb = useUploadLimit();
@@ -630,6 +643,7 @@ const DoerChecklist = ({ doerId }) => {
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
     if (!activeTask) return;
+    if (activeTask.dataType === 'Delegation' && isFollowerRow(activeTask)) { dialog.alert("You only follow this task. Only the assignee can complete it.", { tone: 'error' }); setShowModal(false); return; }
 
     const formData = new FormData();
     formData.append("remarks", remarks || "");
@@ -1167,7 +1181,7 @@ const DoerChecklist = ({ doerId }) => {
                   {/* Phone card */}
                   <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      {bulkOn && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
+                      {bulkOn && !isFollowerRow(item) && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
                       <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf(item.dataType)}`}>{item.dataType}</span>
                       {item.dataType === 'Delegation' && (item.myRole === 'follower'
                         ? <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30">Follower</span>

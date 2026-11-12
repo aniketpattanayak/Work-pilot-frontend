@@ -386,23 +386,27 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     {
       key: 'assignedBy',
       label: 'Assigned By',
-      width: '1.2fr',
+      width: 'minmax(120px,1.2fr)',
       cellClassName: 'text-xs font-bold min-w-0 pr-2',
-      render: (task) => (
-        <span className="truncate block">{task.assignerId?.name || task.assignerName || user?.name || '-'}</span>
-      )
+      render: (task) => {
+        const name = task.assignerId?.name || (task.assignerName && task.assignerName.toLowerCase() !== 'admin' ? task.assignerName : null) || user?.name || task.assignerName || '-';
+        return <span className="whitespace-normal break-words block" title={name}>{name}</span>;
+      }
     },
     {
-      key: 'assignedTo', label: 'Assigned To', width: '1.5fr',
+      key: 'assignedTo', label: 'Assigned To', width: 'minmax(130px,1.5fr)',
       cellClassName: 'text-xs font-bold min-w-0 pr-2',
-      render: (task, index) => (
-        <>
-          <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
-          {(task.forwardChain || []).length > 0 && (
-            <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
-          )}
-        </>
-      ),
+      render: (task, index) => {
+        const name = task.doerId?.name || 'Unassigned';
+        return (
+          <>
+            <span className="whitespace-normal break-words block" title={name}>{name}</span>
+            {(task.forwardChain || []).length > 0 && (
+              <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
+            )}
+          </>
+        );
+      }
     },
     {
       key: 'description', label: 'Description', width: '2fr',

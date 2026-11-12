@@ -296,15 +296,31 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     {
       key: 'assignedBy',
       label: 'Assigned By',
-      width: 'minmax(0,1fr)',
+      width: 'minmax(120px,1.2fr)',
       cellClassName: 'min-w-0 pr-2',
-      render: (item) => (
-        <span className="truncate block text-sm font-bold">
-          {item.createdBy?.name || item.assignerId?.name || item.assignerName || user?.name || 'Admin'}
-        </span>
-      )
+      render: (item) => {
+        const name = item.createdBy?.name || item.assignerId?.name || (item.assignerName && item.assignerName.toLowerCase() !== 'admin' ? item.assignerName : null) || user?.name || item.assignerName || 'Admin';
+        return (
+          <span className="whitespace-normal break-words block text-sm font-bold" title={name}>
+            {name}
+          </span>
+        );
+      }
     },
-    { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-bold">{item.doerId?.name || 'UNMAPPED'}</span> },
+    {
+      key: 'doer',
+      label: 'Assigned to',
+      width: 'minmax(120px,1.2fr)',
+      cellClassName: 'min-w-0 pr-2',
+      render: (item) => {
+        const name = item.doerId?.name || 'UNMAPPED';
+        return (
+          <span className="whitespace-normal break-words block text-sm font-bold" title={name}>
+            {name}
+          </span>
+        );
+      }
+    },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
     {
       key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => {
