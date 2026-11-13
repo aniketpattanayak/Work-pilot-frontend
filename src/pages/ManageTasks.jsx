@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axiosConfig';
 import {
@@ -78,7 +78,6 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   }, [openTaskThread, navigate]);
   const isViewer = isViewerOnly();
   const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]);
   const [timeFilter, setTimeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All'); // Status dropdown filter
   const [nameFilter, setNameFilter] = useState('');
@@ -90,6 +89,8 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   const [revisionModalTask, setRevisionModalTask] = useState(null);
   // A rejected task: click its action icon to send it back (same person or a mapped one) with a new deadline
   const [sendBackTask, setSendBackTask] = useState(null);
+  // Verify Task popup modal
+  const [verifyModalTask, setVerifyModalTask] = useState(null);
 
   // History/files details modal: shared by the assigner and the doer side
   // (TaskCard.jsx below has its own copy) so either side can see every
@@ -130,9 +131,9 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     return () => { live = false; clearTimeout(t); };
   }, [isEditOpen, editingTask, editFormData.deadline, editFormData.doerId]);
 
-  const user = JSON.parse(localStorage.getItem('user'));
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const currentAssignerId = assignerId || user?._id || user?.id;
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || user?.tenantId;
   const myRoles = Array.isArray(user?.roles) ? user.roles : (user?.role ? [user.role] : []);
   const idOf = (v) => String((v && v._id) || v || '');
   // Someone who only passed the task on (not the original assigner, not an Admin) can follow
@@ -149,28 +150,43 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     [t.assignerId?.name, ...(t.forwardChain || []).map(c => c.employeeId?.name), t.doerId?.name].filter(Boolean).join(' → ');
 
   // ── Apply time filter, status filter AND name filter ─────────────────────
-  const applyFilters = useCallback((range, status, name, allTasks = tasks) => {
+  const filteredTasks = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-    const q = (name || '').toLowerCase().trim();
+    const q = (nameFilter || '').toLowerCase().trim();
 
-    const filtered = allTasks.filter(task => {
+    return tasks.filter(task => {
       // Time filter
-      if (task.deadline && range !== 'All') {
+      if (task.deadline && timeFilter !== 'All') {
         const deadline = new Date(task.deadline);
         deadline.setHours(0, 0, 0, 0);
-        if (range === 'Today' && deadline.getTime() !== now.getTime()) return false;
-        if (range === 'Next 7 Days') {
+        if (timeFilter === 'Today' && deadline.getTime() !== now.getTime()) return false;
+        if (timeFilter === 'Next 7 Days') {
           const nextWeek = new Date(now);
           nextWeek.setDate(now.getDate() + 7);
           if (!(deadline >= now && deadline <= nextWeek)) return false;
         }
-        if (range === 'Pending Work' && (task.status || '') !== 'Pending') return false;
+        if (timeFilter === 'Pending Work' && (task.status || '') !== 'Pending') return false;
       }
 
       // Status filter dropdown
-      if (status !== 'All') {
-        if (displayStatus(task).toLowerCase() !== status.toLowerCase()) return false;
+      if (statusFilter !== 'All') {
+        const sLower = statusFilter.toLowerCase();
+        if (sLower === 'completed') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'completed' && ts !== 'completed') return false;
+        } else if (sLower === 'verified') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'verified' && ts !== 'verified') return false;
+        } else if (sLower === 'rejected') {
+          const ds = displayStatus(task).toLowerCase();
+          const ts = (task.status || '').toLowerCase();
+          if (ds !== 'rejected' && ts !== 'rejected') return false;
+        } else if (displayStatus(task).toLowerCase() !== sLower) {
+          return false;
+        }
       }
 
       // Name filter — matches task title OR assigned person name
@@ -181,24 +197,26 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       }
       return true;
     });
-
-    setFilteredTasks(filtered);
-  }, [tasks]);
+  }, [tasks, timeFilter, statusFilter, nameFilter]);
 
   const fetchData = useCallback(async () => {
-    if (!currentAssignerId || !currentTenantId) return;
+    if (!currentAssignerId || !currentTenantId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const isEmployee = user?.role === 'employee';
-      const taskEndpoint = isEmployee
-        ? `/tasks/doer/${currentAssignerId}`
-        : `/tasks/assigner/${currentAssignerId}`;
+      const taskEndpoint = `/tasks/assigner/${currentAssignerId}`;
 
       const [taskRes, empRes] = await Promise.all([
-        API.get(taskEndpoint).catch(() => ({ data: [] })),
-        !isEmployee
-          ? API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] }))
-          : Promise.resolve({ data: [] })
+        API.get(taskEndpoint).catch((err) => {
+          console.error("Task fetch error:", err);
+          return { data: [] };
+        }),
+        API.get(`/tasks/employees/${currentTenantId}`).catch((err) => {
+          console.error("Employee fetch error:", err);
+          return { data: [] };
+        })
       ]);
 
       const rawTaskData = Array.isArray(taskRes.data)
@@ -208,30 +226,37 @@ const ManageTasks = ({ assignerId, tenantId }) => {
         ? empRes.data
         : (empRes.data?.employees || empRes.data?.data || []);
 
-      const sorted = rawTaskData
+      const isAdmin = myRoles.some(r => r && r.toLowerCase() === 'admin');
+      const loggedInName = (user?.name || '').trim().toLowerCase();
+      const displayedTasks = rawTaskData.filter(t => {
+        const aId = idOf(t.assignerId);
+        const aName = (t.assignerName || t.assignerId?.name || '').trim().toLowerCase();
+        const forwardedByMe = (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentAssignerId));
+        if (forwardedByMe) return true;
+        if (aId && aId === String(currentAssignerId)) return true;
+        if (loggedInName && aName === loggedInName) return true;
+        if (isAdmin && (!aId || aName === 'admin')) return true;
+        return false;
+      });
+
+      const sorted = displayedTasks
         .map(t => ({ ...t, taskType: 'Delegation' }))
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
       setTasks(sorted);
       setEmployees(employeeData);
-      setFilteredTasks(sorted);
-      setTimeFilter('All');
-      setStatusFilter('All');
-      setNameFilter('');
     } catch (err) {
       console.error("Fetch error:", err);
-      setTasks([]); setEmployees([]);
+      setTasks([]);
+      setEmployees([]);
     } finally {
       setLoading(false);
     }
   }, [currentAssignerId, currentTenantId, user?.role]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Re-apply filters whenever filters change
   useEffect(() => {
-    applyFilters(timeFilter, statusFilter, nameFilter);
-  }, [timeFilter, statusFilter, nameFilter, applyFilters]);
+    fetchData();
+  }, [fetchData]);
 
   const handleVerifyTask = async (taskOrId, isSatisfied) => {
     const taskId = typeof taskOrId === 'object' ? taskOrId._id : taskOrId;
@@ -359,16 +384,29 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       ),
     },
     {
-      key: 'assignedTo', label: 'Assigned To', width: '1.5fr',
+      key: 'assignedBy',
+      label: 'Assigned By',
+      width: 'minmax(120px,1.2fr)',
       cellClassName: 'text-xs font-bold min-w-0 pr-2',
-      render: (task, index) => (
-        <>
-          <span className="truncate block">{task.doerId?.name || 'Unassigned'}</span>
-          {(task.forwardChain || []).length > 0 && (
-            <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
-          )}
-        </>
-      ),
+      render: (task) => {
+        const name = task.assignerId?.name || (task.assignerName && task.assignerName.toLowerCase() !== 'admin' ? task.assignerName : null) || user?.name || task.assignerName || '-';
+        return <span className="whitespace-normal break-words block" title={name}>{name}</span>;
+      }
+    },
+    {
+      key: 'assignedTo', label: 'Assigned To', width: 'minmax(130px,1.5fr)',
+      cellClassName: 'text-xs font-bold min-w-0 pr-2',
+      render: (task, index) => {
+        const name = task.doerId?.name || 'Unassigned';
+        return (
+          <>
+            <span className="whitespace-normal break-words block" title={name}>{name}</span>
+            {(task.forwardChain || []).length > 0 && (
+              <span className="block text-[9px] font-semibold text-indigo-500 whitespace-normal break-words mt-1" title="Assignment chain">{chainText(task)}</span>
+            )}
+          </>
+        );
+      }
     },
     {
       key: 'description', label: 'Description', width: '2fr',
@@ -466,7 +504,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
     },
     {
       key: 'actions', label: 'Action', width: '160px', pinEnd: true, headerClassName: 'text-right pr-4',
-      cellClassName: 'flex gap-1.5 justify-end items-center min-w-0',
+      cellClassName: 'flex gap-1.5 justify-end items-center min-w-0 mobile-grid-actions',
       render: (task, index) => (
         <>
           {!isViewer && !passedOnOnly(task) && !['Completed', 'Verified'].includes(task.status) && (
@@ -485,16 +523,18 @@ const ManageTasks = ({ assignerId, tenantId }) => {
               <AlertTriangle size={14} />
             </button>
           )}
-          {!isViewer && task.status === 'Completed' && canVerifyTask(task) && (<>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task, true); }}
-              className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
-              <CheckCircle size={14} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); handleVerifyTask(task, false); }}
-              className="p-2 bg-red-500/5 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
-              <XCircle size={14} />
-            </button>
-          </>)}
+          {!isViewer && task.status === 'Completed' && statusFilter !== 'Verified' && canVerifyTask(task) && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); setVerifyModalTask(task); }}
+                className="p-2 bg-emerald-500/10 text-emerald-600 rounded-xl border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all active:scale-90" title="Verify Task">
+                <CheckCircle size={14} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setSendBackTask(task); }}
+                className="p-2 bg-red-500/10 text-red-600 rounded-xl border border-red-500/20 hover:bg-red-500 hover:text-white transition-all active:scale-90" title="Reject Task">
+                <XCircle size={14} />
+              </button>
+            </>
+          )}
           <button onClick={(e) => {
             e.stopPropagation();
             setActiveTaskDrawer({ task, index });
@@ -532,7 +572,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-2 sm:px-6">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 selection:bg-primary/30 px-2 sm:px-6 has-bottom-nav-space pb-28">
 
       {previewImage && (
         <div className="fixed inset-0 bg-slate-950/95 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl" onClick={() => setPreviewImage(null)}>
@@ -547,13 +587,13 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           <LucideClipboard size={20} className="text-primary shrink-0" />
           <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">Manage Delegation</h2>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="hidden md:block"><ColumnCustomizer ctl={taskCtl} /></div>
-          <button onClick={fetchData} className="group flex-1 md:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={taskCtl} /></div>
+          <button onClick={fetchData} className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95">
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
           {!isViewer && (
-            <button onClick={() => setIsCreateOpen(true)} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
+            <button onClick={() => setIsCreateOpen(true)} className="col-span-2 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/25 hover:opacity-90 active:scale-95 transition-all">
               <Plus size={14} /> New Task
             </button>
           )}
@@ -567,7 +607,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           onClear={() => { setTimeFilter('All'); setStatusFilter('All'); }}
           className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
           alwaysVisible={
-            <div className="relative flex-1 min-w-[200px] sm:max-w-xs">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -625,7 +665,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* TASK TABLE */}
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
-          <ResponsiveGrid className="w-[1050px] sm:w-full">
+          <ResponsiveGrid className="w-full min-w-0 md:min-w-[1050px]">
             <ConfigurableTable
               controller={taskCtl}
               minWidthClass="md:min-w-[var(--cfg-min)]"
@@ -659,7 +699,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <div className="border-b border-border/50 last:border-0 max-md:border-0">
                     <div
                       data-tone={cardTone}
-                      style={style}
+                      style={typeof window !== 'undefined' && window.innerWidth <= 768 ? undefined : style}
                       className={`mobile-grid-row mgr-card mgr-card--task grid items-center px-6 py-4 transition-all hover:bg-muted/30 min-w-0
                         ${isRevision ? 'border-l-4 border-l-amber-500' : 'border-l-4 border-l-transparent'}`}
                     >
@@ -672,6 +712,127 @@ const ManageTasks = ({ assignerId, tenantId }) => {
           </ResponsiveGrid>
         </div>
       </div>
+
+      {/* VERIFY TASK POPUP MODAL */}
+      {verifyModalTask && (
+        <div className="fixed inset-0 z-[9995] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setVerifyModalTask(null)}>
+          <div className="mobile-sheet w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600">
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wide text-foreground">Verify Task</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Review completion & verify directive</p>
+                </div>
+              </div>
+              <button onClick={() => setVerifyModalTask(null)} className="p-2 rounded-full hover:bg-muted text-slate-400 hover:text-foreground transition">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-4 text-left flex-1 custom-scrollbar">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Directive Title</span>
+                <p className="text-sm font-black text-foreground mt-0.5">{verifyModalTask.title}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-muted/30 border border-border">
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Assigned To</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.doerId?.name || 'Unassigned'}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Target Deadline</span>
+                  <p className="text-xs font-bold text-foreground mt-0.5">{verifyModalTask.deadline ? fmtISTDate(verifyModalTask.deadline) : 'No deadline'}</p>
+                </div>
+              </div>
+
+              {verifyModalTask.description && (
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Description</span>
+                  <p className="text-xs text-foreground/80 mt-0.5 whitespace-pre-wrap">{verifyModalTask.description}</p>
+                </div>
+              )}
+
+              {/* Completion Evidence / Remarks */}
+              <div className="p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 size={13} /> Completed Status Details
+                </span>
+                <p className="text-xs text-foreground font-medium">
+                  {verifyModalTask.remarks || "Work marked as completed by doer."}
+                </p>
+                {(() => {
+                  const photos = allTaskPhotos(verifyModalTask);
+                  if (!photos.length) return null;
+                  return (
+                    <div className="mt-2 pt-2 border-t border-emerald-500/15">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1.5">Evidence Photos ({photos.length})</span>
+                      <div className="flex flex-wrap gap-2">
+                        {photos.slice(0, 4).map((f, fi) => (
+                          <TaskPhotoThumb key={fi} file={f} className="w-14 h-14" onClick={() => openGallery(photos, fi, verifyModalTask)} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="text-[11px] text-muted-foreground p-3 rounded-xl bg-muted/40 border border-border/50">
+                ℹ️ Clicking <b>Verify</b> confirms the work. The task status remains <b>Completed</b>. To send back for correction, click <b>Reject / Send Back</b>.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-border flex flex-wrap items-center justify-between gap-3 bg-muted/10">
+              <button
+                type="button"
+                onClick={() => {
+                  const t = verifyModalTask;
+                  setVerifyModalTask(null);
+                  setSendBackTask(t);
+                }}
+                className="px-4 py-2 rounded-xl border border-red-500/30 text-red-600 hover:bg-red-500/10 font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition active:scale-95"
+              >
+                <XCircle size={14} /> Reject / Send Back
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVerifyModalTask(null)}
+                  className="px-4 py-2 rounded-xl border border-border bg-card text-foreground font-black text-[11px] uppercase tracking-wider hover:bg-background transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const taskId = verifyModalTask._id;
+                    try {
+                      await API.put('/tasks/respond', {
+                        taskId,
+                        status: 'Verified',
+                        remarks: 'Directive evidence verified.',
+                        doerId: currentAssignerId
+                      });
+                      setVerifyModalTask(null);
+                      await fetchData();
+                      dialog.alert('The task has been verified successfully.', { tone: 'success' });
+                    } catch (err) {
+                      dialog.alert(err.response?.data?.message || 'The status could not be updated.', { tone: 'error' });
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 transition active:scale-95"
+                >
+                  <CheckCircle size={14} /> Verify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {sendBackTask && (
         <SendBackReassignModal
@@ -799,7 +960,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
       {/* EDIT TASK MODAL */}
       {isEditOpen && (
         <div className="fixed inset-0 z-[9990] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="mobile-sheet bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
+          <div className="mobile-sheet bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[92vh] animate-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -810,10 +971,22 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                   <p className="text-[9px] text-slate-500 uppercase tracking-widest">Update task parameters & details</p>
                 </div>
               </div>
-              <button onClick={() => setIsEditOpen(false)} className="w-8 h-8 rounded-lg bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group">
+              <button onClick={() => { setIsEditOpen(false); setEditingTask(null); }} className="w-8 h-8 rounded-lg bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors group">
                 <X size={15} className="text-slate-400 group-hover:text-red-500 transition-colors" />
               </button>
             </div>
+            <div className="overflow-y-auto flex-1 p-2 sm:p-4">
+              <CreateTask
+                hideHeader
+                tenantId={currentTenantId}
+                assignerId={currentAssignerId}
+                employees={employees}
+                taskToEdit={editingTask}
+                onCancel={() => { setIsEditOpen(false); setEditingTask(null); }}
+                onSuccess={() => { setIsEditOpen(false); setEditingTask(null); fetchData(); }}
+              />
+            </div>
+            {false && (
             <form onSubmit={handleSaveEdit} className="p-6 overflow-y-auto space-y-4 flex-1">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Task Title</label>
@@ -902,6 +1075,7 @@ const ManageTasks = ({ assignerId, tenantId }) => {
                 </button>
               </div>
             </form>
+            )}
           </div>
         </div>
       )}

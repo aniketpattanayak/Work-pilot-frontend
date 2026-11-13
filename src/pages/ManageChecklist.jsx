@@ -84,13 +84,12 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [activeTab, setActiveTab] = useState('All');
 
-  const currentTenantId = tenantId || localStorage.getItem('tenantId');
-  const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
-
   // Safely get user and assignerId for the BulkUpload component
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : {};
   const currentAssignerId = assignerId || user?._id || user?.id;
+  const currentTenantId = tenantId || localStorage.getItem('tenantId') || user?.tenantId;
+  const frequencyTabs = ['All', 'Daily', 'Weekly', 'Monthly', 'Quarterly', 'Half-Yearly', 'Yearly'];
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
@@ -208,18 +207,28 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
     try {
       setLoading(true);
       const [checkRes, empRes, settingsRes] = await Promise.all([
-        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { _: Date.now() } }).catch(() => ({ data: [] })),
+        API.get(`/tasks/checklist-all/${currentTenantId}`, { params: { assignerId: currentAssignerId, _: Date.now() } }).catch(() => ({ data: [] })),
         API.get(`/tasks/employees/${currentTenantId}`).catch(() => ({ data: [] })),
         API.get(`/tasks/settings/${currentTenantId}`).catch(() => ({ data: {} }))
       ]);
-      setChecklists(Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []));
+      const rawChecklists = Array.isArray(checkRes.data) ? checkRes.data : (checkRes.data?.data || []);
+      const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+      const userRoles = Array.isArray(userObj.roles) ? userObj.roles : (userObj.role ? [userObj.role] : []);
+      const isAdmin = userRoles.some(r => r && r.toLowerCase() === 'admin');
+      const displayedChecklists = rawChecklists.filter(item => {
+        const creatorId = String((item.createdBy && item.createdBy._id) || item.createdBy || '');
+        if (creatorId && creatorId === String(currentAssignerId)) return true;
+        if (isAdmin && !creatorId) return true;
+        return false;
+      });
+      setChecklists(displayedChecklists);
       setEmployees((Array.isArray(empRes.data) ? empRes.data : (empRes.data?.employees || empRes.data?.data || [])).filter(e => {
         const roles = Array.isArray(e.roles) ? e.roles : [e.role || ''];
         return roles.some(r => r === 'Doer' || r === 'Admin');
       }));
       setTenantSettings(settingsRes.data?.settings || settingsRes.data || null);
     } catch (err) { console.error("Fetch error:", err); } finally { setLoading(false); }
-  }, [currentTenantId]);
+  }, [currentTenantId, currentAssignerId]);
 
   // Refresh button: same as Manage Delegation - clear the filters and reload everything.
   const handleRefresh = () => { setSearchTerm(''); setSelectedDate(''); setActiveTab('All'); fetchData(); };
@@ -284,7 +293,34 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   const checklistColumns = [
     { key: 'sno', label: 'S no.', width: '60px', cellClassName: 'text-xs font-black text-slate-400', render: (item, index) => index + 1 },
     { key: 'title', label: 'Title', width: 'minmax(0,1.5fr)', locked: true, cellClassName: 'min-w-0 pr-2', render: (item) => <><span className="font-black text-sm whitespace-normal break-words block">{item.taskName}</span>{item.createdAt && <span className="inline-block mt-1 rounded-lg px-2 py-1 text-[10px] leading-tight font-bold text-white bg-sky-600 shadow-sm normal-case tracking-normal" data-testid="given-at">Given: {fmtIST(item.createdAt)}</span>}</> },
-    { key: 'doer', label: 'Assigned to', width: 'minmax(0,1fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <span className="truncate block text-sm font-bold">{item.doerId?.name || 'UNMAPPED'}</span> },
+    {
+      key: 'assignedBy',
+      label: 'Assigned By',
+      width: 'minmax(120px,1.2fr)',
+      cellClassName: 'min-w-0 pr-2',
+      render: (item) => {
+        const name = item.createdBy?.name || item.assignerId?.name || (item.assignerName && item.assignerName.toLowerCase() !== 'admin' ? item.assignerName : null) || user?.name || item.assignerName || 'Admin';
+        return (
+          <span className="whitespace-normal break-words block text-sm font-bold" title={name}>
+            {name}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'doer',
+      label: 'Assigned to',
+      width: 'minmax(120px,1.2fr)',
+      cellClassName: 'min-w-0 pr-2',
+      render: (item) => {
+        const name = item.doerId?.name || 'UNMAPPED';
+        return (
+          <span className="whitespace-normal break-words block text-sm font-bold" title={name}>
+            {name}
+          </span>
+        );
+      }
+    },
     { key: 'description', label: 'Description', width: 'minmax(0,2fr)', cellClassName: 'min-w-0 pr-2', render: (item) => <p className="text-xs whitespace-normal break-words opacity-70 uppercase font-semibold">{item.description || "No briefing."}</p> },
     {
       key: 'cycle', label: 'Cycle', width: 'minmax(0,1fr)', headerClassName: 'text-center', cellClassName: 'text-center min-w-0', render: (item) => {
@@ -303,7 +339,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       }
     },
     {
-      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0', render: (item, index) => (
+      key: 'actions', label: 'Actions', width: '190px', pinEnd: true, headerClassName: 'text-right', cellClassName: 'flex justify-end gap-2 min-w-0 mobile-grid-actions', render: (item, index) => (
         <>
           <button onClick={(e) => { e.stopPropagation(); setActiveTaskDrawer({ task: item, index }); markRead(item._id); }} className="relative p-2 bg-background border border-border text-slate-400 hover:border-blue-400 hover:text-blue-500 rounded-lg transition-all active:scale-90" title="Message"><MessageSquare size={14} /><UnreadBadge count={unreadFor(item._id)} /></button>
           <button onClick={(e) => { e.stopPropagation(); setHistoryFor(item); }} className="p-2 bg-background border border-border text-slate-400 hover:border-violet-400 hover:text-violet-500 rounded-lg" title="History"><History size={14} /></button>
@@ -327,7 +363,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
   );
 
   return (
-    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30">
+    <div className="w-full max-w-[1700px] mx-auto animate-in fade-in duration-700 px-2 sm:px-6 selection:bg-primary/30 has-bottom-nav-space pb-28">
       {historyFor && (
         <div className="fixed inset-0 z-[9994] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setHistoryFor(null)}>
           <div className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-2xl flex flex-col max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
@@ -356,11 +392,11 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           <h2 className="text-foreground text-xl font-black tracking-tight uppercase leading-none truncate">Manage Checklist</h2>
         </div>
 
-        <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
-          <div className="hidden md:block"><ColumnCustomizer ctl={checklistCtl} /></div>
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={checklistCtl} /></div>
           <button
             onClick={handleRefresh}
-            className="group flex-1 lg:flex-none bg-card hover:bg-background border border-border px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
+            className="col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition"
           >
             <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-primary" />
             Refresh
@@ -369,7 +405,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setShowBulk(true)}
-              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
+              className="col-span-1 sm:flex-none min-w-0 sm:min-w-[120px] flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-card hover:bg-background border border-primary/30 text-primary font-black text-[10px] uppercase tracking-widest active:scale-95 transition"
             >
               <Upload size={14} />
               Bulk Upload
@@ -379,7 +415,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
           {!isViewer && (
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
+              className="col-span-1 sm:flex-none min-w-0 sm:min-w-[110px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-md shadow-primary/25 hover:opacity-90 active:scale-95 transition"
             >
               <Plus size={14} />
               New Task
@@ -440,7 +476,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
       <div className="bg-card border border-border rounded-[2.5rem] shadow-2xl max-h-[550px] flex flex-col overflow-hidden max-md:bg-transparent max-md:border-0 max-md:shadow-none max-md:rounded-none max-md:max-h-none max-md:overflow-visible">
         {/* SCROLL AREA */}
         <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar w-full scrollbar-thin max-md:overflow-visible">
-          <ResponsiveGrid className="w-[1000px] sm:w-full text-sm">
+          <ResponsiveGrid className="w-full min-w-0 md:min-w-[1000px] text-sm">
             <ConfigurableTable
               controller={checklistCtl}
               minWidthClass="md:min-w-[var(--cfg-min)]"
@@ -455,7 +491,7 @@ const ManageChecklist = ({ tenantId, assignerId }) => {
               renderRow={({ row: item, cells, style }) => (
                 <div
                   data-tone="chk"
-                  style={style}
+                  style={typeof window !== 'undefined' && window.innerWidth <= 768 ? undefined : style}
                   className="mobile-grid-row mgr-card mgr-card--chk grid items-center px-6 py-3 border-b border-border/50 hover:bg-muted/30 transition min-w-0"
                 >
                   {cells}

@@ -8,6 +8,7 @@ import FmsDashboard from './pages/FmsDashboard';
 import ReportsTab from './pages/ReportsTab';
 import SubscriptionPaused from './pages/SubscriptionPaused';
 import { getSubdomain } from './utils/subdomain';
+import { isSessionExpired, performSessionLogout, recordLoginSession } from './utils/sessionTimeout';
 
 /**
  * CORE APPLICATION ROUTER v1.9
@@ -28,6 +29,12 @@ function App() {
     const token         = localStorage.getItem('token');
 
     const init = async () => {
+      // 18-hour session & token expiration check
+      if (token && isSessionExpired()) {
+        performSessionLogout();
+        setIsLoading(false);
+        return;
+      }
       // Don't run subscription check on the suspended page itself (prevents redirect loop)
       if (window.location.pathname === '/suspended') {
         setIsLoading(false);
@@ -84,6 +91,7 @@ function App() {
     setTenantId(tId);
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('tenantId', tId);
+    recordLoginSession();
   };
 
   const handleMasterLoginSuccess = (token, userData) => {
@@ -95,6 +103,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(superUser));
     localStorage.setItem('isSuperAdmin', 'true');
     localStorage.removeItem('tenantId');
+    recordLoginSession();
   };
 
   const handleLogout = () => {

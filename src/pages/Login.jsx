@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import API from '../api/axiosConfig'; 
 import { useNavigate } from 'react-router-dom';
 import { getSubdomain } from '../utils/subdomain';
+import { recordLoginSession } from '../utils/sessionTimeout';
 import { 
   ShieldCheck, 
   Mail, 
@@ -72,6 +73,7 @@ const Login = ({ onLoginSuccess }) => {
       localStorage.setItem('user', JSON.stringify(res.data.user));
       const actualTenantId = res.data.tenantId || tenant.id || tenant._id;
       localStorage.setItem('tenantId', actualTenantId);
+      recordLoginSession();
       
       try { sessionStorage.removeItem('wpLanded'); } catch (e) { /* ignore */ }
       onLoginSuccess(res.data.user, actualTenantId); 

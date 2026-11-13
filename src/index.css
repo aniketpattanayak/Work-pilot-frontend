@@ -88,6 +88,16 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
+  select option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+  .dark select option,
+  html.dark select option {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+  }
+
   /* Responsive Headings Scale */
   h1 { @apply text-3xl md:text-5xl font-black tracking-tighter uppercase; }
   h2 { @apply text-2xl md:text-4xl font-black tracking-tighter uppercase; }
@@ -531,6 +541,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  @media (max-width: 360px) {
+    .bottom-nav-item {
+      font-size: 9.5px !important;
+      letter-spacing: 0 !important;
+    }
+  }
   /* A sticky in-page action bar (e.g. a form's "Save"/"Commit" button)
      must clear the fixed bottom nav, and the floating launcher must get
      out of its way entirely rather than float on top of it (see the
@@ -613,37 +629,55 @@
 
 /* Custom Adaptive Theme for the Calendar */
 .work-pilot-dark-calendar {
-  @apply bg-card border border-border rounded-[1.5rem] p-4 shadow-2xl;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1.5rem;
+  padding: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   font-family: ui-sans-serif, system-ui, sans-serif !important;
 }
 
 .react-datepicker__header {
-  @apply bg-card border-b border-border;
+  background-color: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .react-datepicker__current-month, 
 .react-datepicker__day-name {
-  @apply text-primary font-black uppercase tracking-widest text-[10px];
+  color: hsl(var(--primary));
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 10px;
 }
 
 .react-datepicker__day {
-  @apply text-foreground font-bold opacity-80 transition-all;
+  color: hsl(var(--foreground));
+  font-weight: 700;
+  opacity: 0.8;
+  transition: all 0.15s ease-in-out;
 }
 
 .react-datepicker__day:hover {
-  @apply bg-primary/20 text-primary rounded-lg;
+  background-color: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
+  border-radius: 0.5rem;
 }
 
 .react-datepicker__day--selected {
-  @apply bg-primary text-primary-foreground font-black rounded-lg;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 900;
+  border-radius: 0.5rem;
 }
 
 .react-datepicker__day--disabled {
-  @apply opacity-30 cursor-not-allowed;
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .react-datepicker__day--outside-month {
-  @apply opacity-40;
+  opacity: 0.4;
 }
 
 /* Navigation arrows */
@@ -660,15 +694,30 @@
 
 .react-datepicker__month-dropdown,
 .react-datepicker__year-dropdown {
-  @apply bg-card border border-border text-foreground;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .react-datepicker__month-option,
 .react-datepicker__year-option {
-  @apply text-foreground hover:bg-primary/10;
+  color: hsl(var(--foreground));
+}
+
+.react-datepicker__month-option:hover,
+.react-datepicker__year-option:hover {
+  background-color: hsl(var(--primary) / 0.1);
 }
 
 /* Scrollbar Styling */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -685,17 +734,6 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary));
 }
-
-
-
-
-
-
-
-
-
-
-
 
 /* 🌙 DARK MODE DATEPICKER FIX */
 
@@ -747,97 +785,426 @@
 }
 
 /* ── PHONE CARDS: Manage Delegation + Manage Checklist ────────────────
-   Same card look as My Tasks > All Data. Phones only (<= 768px); the
-   desktop grid is untouched. Cell order in both rows is:
-   1 S.no  2 title  3 assigned-to  4 description  5 deadline|cycle  6 status|schedule  7 actions */
+   Same card look as reference app. Phones only (<= 768px); the
+   desktop grid is untouched. Target cells by data-col attribute for
+   bulletproof layout regardless of column ordering. */
 @media (max-width: 768px) {
   .mobile-grid-row.mgr-card {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    column-gap: 0.5rem;
-    align-items: start;
-    position: relative;
-    overflow: hidden;
-    padding: 0.85rem 0.85rem 0.8rem 1.1rem !important;
-    margin-bottom: 0.65rem !important;
-    border-radius: 1rem;
-    border: 1px solid hsl(var(--border));
-    border-left: 1px solid hsl(var(--border)) !important;
-    background: hsl(var(--card));
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    column-gap: 0.5rem !important;
+    row-gap: 0.3rem !important;
+    align-items: start !important;
+    position: relative !important;
+    overflow: hidden !important;
+    padding: 0.85rem 0.9rem !important;
+    margin-bottom: 0.75rem !important;
+    border-radius: 1rem !important;
+    border: 1px solid hsl(var(--border)) !important;
+    border-left: 4px solid var(--mgr-stripe, #475569) !important;
+    background: hsl(var(--card)) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
-  .mgr-card::before {
-    content: "";
-    position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
-    background: var(--mgr-stripe, #475569);
-  }
+  .mgr-card::before { content: none !important; }
   .mgr-card[data-tone="overdue"] { --mgr-stripe: #ef4444; }
   .mgr-card[data-tone="today"], .mgr-card[data-tone="revision"] { --mgr-stripe: #f59e0b; }
   .mgr-card[data-tone="done"] { --mgr-stripe: #22a06b; }
   .mgr-card[data-tone="chk"] { --mgr-stripe: #38bdf8; }
+  .mgr-card[data-tone="upcoming"] { --mgr-stripe: #10b981; }
+
   .mgr-card > * {
     padding: 0 !important; border: 0 !important; margin: 0 !important;
     text-align: left; min-width: 0; order: 0 !important;
   }
   .mgr-card > *::before { content: none !important; }
+
+  /* S.no is hidden on mobile */
+  .mgr-card [data-col="sno"],
   .mgr-card > :nth-child(1) { display: none !important; }
-  .mgr-card > :nth-child(2) { grid-column: 1 / -1; margin-top: 0.55rem !important; font-size: 15px; }
-  .mgr-card > :nth-child(2) > span:first-child {
-    font-size: 15px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MANAGE DELEGATION (.mgr-card--task)
+     Row 1: [Left: Status badge] [Right: Deadline badge] (NEVER overlap!)
+     Row 2: Task Name (Title) + Given Date pill
+     Row 3: Description in italics
+     Row 4: GIVEN BY: (Assigner)
+     Row 5: ASSIGNED TO: (Doer)
+     Row 6: FOLLOWERS: (Followers list)
+     Row 7: Action buttons (Edit, Comment, History, Delete)
+     ══════════════════════════════════════════════════════════════════════ */
+  .mgr-card--task [data-col="status"] {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: start !important;
+    align-self: start !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
   }
-  .mgr-card > :nth-child(3) {
-    grid-column: 1 / -1; display: flex !important; flex-direction: row; flex-wrap: wrap;
-    align-items: baseline; gap: 0.1rem 0.45rem; margin-top: 0.55rem !important; order: 4 !important;
+  .mgr-card--task [data-col="status"] > span {
+    display: inline-flex !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    padding: 0.25rem 0.6rem !important;
+    border-radius: 0.5rem !important;
+    white-space: nowrap !important;
   }
-  .mgr-card > :nth-child(3)::before {
-    content: "Assigned to" !important; font-size: 9.5px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground));
+
+  .mgr-card--task [data-col="deadline"] {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: start !important;
+    text-align: right !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
   }
-  .mgr-card > :nth-child(3) > span { font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
-  .mgr-card > :nth-child(3) > span:nth-child(2) { flex-basis: 100%; }
-  .mgr-card > :nth-child(4) { grid-column: 1 / -1; margin-top: 0.3rem !important; }
-  .mgr-card > :nth-child(4) p {
-    font-size: 12px; line-height: 1.4; text-transform: none; font-weight: 500; opacity: 1;
-    color: hsl(var(--muted-foreground)); overflow-wrap: anywhere;
+  .mgr-card--task [data-col="deadline"] [data-testid="deadline-pill"] {
+    display: inline-flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    align-self: flex-end !important;
+    justify-content: center !important;
+    padding: 0.35rem 0.55rem !important;
+    border-radius: 0.65rem !important;
+    text-align: center !important;
+    font-weight: 800 !important;
   }
+  .mgr-card--task [data-col="deadline"] [data-testid="deadline-pill"] span:first-child {
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+  .mgr-card--task [data-col="deadline"] [data-testid="deadline-pill"] span:last-child {
+    font-size: 9px !important;
+    font-weight: 700 !important;
+    opacity: 0.9 !important;
+    white-space: nowrap !important;
+    display: block !important;
+  }
+  .mgr-card--task [data-col="deadline"] > span:not([data-testid="deadline-pill"]) {
+    display: block !important;
+    text-align: right !important;
+    font-size: 8.5px !important;
+    line-height: 1.2 !important;
+    margin-top: 0.2rem !important;
+    word-break: break-word !important;
+    max-width: 100% !important;
+  }
+
+  .mgr-card--task [data-col="title"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.25rem !important;
+  }
+  .mgr-card--task [data-col="title"] span:first-child {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    display: block !important;
+  }
+  .mgr-card--task [data-col="title"] [data-testid="given-at"] {
+    display: inline-block !important;
+    margin-top: 0.3rem !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    padding: 0.15rem 0.5rem !important;
+    border-radius: 9999px !important;
+  }
+
+  .mgr-card--task [data-col="description"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.15rem !important;
+  }
+  .mgr-card--task [data-col="description"] p {
+    font-size: 12.5px !important;
+    line-height: 1.35 !important;
+    font-style: italic !important;
+    color: hsl(var(--foreground) / 0.85) !important;
+    margin: 0 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .mgr-card--task [data-col="assignedBy"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.35rem !important;
+    margin-top: 0.25rem !important;
+  }
+  .mgr-card--task [data-col="assignedBy"]::before {
+    content: "GIVEN BY:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    flex-shrink: 0 !important;
+  }
+  .mgr-card--task [data-col="assignedBy"] > span {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .mgr-card--task [data-col="assignedTo"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 5 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.35rem !important;
+    margin-top: 0.15rem !important;
+  }
+  .mgr-card--task [data-col="assignedTo"]::before {
+    content: "ASSIGNED TO:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    flex-shrink: 0 !important;
+  }
+  .mgr-card--task [data-col="assignedTo"] > span {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .mgr-card--task [data-col="followers"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 6 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    margin-top: 0.15rem !important;
+  }
+  .mgr-card--task [data-col="followers"]::before {
+    content: "FOLLOWERS:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    flex-shrink: 0 !important;
+  }
+  .mgr-card--task [data-col="followers"]:has(.follow-none) {
+    display: none !important;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     MANAGE CHECKLIST (.mgr-card--chk)
+     Row 1: [Left: Cycle pill badge]
+     Row 2: Task Title + Given Date pill
+     Row 3: Description / briefing in italics
+     Row 4: GIVEN BY: (Assigner)
+     Row 5: ASSIGNED TO: (Doer)
+     Row 6: SCHEDULE: (Full width dropdown)
+     Row 7: Action buttons
+     ══════════════════════════════════════════════════════════════════════ */
+  .mgr-card--chk [data-col="cycle"] {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    justify-self: start !important;
+    align-self: start !important;
+  }
+  .mgr-card--chk [data-col="cycle"] span {
+    display: inline-block !important;
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    padding: 3px 10px !important;
+    border-radius: 9999px !important;
+    white-space: nowrap !important;
+  }
+
+  .mgr-card--chk [data-col="title"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.25rem !important;
+  }
+  .mgr-card--chk [data-col="title"] span:first-child {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    display: block !important;
+  }
+  .mgr-card--chk [data-col="title"] [data-testid="given-at"] {
+    display: inline-block !important;
+    margin-top: 0.3rem !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    padding: 0.15rem 0.5rem !important;
+    border-radius: 9999px !important;
+  }
+
+  .mgr-card--chk [data-col="description"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 3 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.15rem !important;
+  }
+  .mgr-card--chk [data-col="description"] p {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    font-style: italic !important;
+    color: hsl(var(--foreground) / 0.8) !important;
+    margin: 0 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .mgr-card--chk [data-col="assignedBy"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.35rem !important;
+    margin-top: 0.25rem !important;
+  }
+  .mgr-card--chk [data-col="assignedBy"]::before {
+    content: "GIVEN BY:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    flex-shrink: 0 !important;
+  }
+  .mgr-card--chk [data-col="assignedBy"] > span {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .mgr-card--chk [data-col="doer"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 5 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: baseline !important;
+    gap: 0.35rem !important;
+    margin-top: 0.15rem !important;
+  }
+  .mgr-card--chk [data-col="doer"]::before {
+    content: "ASSIGNED TO:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    flex-shrink: 0 !important;
+  }
+  .mgr-card--chk [data-col="doer"] > span {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .mgr-card--chk [data-col="schedule"] {
+    grid-column: 1 / -1 !important;
+    grid-row: 6 !important;
+    width: 100% !important;
+    margin-top: 0.35rem !important;
+  }
+  .mgr-card--chk [data-col="schedule"]::before {
+    content: "SCHEDULE:" !important;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    color: hsl(var(--muted-foreground)) !important;
+    display: block !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  /* Custom columns (if any added) */
+  .mgr-card [data-col]:not([data-col="sno"]):not([data-col="status"]):not([data-col="deadline"]):not([data-col="cycle"]):not([data-col="schedule"]):not([data-col="title"]):not([data-col="description"]):not([data-col="assignedBy"]):not([data-col="assignedTo"]):not([data-col="doer"]):not([data-col="followers"]):not([data-col="actions"]) {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0.35rem !important;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+     COMMON ACTIONS ROW (Row at bottom)
+     ══════════════════════════════════════════════════════════════════════ */
+  .mgr-card [data-col="actions"],
   .mgr-card > .mobile-grid-actions {
-    grid-column: 1 / -1; display: flex !important; flex-direction: row; flex-wrap: wrap;
-    justify-content: flex-start; gap: 0.5rem; order: 9 !important;
-    margin-top: 0.8rem !important; padding-top: 0.8rem !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 7 !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem !important;
+    margin-top: 0.6rem !important;
+    padding-top: 0.6rem !important;
     border-top: 1px solid hsl(var(--border)) !important;
   }
+  .mgr-card [data-col="actions"] button,
   .mgr-card > .mobile-grid-actions > button {
-    min-width: 2.5rem; min-height: 2.5rem; display: inline-flex;
-    align-items: center; justify-content: center; border-radius: 0.75rem;
-  }
-  /* Delegation: status chip on the left, deadline on the right, above the title */
-  .mgr-card--task > :nth-child(6) { grid-column: 1; grid-row: 1; order: -2 !important; }
-  .mgr-card--task > :nth-child(5) {
-    grid-column: 2; grid-row: 1; order: -2 !important; text-align: right; font-size: 11px;
-    color: hsl(var(--muted-foreground));
-  }
-  .mgr-card--task > :nth-child(6) span {
-    font-size: 9.5px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px;
-  }
-  .mgr-card--task > :nth-child(5) { display: block !important; }
-  /* Delegation: followers under the description (hidden when there are none) */
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions) {
-    grid-column: 1 / -1; display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.45rem;
-    margin-top: 0.4rem !important; order: 4 !important;
-  }
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions)::before {
-    content: "Followers" !important; font-size: 9.5px; font-weight: 800; letter-spacing: 0.08em;
-    text-transform: uppercase; color: hsl(var(--muted-foreground));
-  }
-  .mgr-card--task > :nth-child(7):not(.mobile-grid-actions):has(.follow-none) { display: none !important; }
-  /* Checklist: cycle chip on top, next dates under the description */
-  .mgr-card--chk > :nth-child(5) { grid-column: 1 / -1; grid-row: 1; }
-  .mgr-card--chk > :nth-child(5) span {
-    display: inline-block; font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 3px 8px; border-radius: 6px; background: hsl(var(--primary) / 0.1); border: 1px solid hsl(var(--primary) / 0.25);
-  }
-  .mgr-card--chk > :nth-child(6) { grid-column: 1 / -1; margin-top: 0.7rem !important; order: 5 !important; }
-  .mgr-card--chk > :nth-child(6)::before {
-    content: "Next dates" !important; display: block; font-size: 9.5px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;
+    min-width: 2.4rem !important;
+    min-height: 2.4rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0.75rem !important;
   }
 }
+
+/* ── GLOBAL VIEW RESPONSIVE TABLE VS CARDS ── */
+@media (max-width: 768px) {
+  .gv-desktop-table {
+    display: none !important;
+  }
+  .gv-mobile-cards {
+    display: block !important;
+  }
+}
+@media (min-width: 769px) {
+  .gv-desktop-table {
+    display: block !important;
+  }
+  .gv-mobile-cards {
+    display: none !important;
+  }
+}
+

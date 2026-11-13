@@ -72,14 +72,50 @@ export function resolveColumns(defaults, customDefs, prefCols) {
   if (prefs.size === 0) {
     ordered = movable.map((c) => ({ ...c, isVisible: true }));
   } else {
-    const known = []; const fresh = [];
+    const items = [];
+    let lastKnownOrder = -1000;
+    let freshOffset = 1;
+
     movable.forEach((c, idx) => {
       const p = prefs.get(c.key);
-      if (p) known.push({ ...c, isVisible: c.locked ? true : p.isVisible, _o: p.order, _i: idx, ...(p.width ? { width: `${p.width}px` } : {}) });
-      else fresh.push({ ...c, isVisible: true });
+      if (p) {
+        const order = p.order * 1000;
+        lastKnownOrder = order;
+        freshOffset = 1;
+        items.push({
+          ...c,
+          isVisible: c.locked ? true : p.isVisible,
+          _o: order,
+          _i: idx,
+          ...(p.width ? { width: `${p.width}px` } : {})
+        });
+      } else {
+        const order = lastKnownOrder + freshOffset;
+        freshOffset += 1;
+        items.push({
+          ...c,
+          isVisible: true,
+          _o: order,
+          _i: idx
+        });
+      }
     });
-    known.sort((a, b) => (a._o - b._o) || (a._i - b._i));
-    ordered = [...known, ...fresh].map(({ _o, _i, ...c }) => c);
+
+    // Special guarantee for 'assignedBy':
+    // If 'assignedBy' exists alongside 'title' and ('assignedTo' or 'doer'),
+    // ensure 'assignedBy' is positioned immediately after 'title' and before 'assignedTo' / 'doer'.
+    const titleItem = items.find(it => it.key === 'title');
+    const assignedByItem = items.find(it => it.key === 'assignedBy');
+    const doerItem = items.find(it => it.key === 'assignedTo' || it.key === 'doer');
+
+    if (titleItem && assignedByItem && doerItem) {
+      if (assignedByItem._o >= doerItem._o || assignedByItem._o <= titleItem._o) {
+        assignedByItem._o = titleItem._o + 0.5;
+      }
+    }
+
+    items.sort((a, b) => (a._o - b._o) || (a._i - b._i));
+    ordered = items.map(({ _o, _i, ...c }) => c);
   }
   const all = [...ordered, ...pinned.map((c) => ({ ...c, isVisible: true }))];
   return { all, visible: all.filter((c) => c.isVisible) };

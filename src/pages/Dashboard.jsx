@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import API from "../api/axiosConfig";
 import useCompanySettings from "../hooks/useCompanySettings";
+import { getDynamicPctColor } from "../utils/reviewScore";
 
 // Component Imports
 import Sidebar from "../components/Sidebar";
@@ -15,8 +16,8 @@ import ManageChecklist from "./ManageChecklist";
 import ChecklistMonitor from "./ChecklistMonitor";
 import ThemeToggle from "../components/ThemeToggle"; // Theme Engine
 import FmsDashboard from './FmsDashboard';
-import FlowManagement  from './FlowManagement';
-import ChatPage        from './ChatPage';
+import FlowManagement from './FlowManagement';
+import ChatPage from './ChatPage';
 import FloatingChat from '../components/FloatingChat';
 import AiAssistantPanel from '../components/AiAssistantPanel';
 import MobileDualLauncher from '../components/MobileDualLauncher';
@@ -24,8 +25,8 @@ import { useChat } from '../components/useChat';
 import { isViewerOnly } from '../utils/viewerMode';
 import { DialogHost } from '../components/Dialog';
 import ErrorBoundary from '../components/ErrorBoundary';
-import OrderFormsPage  from './OrderFormsPage';
-import NewOrderPage    from './NewOrderPage';
+import OrderFormsPage from './OrderFormsPage';
+import NewOrderPage from './NewOrderPage';
 import FlowMyTasks from './FlowMyTasks';
 import LeavePage from './LeavePage';
 import AttendancePage from './AttendancePage';
@@ -76,7 +77,7 @@ import {
   Activity,
   Clock,
   RefreshCcw,
-  BarChart3, 
+  BarChart3,
 } from "lucide-react";
 
 import { Plus } from "lucide-react";
@@ -115,7 +116,7 @@ const Dashboard = ({ user, tenantId, onLogout }) => {
   const [chatOpenTrigger, setChatOpenTrigger] = useState(0);
   const [aiOpenTrigger, setAiOpenTrigger] = useState(0);
 
-const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const handleEditInitiated = (emp) => {
     setSelectedEmployee(emp);
     setIsModalOpen(true); // Open modal on edit
@@ -130,10 +131,10 @@ const [isModalOpen, setIsModalOpen] = useState(false);
 
 
   // NEW: State for the Dual Header Efficiency Index
-  const [userScore, setUserScore] = useState({ 
-    chkNotDone: 0, 
-    delNotDone: 0, 
-    totalPoints: 0 
+  const [userScore, setUserScore] = useState({
+    chkNotDone: 0,
+    delNotDone: 0,
+    totalPoints: 0
   });
 
   const [myBadges, setMyBadges] = useState([]);
@@ -142,22 +143,22 @@ const [isModalOpen, setIsModalOpen] = useState(false);
   const currentTenantId = tenantId || localStorage.getItem("tenantId");
 
 
-/*
-  const [liveUser, setLiveUser] = useState(
-  JSON.parse(localStorage.getItem("user"))
-);
+  /*
+    const [liveUser, setLiveUser] = useState(
+    JSON.parse(localStorage.getItem("user"))
+  );
+  
+  
+  const sessionUser = liveUser;
+  
+  */
 
 
-const sessionUser = liveUser;
-
-*/
-
-
-  const sessionUser =JSON.parse(localStorage.getItem("user"));
+  const sessionUser = JSON.parse(localStorage.getItem("user"));
 
   const userId = user?._id || user?.id || sessionUser?.id || sessionUser?._id;
 
- const userRoles =
+  const userRoles =
     user?.roles ||
     sessionUser?.roles ||
     (user?.role ? [user.role] : []) ||
@@ -271,48 +272,48 @@ const sessionUser = liveUser;
     navigate(`/dashboard/${route}`);
     setSelectedEmployee(null);
   };
-/*
-
-
-
-
-const refreshUserProfile = useCallback(async () => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    const res = await API.get(`/superadmin/auth/me`);
-
-    const updatedUser = res.data?.user || res.data;
-
-    // ✅ update storage
-    localStorage.setItem("user", JSON.stringify(updatedUser));
-
-    // ✅ update state (THIS TRIGGERS UI)
-    setLiveUser(updatedUser);
-  } catch (err) {
-    console.error("User refresh failed", err);
-  }
-}, [currentTenantId]);
-
-
-
-
-useEffect(() => {
-  refreshUserProfile();
-}, [refreshUserProfile]);
-
-
-useEffect(() => {
-  const interval = setInterval(() => {
+  /*
+  
+  
+  
+  
+  const refreshUserProfile = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+  
+      const res = await API.get(`/superadmin/auth/me`);
+  
+      const updatedUser = res.data?.user || res.data;
+  
+      // ✅ update storage
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+  
+      // ✅ update state (THIS TRIGGERS UI)
+      setLiveUser(updatedUser);
+    } catch (err) {
+      console.error("User refresh failed", err);
+    }
+  }, [currentTenantId]);
+  
+  
+  
+  
+  useEffect(() => {
     refreshUserProfile();
-  }, 60000); // every 1 min
-
-  return () => clearInterval(interval);
-}, [refreshUserProfile]);
-
-
-*/
+  }, [refreshUserProfile]);
+  
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshUserProfile();
+    }, 60000); // every 1 min
+  
+    return () => clearInterval(interval);
+  }, [refreshUserProfile]);
+  
+  
+  */
   /**
    * LEADERBOARD SUB-COMPONENT
    */
@@ -345,15 +346,14 @@ useEffect(() => {
                 <div className="flex items-center gap-6">
                   <div
                     className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl relative shrink-0
-                  ${
-                    idx === 0
-                      ? "bg-amber-500 text-white dark:text-slate-950 shadow-lg"
-                      : idx === 1
-                      ? "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      : idx === 2
-                      ? "bg-amber-700 text-white"
-                      : "bg-card text-slate-400 border border-border"
-                  }`}
+                  ${idx === 0
+                        ? "bg-amber-500 text-white dark:text-slate-950 shadow-lg"
+                        : idx === 1
+                          ? "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          : idx === 2
+                            ? "bg-amber-700 text-white"
+                            : "bg-card text-slate-400 border border-border"
+                      }`}
                   >
                     {idx + 1}
                   </div>
@@ -365,7 +365,7 @@ useEffect(() => {
 
                     <div className="flex gap-2 mt-2">
                       {Array.isArray(emp.earnedBadges) &&
-                      emp.earnedBadges.length > 0 ? (
+                        emp.earnedBadges.length > 0 ? (
                         emp.earnedBadges.slice(0, 4).map((badge, bIdx) => {
                           const BadgeIcon =
                             badgeIconMap[badge.iconName] || Star;
@@ -402,7 +402,7 @@ useEffect(() => {
   return (
     <div className="flex h-screen w-screen bg-background overflow-hidden font-sans transition-colors duration-500 text-left">
       {/* MOBILE OVERLAY */}
-      {sidebarOpen && ( <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[150] lg:hidden" onClick={() => setSidebarOpen(false)} /> )}
+      {sidebarOpen && (<div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[150] lg:hidden" onClick={() => setSidebarOpen(false)} />)}
 
       {/* SIDEBAR WRAPPER */}
       <div className={`fixed inset-y-0 left-0 z-[200] transform transition-transform duration-500 lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
@@ -428,42 +428,42 @@ useEffect(() => {
                 <h2 className="text-foreground text-sm md:text-base font-black tracking-tight leading-none mb-1 uppercase">
                   {getPageTitle()}
                 </h2>
-                
+
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 md:gap-8 h-full">
-            
+
             {/* UPDATED DUAL EFFICIENCY INDEX PILL */}
             <div className="hidden lg:flex items-center gap-6 pr-8 border-r border-border">
-               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] leading-tight text-right">Not Done<br/>Index</span>
-               <div className="bg-background border border-border rounded-full p-1.5 flex items-center gap-6 pr-6 shadow-inner">
-                  
-                  {/* Category 1: Checklist */}
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray="100" strokeDashoffset={100 - userScore.chkNotDone} className={`${userScore.chkNotDone > 20 ? 'text-red-500' : 'text-sky-500'} transition-all duration-1000`} />
-                        </svg>
-                        <span className="absolute text-[8px] font-black text-foreground">{Math.round(userScore.chkNotDone)}%</span>
-                    </div>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CHK</span>
-                  </div>
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] leading-tight text-right">Not Done<br />Index</span>
+              <div className="bg-background border border-border rounded-full p-1.5 flex items-center gap-6 pr-6 shadow-inner">
 
-                  {/* Category 2: Delegation */}
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                        <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                        <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray="100" strokeDashoffset={100 - userScore.delNotDone} className={`${userScore.delNotDone > 20 ? 'text-red-500' : 'text-purple-500'} transition-all duration-1000`} />
-                        </svg>
-                        <span className="absolute text-[8px] font-black text-foreground">{Math.round(userScore.delNotDone)}%</span>
-                    </div>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">DEL</span>
+                {/* Category 1: Checklist */}
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                      <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray="100" strokeDashoffset={100 - userScore.chkNotDone} style={{ color: getDynamicPctColor(userScore.chkNotDone).bg }} className="transition-all duration-1000" />
+                    </svg>
+                    <span className="absolute text-[8px] font-black text-foreground">{Math.round(userScore.chkNotDone)}%</span>
                   </div>
-               </div>
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CHK</span>
+                </div>
+
+                {/* Category 2: Delegation */}
+                <div className="flex items-center gap-3">
+                  <div className="relative w-10 h-10 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                      <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                      <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray="100" strokeDashoffset={100 - userScore.delNotDone} style={{ color: getDynamicPctColor(userScore.delNotDone).bg }} className="transition-all duration-1000" />
+                    </svg>
+                    <span className="absolute text-[8px] font-black text-foreground">{Math.round(userScore.delNotDone)}%</span>
+                  </div>
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">DEL</span>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -488,18 +488,18 @@ useEffect(() => {
           : `p-4 md:px-8 md:pt-3 md:pb-10 w-full max-w-8xl mx-auto animate-in fade-in slide-in-from-bottom-3 duration-700${isViewerOnly() ? '' : ' has-bottom-nav-space'}`
         }>
           <ErrorBoundary resetKey={location.pathname}>
-          {isViewerOnly() ? (
-          <Routes>
-            <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
-            <Route path="*" element={<Navigate to="/dashboard/global-view" replace />} />
-          </Routes>
-          ) : (
-          <Routes>
-            <Route path="/" element={landOnDelegation ? <Navigate to="/dashboard/manage-tasks" replace /> : <UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
+            {isViewerOnly() ? (
+              <Routes>
+                <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
+                <Route path="*" element={<Navigate to="/dashboard/global-view" replace />} />
+              </Routes>
+            ) : (
+              <Routes>
+                <Route path="/" element={landOnDelegation ? <Navigate to="/dashboard/manage-tasks" replace /> : <UserDashboard tenantId={currentTenantId} userId={userId} isAdmin={isAdmin} />} />
 
-            <Route path="review-meeting" element={guard('menu_reviewMeeting', <ReviewMeeting tenantId={currentTenantId} />)} />
-            <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
-           {/* <Route path="employees" element={
+                <Route path="review-meeting" element={guard('menu_reviewMeeting', <ReviewMeeting tenantId={currentTenantId} />)} />
+                <Route path="global-view" element={<GlobalView tenantId={currentTenantId} />} />
+                {/* <Route path="employees" element={
                 <div className="flex flex-col gap-10">
                   <div className="bg-card p-2 rounded-[2.5rem] border border-border shadow-2xl">
                     <AddEmployee tenantId={currentTenantId} selectedEmployee={selectedEmployee} onSuccess={() => { fetchEmployees(); setSelectedEmployee(null); }} />
@@ -516,80 +516,80 @@ useEffect(() => {
             />*/}
 
 
-            <Route path="employees" element={
-  <div className="relative">
-    {/* POPUP MODAL OVERLAY */}
-    {isModalOpen && (
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
-        {/* Backdrop */}
-        <div 
-          className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" 
-          onClick={handleCloseModal}
-        />
-        
-        {/* Modal Content */}
-        <div className="mobile-sheet relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
-           {/* Close Button */}
-           <button 
-              onClick={handleCloseModal}
-              className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-[101]"
-           >
-              <X size={24} />
-           </button>
+                <Route path="employees" element={
+                  <div className="relative">
+                    {/* POPUP MODAL OVERLAY */}
+                    {isModalOpen && (
+                      <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
+                        {/* Backdrop */}
+                        <div
+                          className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+                          onClick={handleCloseModal}
+                        />
 
-           <AddEmployee 
-              tenantId={currentTenantId} 
-              selectedEmployee={selectedEmployee} 
-              onSuccess={() => { 
-                  fetchEmployees(); 
-                  handleCloseModal(); 
-              }} 
-           />
-        </div>
-      </div>
-    )}
+                        {/* Modal Content */}
+                        <div className="mobile-sheet relative w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-card rounded-[2.5rem] border border-border shadow-2xl animate-in zoom-in-95 duration-300">
+                          {/* Close Button */}
+                          <button
+                            onClick={handleCloseModal}
+                            className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-[101]"
+                          >
+                            <X size={24} />
+                          </button>
 
-    {/* DATA TABLE */}
-    <RegisteredEmployees 
-      employees={employees} 
-      onEdit={handleEditInitiated} 
-      fetchEmployees={fetchEmployees}
-      onAddNew={() => {
-        setSelectedEmployee(null); // Clear previous edit data
-        setIsModalOpen(true);
-      }}
-    />
-  </div>
-} /> 
+                          <AddEmployee
+                            tenantId={currentTenantId}
+                            selectedEmployee={selectedEmployee}
+                            onSuccess={() => {
+                              fetchEmployees();
+                              handleCloseModal();
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-            <Route path="raise-ticket" element={guard('menu_raiseTicket', <RaiseTicket userId={userId} tenantId={currentTenantId} />)} />
-            <Route path="factory-settings" element={<SettingsPage tenantId={currentTenantId} />} />
-            <Route path="mapping" element={<CoordinatorMapping tenantId={currentTenantId} />} />
-            <Route path="create-task" element={ <CreateTask tenantId={currentTenantId} assignerId={userId} /> } />
-            <Route path="manage-tasks" element={ <ManageTasks assignerId={userId} tenantId={currentTenantId} /> } />
-            <Route path="checklist-setup" element={<CreateChecklist tenantId={currentTenantId} />} />
-            <Route path="manage-checklist" element={<ManageChecklist tenantId={currentTenantId} />} />
-            <Route path="checklist-monitor" element={<ChecklistMonitor tenantId={currentTenantId} />} />
-            <Route path="my-tasks" element={<DoerChecklist doerId={userId} />} />
-            <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
-            <Route path="following" element={guard('menu_following', <FollowingTasks employeeId={userId} />)} />
-            <Route path="personal-tasks" element={guard('menu_personalTasks', <PersonalTasks />)} />
-            <Route path="planner" element={<Planner />} />
-            <Route path="tracking" element={guard('menu_tracking', <CoordinatorDashboard coordinatorId={userId} />)} />
-            <Route path="rewards-log" element={guard('menu_rewardsLog', <RewardsLog userId={userId} tenantId={currentTenantId} />)} />
-            <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
-            <Route path="/reports" element={guard('menu_reportsHub', <ReportsTab tenantId={tenantId} />)} />
-            <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
-            <Route path="chat" element={chatEnabled && companyOn('menu_chat') ? <ChatPage currentUser={user} /> : <Navigate to="/dashboard" replace />} />
-            <Route path="order-forms" element={guard('menu_orderForms', <OrderFormsPage tenantId={tenantId} />)} />
-            <Route path="new-order" element={guard('menu_newOrder', <NewOrderPage tenantId={tenantId} />)} />
-            <Route path="flow-management" element={guard('menu_flowManagement', <FlowManagement tenantId={tenantId} user={user} />)} />
-            <Route path="flow-tasks" element={guard('menu_myFlowTasks', <FlowMyTasks employeeId={userId} />)} />
-            <Route path="leave" element={guard('menu_leave', <LeavePage tenantId={currentTenantId} />)} />
-            <Route path="attendance" element={guard('menu_attendance', <AttendancePage />)} />
-            <Route path="payroll" element={guard('menu_payroll', <PayrollPage />)} />
-          </Routes>
-          )}
+                    {/* DATA TABLE */}
+                    <RegisteredEmployees
+                      employees={employees}
+                      onEdit={handleEditInitiated}
+                      fetchEmployees={fetchEmployees}
+                      onAddNew={() => {
+                        setSelectedEmployee(null); // Clear previous edit data
+                        setIsModalOpen(true);
+                      }}
+                    />
+                  </div>
+                } />
+
+                <Route path="raise-ticket" element={guard('menu_raiseTicket', <RaiseTicket userId={userId} tenantId={currentTenantId} />)} />
+                <Route path="factory-settings" element={<SettingsPage tenantId={currentTenantId} />} />
+                <Route path="mapping" element={<CoordinatorMapping tenantId={currentTenantId} />} />
+                <Route path="create-task" element={<CreateTask tenantId={currentTenantId} assignerId={userId} />} />
+                <Route path="manage-tasks" element={<ManageTasks assignerId={userId} tenantId={currentTenantId} />} />
+                <Route path="checklist-setup" element={<CreateChecklist tenantId={currentTenantId} />} />
+                <Route path="manage-checklist" element={<ManageChecklist tenantId={currentTenantId} assignerId={userId} />} />
+                <Route path="checklist-monitor" element={<ChecklistMonitor tenantId={currentTenantId} />} />
+                <Route path="my-tasks" element={<DoerChecklist doerId={userId} />} />
+                <Route path="checklist" element={<DoerChecklist doerId={userId} />} />
+                <Route path="following" element={guard('menu_following', <FollowingTasks employeeId={userId} />)} />
+                <Route path="personal-tasks" element={guard('menu_personalTasks', <PersonalTasks />)} />
+                <Route path="planner" element={<Planner />} />
+                <Route path="tracking" element={guard('menu_tracking', <CoordinatorDashboard coordinatorId={userId} />)} />
+                <Route path="rewards-log" element={guard('menu_rewardsLog', <RewardsLog userId={userId} tenantId={currentTenantId} />)} />
+                <Route path="settings" element={<SettingsPage tenantId={tenantId} />} />
+                <Route path="/reports" element={guard('menu_reportsHub', <ReportsTab tenantId={tenantId} />)} />
+                <Route path="fms-dashboard" element={<FmsDashboard tenantId={tenantId} />} />
+                <Route path="chat" element={chatEnabled && companyOn('menu_chat') ? <ChatPage currentUser={user} /> : <Navigate to="/dashboard" replace />} />
+                <Route path="order-forms" element={guard('menu_orderForms', <OrderFormsPage tenantId={tenantId} />)} />
+                <Route path="new-order" element={guard('menu_newOrder', <NewOrderPage tenantId={tenantId} />)} />
+                <Route path="flow-management" element={guard('menu_flowManagement', <FlowManagement tenantId={tenantId} user={user} />)} />
+                <Route path="flow-tasks" element={guard('menu_myFlowTasks', <FlowMyTasks employeeId={userId} />)} />
+                <Route path="leave" element={guard('menu_leave', <LeavePage tenantId={currentTenantId} />)} />
+                <Route path="attendance" element={guard('menu_attendance', <AttendancePage />)} />
+                <Route path="payroll" element={guard('menu_payroll', <PayrollPage />)} />
+              </Routes>
+            )}
           </ErrorBoundary>
         </main>
 

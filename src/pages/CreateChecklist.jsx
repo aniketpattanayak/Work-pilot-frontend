@@ -64,6 +64,8 @@ const CreateChecklist = ({ tenantId, onSuccess, hideHeader = false }) => {
   });
 
   const currentTenantId = tenantId || localStorage.getItem('tenantId');
+  const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentAssignerId = savedUser?._id || savedUser?.id;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -183,7 +185,7 @@ const isDisabledDate = (date) =>
 
     setLoading(true);
     try {
-      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId, customFields: customValues });
+      await API.post('/tasks/create-checklist', { ...formData, tenantId: currentTenantId, createdBy: currentAssignerId, customFields: customValues });
       dialog.alert("The checklist task was created.", { tone: 'success' });
       setFormData({ 
         taskName: '', description: '', doerId: '', frequency: 'Daily',

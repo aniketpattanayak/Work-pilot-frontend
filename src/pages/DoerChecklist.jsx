@@ -98,6 +98,81 @@ const toFmsItem = (i) => ({
   followerNames: [],
 });
 
+const ORDER_OPTIONS = [
+  { value: 'Default', label: 'Default (overdue first)' },
+  { value: 'Recent first', label: 'Recent first (newest given)' },
+  { value: 'Oldest first', label: 'Oldest given first' },
+  { value: 'Deadline earliest', label: 'Deadline: earliest first' },
+  { value: 'Deadline latest', label: 'Deadline: latest first' },
+];
+
+function OrderFilterDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const current = ORDER_OPTIONS.find((o) => o.value === value) || ORDER_OPTIONS[0];
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    if (open) {
+      document.addEventListener('mousedown', handleOutside);
+      document.addEventListener('touchstart', handleOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative inline-block min-w-0">
+      <button
+        type="button"
+        aria-label="Order"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center justify-between gap-1.5 bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[136px] max-w-full text-left truncate cursor-pointer hover:text-primary transition-colors py-0.5"
+      >
+        <span className="truncate">{current.label}</span>
+        <ChevronDown size={11} className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute left-0 top-full mt-1.5 w-60 z-[100] bg-card dark:bg-slate-900 border border-border dark:border-slate-700 rounded-xl shadow-2xl py-1 overflow-hidden backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+        >
+          {ORDER_OPTIONS.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors flex items-center justify-between cursor-pointer ${
+                  isSelected
+                    ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary font-bold'
+                    : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <span className="text-primary text-[11px] font-black shrink-0 ml-1">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DoerChecklist = ({ doerId }) => {
   const { isOn: companyAllows } = useCompanySettings(); // Settings > Functions on / off
   const { openTaskThread, chatEnabled } = useChat();
@@ -205,8 +280,15 @@ const DoerChecklist = ({ doerId }) => {
     idOf(t.doerId) !== String(currentDoerId) &&
     (t.forwardChain || []).some(c => idOf(c.employeeId) === String(currentDoerId));
   // A task I only FOLLOW (the doer is someone else): I can watch it, chat with the doer and read its history, nothing else
-  const isFollowerRow = (t) => t.dataType === 'Delegation' && t.myRole === 'follower';
-  const followerWhy = (t) => `You only follow this task. Only ${(t.doerId && t.doerId.name) || 'the doer'} can do this.`;
+  const isFollowerRow = (t) => (!t.dataType || t.dataType === 'Delegation') && (
+    t.myRole === 'follower' ||
+    (idOf(t.doerId) !== String(currentDoerId) && (
+      (t.followers || []).some(f => idOf(f) === String(currentDoerId) || idOf(f._id) === String(currentDoerId)) ||
+      (t.coworkers || []).some(c => idOf(c) === String(currentDoerId) || idOf(c._id) === String(currentDoerId)) ||
+      (t.helperDoers || []).some(h => idOf(h.helperId) === String(currentDoerId))
+    ))
+  );
+  const followerWhy = (t) => `You only follow this task. Only ${(t.doerId && t.doerId.name) || t.assignedToName || 'the doer'} can do this.`;
   const canForward = (t) =>
     companyAllows('delegation_assignOnward') &&
     myRoles.includes('Assigner') &&
@@ -404,6 +486,10 @@ const DoerChecklist = ({ doerId }) => {
     };
 
     const assignmentsKept = delegatedTasks.filter(item => {
+      const isMine = idOf(item.doerId) === String(currentDoerId);
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.status === 'Completed' || item.status === 'Verified';
       const isPending = !isCompleted;
       return !item.planId && givenOk('Delegation', item) && filterByDateAndStatus(item.deadline, isCompleted, isPending);
@@ -412,6 +498,10 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(assignmentsKept, (i) => i.deadline, (i) => i.status === 'Completed' || i.status === 'Verified', (i) => !!(i.onHold && i.onHold.isOn)));
 
     const checklistKept = checklist.filter(item => {
+      const isMine = idOf(item.doerId) === String(currentDoerId);
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.isDone;
       const isPending = !isCompleted;
       return !item.planId && givenOk('Checklist', item) && filterByDateAndStatus(item.instanceDate || item.nextDueDate, isCompleted, isPending);
@@ -420,6 +510,10 @@ const DoerChecklist = ({ doerId }) => {
       sortSeq(checklistKept, (i) => i.instanceDate || i.nextDueDate, (i) => !!i.isDone));
 
     const fmsKept = fmsMissions.filter(item => {
+      const isMine = !item.activeStep?.assignedToId || String(item.activeStep.assignedToId) === String(currentDoerId);
+      const isFollower = isFollowerRow(item);
+      const passed = isPassedOn(item);
+      if (!isMine && !isFollower && !passed) return false;
       const isCompleted = item.status === 'completed';
       const isPending = !isCompleted;
       const deadlineDate = item.activeStep?.plannedDeadline || item.completedAt || item.plannedDeadline;
@@ -430,8 +524,8 @@ const DoerChecklist = ({ doerId }) => {
 
     // Tasks made from a Planner step live on their own "Planner" tab, not in the lists above
     const planKept = [
-      ...delegatedTasks.filter((i) => i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
-      ...checklist.filter((i) => i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
+      ...delegatedTasks.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Delegation', i) && filterByDateAndStatus(i.deadline, i.status === 'Completed' || i.status === 'Verified', !(i.status === 'Completed' || i.status === 'Verified'))).map(toDelegationItem),
+      ...checklist.filter((i) => idOf(i.doerId) === String(currentDoerId) && i.planId && givenOk('Checklist', i) && filterByDateAndStatus(i.instanceDate || i.nextDueDate, !!i.isDone, !i.isDone)).map(toChecklistItem),
     ];
     const planN = sortSeq(planKept, (i) => i.deadlineDate, (i) => (i.dataType === 'Checklist' ? !!i.isDone : (i.status === 'Completed' || i.status === 'Verified')), (i) => !!(i.onHold && i.onHold.isOn));
     const routinesN = filteredChecklist.map(toChecklistItem);
@@ -460,7 +554,7 @@ const DoerChecklist = ({ doerId }) => {
     if (bulkOn) {
       cols.push({
         key: 'select', label: 'Select', width: '28px', locked: true, cellClassName: 'min-w-0',
-        render: (it) => <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
+        render: (it) => isFollowerRow(it) ? <span title={followerWhy(it)} className="inline-block w-4 h-4" /> : <input type="checkbox" aria-label={`Select ${it.title}`} checked={!!selected[it.uniqueKey]} onChange={() => toggleOne(it.uniqueKey)} className="w-4 h-4 accent-[hsl(var(--primary))]" />
       });
     }
     cols.push(
@@ -482,7 +576,7 @@ const DoerChecklist = ({ doerId }) => {
       { key: 'assignedTo', label: 'Assigned To', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 whitespace-normal break-words leading-tight px-1', render: (it) => it.assignedToName || '-' },
       { key: 'followers', label: 'Followers', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
       { key: 'description', label: 'Description', width: 'minmax(100px,1.4fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
-      { key: 'date', label: 'Deadline', width: 'minmax(112px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
+      { key: 'date', label: 'Deadline', width: 'minmax(112px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-col items-center justify-center gap-1 text-[9px] font-bold', render: (it) => dateCell(it) },
       { key: 'status', label: 'Priority / Status', width: 'minmax(108px,0.9fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
       { key: 'actions', label: 'Actions', width: '112px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-1.5', render: (it) => actionsFor(it) },
     );
@@ -528,10 +622,10 @@ const DoerChecklist = ({ doerId }) => {
     target.setHours(0, 0, 0, 0);
     return n + (target.getTime() <= today.getTime() ? Math.max(1, Number(item.pendingDue) || 1) : 1);
   }, 0);
-  const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && t.myRole !== 'follower').length;
+  const pendingDelegationsCount = delegatedTasks.filter(t => !t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isPassedOn(t) && !isFollowerRow(t)).length;
   // Tasks made from a Planner step get their own tab
   const hasPlanTasks = delegatedTasks.some((t) => t.planId) || checklist.some((t) => t.planId);
-  const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && t.myRole !== 'follower').length + checklist.filter((t) => t.planId && !t.isDone).length;
+  const pendingPlanCount = delegatedTasks.filter((t) => t.planId && t.status !== 'Completed' && t.status !== 'Verified' && !isFollowerRow(t)).length + checklist.filter((t) => t.planId && !t.isDone).length;
   const allPendingCount = pendingRoutinesCount + pendingDelegationsCount + fmsMissions.filter(f => f.status !== 'completed').length + (hasPlanTasks ? pendingPlanCount : 0);
 
   const maxFileMb = useUploadLimit();
@@ -549,14 +643,17 @@ const DoerChecklist = ({ doerId }) => {
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
     if (!activeTask) return;
+    if (activeTask.dataType === 'Delegation' && isFollowerRow(activeTask)) { dialog.alert("You only follow this task. Only the assignee can complete it.", { tone: 'error' }); setShowModal(false); return; }
 
     const formData = new FormData();
     formData.append("remarks", remarks || "");
 
     try {
       setUploading(true);
+      let isChecklist = false;
 
-      if (modalType === "Checklist") {
+      isChecklist = activeTask.dataType === "Checklist" || (modalType === "Checklist" && activeTask.dataType !== "Delegation");
+      if (isChecklist) {
         formData.append("checklistId", activeTask._id);
         if (activeTask.instanceDate) {
           formData.append("instanceDate", activeTask.instanceDate);
@@ -575,7 +672,8 @@ const DoerChecklist = ({ doerId }) => {
       }
 
       // Show the result at once (Action greyed out, count down) - the refresh below then confirms it from the server.
-      if (modalType === "Checklist") {
+      isChecklist = activeTask.dataType === "Checklist" || (modalType === "Checklist" && activeTask.dataType !== "Delegation");
+      if (isChecklist) {
         const sameDay = (a, b) => new Date(a || 0).toDateString() === new Date(b || 0).toDateString();
         setChecklist((prev) => prev.map((c) => {
           if (String(c._id) !== String(activeTask._id) || c.isDone) return c;
@@ -605,7 +703,16 @@ const DoerChecklist = ({ doerId }) => {
   // ───────── My Tasks helpers: selection, hold, sub tasks, one Actions button ─────────
   const isDoneItem = (it) => it.dataType === 'Checklist' ? !!it.isDone : it.dataType === 'Delegation' ? ['Completed', 'Verified'].includes(it.status) : it.status === 'completed';
   const isHeld = (it) => !!(it.onHold && it.onHold.isOn) && !isDoneItem(it);
-  const notDueYet = (it) => { if (it.dataType !== 'Checklist' && it.dataType !== 'Delegation') return false; const d = new Date(it.deadlineDate); d.setHours(0, 0, 0, 0); const t = new Date(); t.setHours(0, 0, 0, 0); return d.getTime() > t.getTime(); };
+  const notDueYet = (it) => {
+    // Delegation tasks can be completed early based on actual completion date before deadline!
+    if (!it || it.dataType === 'Delegation' || (!it.frequency && it.deadline)) return false;
+    if (it.dataType !== 'Checklist') return false;
+    const d = new Date(it.deadlineDate);
+    d.setHours(0, 0, 0, 0);
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return d.getTime() > t.getTime();
+  };
   const isPastDueItem = (it) => !!it.deadlineDate && new Date(it.deadlineDate) < new Date() && !isDoneItem(it) && !isHeld(it);
   const isFmsDelayed = (it) => !!it.isOverdue || (!!it.deadlineDate && it.status !== 'completed' && new Date() > new Date(it.deadlineDate));
   const fmtDM = (d) => new Date(d).toLocaleDateString([], { day: '2-digit', month: 'short' });
@@ -644,7 +751,7 @@ const DoerChecklist = ({ doerId }) => {
       if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
       if (isPassedOn(it)) return { ok: false, why: `You passed this task to ${(it.doerId && it.doerId.name) || 'someone else'}.` };
       if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so it cannot be completed now.` };
-      if (notDueYet(it)) return { ok: false, why: 'It is scheduled for a later date.' };
+      // Note: Early completion is allowed before deadline for delegation tasks
       return { ok: true };
     }
     if (notDueYet(it)) return { ok: false, why: 'It is not due yet.' };
@@ -652,13 +759,13 @@ const DoerChecklist = ({ doerId }) => {
   };
   const reviseCheck = (it) => {
     if (it.dataType !== 'Delegation') return { ok: false, why: 'Only delegation tasks can get a new date here.' };
-    if (!companyAllows('delegation_doerRevise')) return { ok: false, why: 'Your company has switched off date changes by doers.' };
+
     if (isDoneItem(it)) return { ok: false, why: 'Already done.' };
     if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
     if (isPassedOn(it)) return { ok: false, why: 'You passed this task to someone else.' };
     if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so the date cannot be changed now.` };
-    if (it.isRevisionAllowed === false) return { ok: false, why: 'The person who gave the task did not allow date changes.' };
-    if (isPastDueItem(it) || (it.deadlineDate && new Date(it.deadlineDate) < new Date())) return { ok: false, why: 'The deadline has already passed.' };
+    if (it.isRevisionAllowed === false || it.isRevisionAllowed === 'false') return { ok: false, why: 'The person who gave the task did not allow date changes.' };
+
     if ((it.history || []).some((h) => h.action === 'Deadline Approved' || h.action === 'Deadline Revised')) return { ok: false, why: 'The date was already changed once.' };
     return { ok: true };
   };
@@ -679,6 +786,9 @@ const DoerChecklist = ({ doerId }) => {
   const allTicked = rowsNow.length > 0 && rowsNow.every((i) => selected[i.uniqueKey]);
   const toggleOne = (k) => setSelected((s) => { const n = { ...s }; if (n[k]) delete n[k]; else n[k] = true; return n; });
   const toggleAll = () => setSelected((s) => { const n = { ...s }; if (rowsNow.every((i) => n[i.uniqueKey])) rowsNow.forEach((i) => delete n[i.uniqueKey]); else rowsNow.forEach((i) => { n[i.uniqueKey] = true; }); return n; });
+  // Excel download: checklist days and delegation tasks are in the report (FMS steps and planner items are not)
+  const excelOk = (i) => i.dataType === 'Checklist' || i.dataType === 'Delegation';
+  const excelId = (i) => (i.dataType === 'Checklist' && i.instanceDate ? `${i._id}|${i.instanceDate}` : String(i._id));
   const closeBulk = (count) => {
     setBulkMode(null);
     if (count > 0) { setSelected({}); setFlash(`${count} task${count > 1 ? 's' : ''} updated.`); fetchAllTasks(); }
@@ -705,8 +815,8 @@ const DoerChecklist = ({ doerId }) => {
     const held = isHeld(item);
     const menu = [];
     if (!done && !passed && !follower) {
-      if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Submit', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
-      else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Done', onClick: () => openSingle(item) });
+      if (item.dataType === 'Checklist') menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
+      else if (item.dataType === 'FMS') menu.push({ key: 'complete', label: 'Complete', onClick: () => openSingle(item) });
       else if (['Pending', 'Accepted'].includes(item.status)) menu.push({ key: 'complete', label: 'Complete', disabled: notDueYet(item), hint: notDueYet(item) ? 'Not due yet' : undefined, onClick: () => openSingle(item) });
       if (canForward(item)) menu.push({ key: 'onward', label: 'Assign Onward', onClick: () => openOnward(item) });
       // "Put on hold" is no longer offered. A task that is already on hold can still be resumed.
@@ -772,15 +882,33 @@ const DoerChecklist = ({ doerId }) => {
       )}
     </>
   );
+  // Revise Date button in Deadline column
+  const reviseDateButton = (it) => (it.dataType === 'Delegation' && reviseCheck(it).ok ? (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setSelectedTask(it); setShowRevisionModal(true); }}
+      data-testid="revise-link"
+      className="inline-flex items-center gap-1 px-2.5 py-0.5 mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-95 cursor-pointer shadow-sm"
+      title="Revise Date"
+    >
+      <Clock size={10} />
+      <span>Revise</span>
+    </button>
+  ) : null);
+
   const dateCell = (it) => {
     const red = isPastDueItem(it) && !it.isBacklog;
     return (
       <>
-        <Calendar size={12} className="text-primary/30 shrink-0" />
-        <p className={`uppercase tracking-tighter whitespace-nowrap ${red ? 'text-red-500' : it.isBacklog && !isDoneItem(it) ? 'text-amber-600' : 'text-slate-500'}`}>{dateTextOf(it)}</p>
+        <div className="flex items-center gap-1">
+          <Calendar size={12} className="text-primary/30 shrink-0" />
+          <p className={`uppercase tracking-tighter whitespace-nowrap ${red ? 'text-red-500' : it.isBacklog && !isDoneItem(it) ? 'text-amber-600' : 'text-slate-500'}`}>{dateTextOf(it)}</p>
+        </div>
         {isHeld(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600">Clock paused</span>}
         {it.dataType === 'Checklist' && !it.isDone && Number(it.pendingDue) > 1 && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="Missed days still waiting to be submitted">{it.pendingDue} days pending</span>}
         {revisedNote(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was changed">{revisedNote(it)}</span>}
+        {reviseDateButton(it)}
+
       </>
     );
   };
@@ -792,21 +920,27 @@ const DoerChecklist = ({ doerId }) => {
     }
     if (it.dataType === 'Checklist') return <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{it.frequency || 'Daily'} CYCLE</span>;
     return (
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex items-center gap-1.5">
-          <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
-          <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
-        </div>
-        {reviseLink(it)}
+      <div className="flex items-center gap-1.5">
+
+        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
+        <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
       </div>
     );
   };
-  // "Revise" sits under Priority / Status (it used to be in the Actions menu)
-  const reviseLink = (it) => (it.dataType === 'Delegation' && reviseCheck(it).ok ? (
-    <button type="button" onClick={() => { setSelectedTask(it); setShowRevisionModal(true); }} data-testid="revise-link"
-      className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-colors active:scale-95 max-lg:min-h-8"
-      title="Ask for more time on this task">Revise</button>
+  /* OLD_REVISE_LINK_CLEANUP
+        </div>
+
+      </div>
+    );
+  };
+
+
+
+
+
   ) : null);
+
+  */
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[300px] bg-transparent">
@@ -821,21 +955,21 @@ const DoerChecklist = ({ doerId }) => {
   return (
     <div className="w-full max-w-[1600px] mx-auto animate-in fade-in duration-700 pb-20 px-2 sm:px-6">
 
-      {/* HEADER SECTION */}
-      <div className="flex flex-row justify-between items-center mb-3 py-2 border-b border-border gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="bg-primary/10 p-2 rounded-lg border border-primary/20 shadow-inner shrink-0">
-            <ClipboardCheck size={20} className="text-primary" />
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="shrink-0"><ClipboardCheck size={20} className="text-primary" />
+
           </div>
-          <div className="min-w-0">
-            <h2 className="text-foreground text-lg sm:text-xl font-black tracking-tighter uppercase leading-none truncate">My Tasks</h2>
-            <p className="text-slate-500 text-[8px] font-black uppercase tracking-widest mt-1 opacity-60 truncate">Session Active: {new Date().toLocaleDateString()}</p>
+          <div className="my-tasks-title-wrap min-w-0">
+          <h2 className="text-foreground text-xl max-md:text-lg font-black tracking-tight uppercase leading-none max-md:whitespace-normal truncate">My Tasks</h2>
+
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="hidden lg:block shrink-0"><ColumnCustomizer ctl={ctl} /></div>
-          <button onClick={fetchAllTasks} className="group bg-card border border-border px-3 sm:px-4 py-1.5 min-h-[44px] lg:min-h-[40px] rounded-lg text-foreground font-black text-[10px] sm:text-[12px] uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-sm shrink-0">
-            <RefreshCcw size={12} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
+          <div className="col-span-1 sm:flex-none"><ColumnCustomizer ctl={ctl} className="w-full sm:w-auto justify-center" /></div>
+          <button onClick={fetchAllTasks} className="col-span-2 sm:col-span-1 sm:flex-none min-w-0 sm:min-w-[100px] bg-card hover:bg-background border border-border px-3 sm:px-4 py-2 rounded-xl text-foreground font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-sm">
+            <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700 text-primary" /> Refresh
           </button>
         </div>
       </div>
@@ -942,13 +1076,15 @@ const DoerChecklist = ({ doerId }) => {
             </label>
             <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
               <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Order</span>
-              <select aria-label="Order" value={sortMode} onChange={(e) => setSortMode(e.target.value)} className="bg-transparent text-xs text-foreground font-semibold outline-none min-w-0 w-[132px] max-w-full truncate">
-                <option value="Default">Default (overdue first)</option>
-                <option value="Recent first">Recent first (newest given)</option>
-                <option value="Oldest first">Oldest given first</option>
-                <option value="Deadline earliest">Deadline: earliest first</option>
-                <option value="Deadline latest">Deadline: latest first</option>
-              </select>
+              <OrderFilterDropdown value={sortMode} onChange={setSortMode} />
+
+
+
+
+
+
+
+
             </label>
             <label className="flex items-center gap-1 bg-background border border-border px-1.5 py-1 rounded-lg min-w-0">
               <span className="text-[8px] font-black uppercase text-slate-400 shrink-0 whitespace-nowrap">Deadline from</span>
@@ -1019,6 +1155,7 @@ const DoerChecklist = ({ doerId }) => {
               )}
               <button type="button" onClick={() => setSelected({})} className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-red-500">Clear</button>
             </div>
+
           )}
         </div>
       </div>
@@ -1034,6 +1171,7 @@ const DoerChecklist = ({ doerId }) => {
                   ? <input type="checkbox" aria-label="Select all tasks" checked={allTicked} onChange={toggleAll} className="w-4 h-4 accent-[hsl(var(--primary))]" />
                   : c.label}
               </div>
+  
             ))}
           </div>
 
@@ -1055,23 +1193,26 @@ const DoerChecklist = ({ doerId }) => {
                     <div className="lg:hidden flex items-center gap-2 px-0.5 pt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-muted-foreground">
                       <span>{ci.group} · {groupCount}</span><span className="flex-1 h-px bg-border" />
                     </div>
+        
                   )}
                   {/* Computer row */}
                   <div data-row={k} className={`max-lg:hidden grid items-center gap-2 px-6 py-3 border-b border-border last:border-0 hover:bg-muted/40 ${rowTone(item)} ${ticked ? 'bg-primary/5' : ''}`} style={{ gridTemplateColumns: ctl.gridTemplate }}>
                     {ctl.columns.map((c) => (
                       <div key={c.key} className={`${c.cellClassName || 'min-w-0 text-xs font-semibold'} ${c.key === 'actions' ? 'lg:sticky lg:right-0 z-10 bg-card pl-2 -my-3 py-3 lg:shadow-[-8px_0_8px_-6px_rgba(0,0,0,0.35)]' : ''}`} data-col={c.key}>{c.render ? c.render(item, index) : null}</div>
                     ))}
+      
                   </div>
                   {/* Phone card */}
                   <div data-card={k} className={`lg:hidden relative overflow-hidden ${item.dataType === 'Delegation' && item.myRole === 'follower' ? 'bg-indigo-500/[0.07]' : 'bg-card'} border ${ticked ? 'border-primary' : 'border-border'} rounded-2xl pl-5 pr-3.5 py-3.5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 ${ci.stripe} ${ci.group === 'Completed' ? 'opacity-85' : ''}`}>
                     <div className="flex items-center gap-1.5 mb-2">
-                      {bulkOn && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
+                      {bulkOn && !isFollowerRow(item) && <input type="checkbox" aria-label={`Select ${item.title}`} checked={ticked} onChange={() => toggleOne(k)} className="w-4 h-4 mr-1 accent-[hsl(var(--primary))]" />}
                       <span className={`px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] ${typeToneOf(item.dataType)}`}>{item.dataType}</span>
                       {item.dataType === 'Delegation' && (item.myRole === 'follower'
                         ? <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30">Follower</span>
                         : <span className="px-1.5 py-[3px] rounded-md border text-[8.5px] font-black uppercase tracking-[0.1em] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25">Doer</span>)}
                       <span className={`ml-auto flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${held ? 'text-amber-600' : item.dataType === 'FMS' && isFmsDelayed(item) && ci.group !== 'Completed' ? 'text-red-500' : ci.dot}`}><span className="w-1.5 h-1.5 rounded-full bg-current" />{held ? 'On hold' : item.dataType === 'FMS' && ci.group !== 'Completed' && isFmsDelayed(item) ? 'Delayed' : ci.text}</span>
                     </div>
+        
                     <span className={`font-extrabold text-[15px] leading-snug text-foreground block [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.title}</span>
                     {tagsOf(item)}
                     <p className={`text-xs text-muted-foreground mt-1 leading-snug [overflow-wrap:anywhere] ${openCards[k] ? '' : 'line-clamp-2'}`} onClick={() => setOpenCards((o) => ({ ...o, [k]: !o[k] }))}>{item.description || 'No description provided.'}</p>
@@ -1081,18 +1222,21 @@ const DoerChecklist = ({ doerId }) => {
                     <div className="flex flex-wrap gap-x-3.5 gap-y-1.5 mt-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1.5 min-w-0"><Calendar size={13} className="shrink-0 opacity-70" />{dateTextOf(item)}</span>
                       {givenOf(item) && <span className="basis-full text-[10px] text-slate-400">Given: {fmtIST(givenOf(item))}</span>}
-                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">By {who}</span></span>
-                      <span className="flex items-center gap-1.5 min-w-0"><User size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[180px]">To {item.assignedToName || '-'}</span></span>
-                      {item.followerNames && item.followerNames.length > 0 && <span className="flex items-center gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><Eye size={13} className="shrink-0 opacity-70" /><span className="truncate max-w-[220px]">Followers: {item.followerNames.join(', ')}</span></span>}
+                      <span className="flex items-baseline gap-1.5 min-w-0"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">GIVEN BY:</span><span className="text-xs font-bold text-foreground overflow-wrap-anywhere">{who}</span></span>
+                      <span className="flex items-baseline gap-1.5 min-w-0"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">ASSIGNED TO:</span><span className="text-xs font-bold text-foreground overflow-wrap-anywhere">{item.assignedToName || '-'}</span></span>
+                      {item.followerNames && item.followerNames.length > 0 && <span className="flex items-baseline gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">FOLLOWERS:</span><span className="text-xs font-bold overflow-wrap-anywhere">{item.followerNames.join(', ')}</span></span>}
                       {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
                       {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
-                      {reviseLink(item) && <span className="basis-full">{reviseLink(item)}</span>}
+                      {reviseDateButton(item) && <span className="basis-full">{reviseDateButton(item)}</span>}
                     </div>
+        
                     {photoLink(item)}
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
                       {actionsFor(item, 'min-h-10 flex-1 rounded-xl text-[11px] tracking-[0.14em]')}
                     </div>
                   </div>
+        
+      
                 </React.Fragment>
               );
             })}
@@ -1112,6 +1256,7 @@ const DoerChecklist = ({ doerId }) => {
                   task={activeTask}
                   onComplete={() => { setShowModal(false); fetchAllTasks(); }}
                 />
+  
               </div>
             ) : (
               <form onSubmit={handleFinalSubmit} className="space-y-6">
@@ -1123,6 +1268,7 @@ const DoerChecklist = ({ doerId }) => {
                   <p className="text-primary font-black text-[10px] uppercase mt-1 tracking-widest px-4 whitespace-normal break-words">
                     {activeTask?.title || activeTask?.taskName || activeTask?.nodeName}
                   </p>
+    
                 </div>
                 <textarea required placeholder="Mission remarks..." value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full h-32 bg-background border border-border text-foreground p-4 rounded-2xl outline-none font-bold text-[10px] uppercase shadow-inner" />
                 {modalType === "Delegation" ? (
@@ -1149,6 +1295,7 @@ const DoerChecklist = ({ doerId }) => {
                           onChange={(e) => { addDelegationFiles(e.target.files); e.target.value = ''; }}
                         />
                       </label>
+        
                     </div>
                     {delegationFiles.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-3">
@@ -1157,20 +1304,31 @@ const DoerChecklist = ({ doerId }) => {
                         ))}
                       </div>
                     )}
+                    {/*
+                        ))}
+          
+                    )}
+
+                    )}
+                    */}
                     <p className="mt-2 text-[9px] font-bold text-slate-400 text-center">{uploadHint(maxFileMb)}</p>
+      
                   </div>
-                ) : (
+            ) : (
                   <div className="relative border-2 border-dashed p-6 rounded-2xl text-center bg-background border-border hover:border-primary/50 transition-all">
                     <input type="file" onChange={(e) => pickSingleFile(e.target)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     <Upload size={20} className="mx-auto text-slate-400 mb-2" />
                     <p className="text-[9px] font-black text-foreground uppercase">{selectedFile ? selectedFile.name : "Attach Payload"}</p>
                     <p className="mt-1 text-[8px] font-bold text-slate-400 normal-case">{uploadHint(maxFileMb)}</p>
                   </div>
+      
                 )}
 
                 <button
                   disabled={uploading}
-                  className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white shadow-lg active:scale-95 transition-all bg-slate-900"
+                  type="submit"
+                  title="Take Photo"
+                  className="w-full py-4 rounded-2xl font-black text-[9px] uppercase tracking-[0.3em] text-white dark:text-slate-900 shadow-lg active:scale-95 transition-all bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white cursor-pointer disabled:opacity-50"
                 >
                   Finalize Result
                 </button>
@@ -1218,6 +1376,7 @@ const DoerChecklist = ({ doerId }) => {
               <button onClick={() => setOnwardTask(null)} className="px-4 py-2 rounded-xl border border-border text-xs font-bold">Cancel</button>
               <button onClick={submitOnward} disabled={onwardBusy} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-50">{onwardBusy ? 'Assigning…' : 'Assign Onward'}</button>
             </div>
+
           </div>
         </div>
       )}
@@ -1232,11 +1391,13 @@ const DoerChecklist = ({ doerId }) => {
               <h3 className="font-black text-sm uppercase tracking-widest">History & Files</h3>
               <button onClick={() => setDetailsModalTask(null)} className="p-2 rounded-full hover:bg-red-500/20 text-red-500"><X size={18} /></button>
             </div>
+
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               {detailsModalTask.remarks && (
                 <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-bold">
                   Latest remarks: {detailsModalTask.remarks}
                 </div>
+    
               )}
               {/* Each history entry shows its OWN photos inline, right next to who
                   did it and when. groupPhotosByHistory (src/utils/taskPhotos.js,
@@ -1275,10 +1436,19 @@ const DoerChecklist = ({ doerId }) => {
                                 +{h.photos.length - MAX_THUMBS} more
                               </button>
                             )}
+
                           </div>
                         )}
                       </div>
                     ))}
+                    {/*
+                              </button>
+                            )}
+              
+                        )}
+          
+                    ))}
+                      */}
                     {otherPhotos.length > 0 && (
                       <div className="text-xs border-l-2 border-dashed border-amber-400/50 pl-3 pb-1">
                         <div className="font-bold text-amber-600 dark:text-amber-400">Other photos</div>
@@ -1304,10 +1474,21 @@ const DoerChecklist = ({ doerId }) => {
                         </div>
                       </div>
                     )}
+                    {/*
+                              className="w-16 h-16 rounded-xl border border-border bg-background hover:border-primary text-muted-foreground hover:text-primary flex items-center justify-center text-[10px] font-black uppercase tracking-tight transition-all"
+                            >
+                              +{otherPhotos.length - MAX_THUMBS} more
+                            </button>
+                          )}
+            
+          
+                    )}
+                      */}
                   </>
                 );
               })()}
             </div>
+
           </div>
         </div>
       )}
