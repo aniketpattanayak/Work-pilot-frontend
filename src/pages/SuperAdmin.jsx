@@ -30,166 +30,285 @@ SA.interceptors.request.use(c => {
   return c;
 }, err => Promise.reject(err));
 
-// ── CSS Design Tokens (injected once at module level) ─────────────────────────
+// ── CSS Design Tokens — dark-first sidebar layout ─────────────────────────────
 const THEME_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
+  /* ── Dark-first tokens ── */
   :root {
-    --bg:       #F4F5F7;
-    --bg2:      #EBEDF0;
-    --surface:  #FFFFFF;
-    --surface2: #F9FAFB;
-    --surface3: #F3F4F6;
-    --surface4: #E5E7EB;
-    --border:   rgba(0,0,0,.08);
-    --border2:  rgba(0,0,0,.12);
-    --fg:       #111827;
-    --fg2:      #374151;
-    --fg3:      #6B7280;
-    --indigo:       #4F46E5;
-    --indigo2:      #6366F1;
-    --indigo3:      #818CF8;
-    --indigo-glow:  rgba(79,70,229,.18);
-    --green:    #059669;
-    --green2:   #10B981;
-    --red:      #DC2626;
-    --red2:     #EF4444;
-    --amber:    #D97706;
-    --amber2:   #F59E0B;
-    --purple:   #7C3AED;
-    --purple2:  #8B5CF6;
-    --radius:   14px;
-    --radius-sm:9px;
-    --radius-xs:6px;
-    --nav-w:    220px;
-    color-scheme: light;
-  }
-
-  [data-theme="dark"], .sa-dark {
-    --bg:       #090B11;
-    --bg2:      #0E1117;
-    --surface:  #131720;
-    --surface2: #191E2A;
-    --surface3: #1F2535;
-    --surface4: #252C3F;
-    --border:   rgba(255,255,255,.06);
-    --border2:  rgba(255,255,255,.10);
-    --fg:       #E8EAF6;
-    --fg2:      #7F85A8;
-    --fg3:      #3D4466;
-    --indigo:       #6366F1;
-    --indigo2:      #818CF8;
-    --indigo3:      #A5B4FC;
-    --indigo-glow:  rgba(99,102,241,.25);
-    --green:    #10B981;
-    --green2:   #34D399;
-    --red:      #F43F5E;
-    --red2:     #FB7185;
-    --amber:    #F59E0B;
-    --amber2:   #FCD34D;
-    --purple:   #8B5CF6;
-    --purple2:  #A78BFA;
+    --sidebar-w: 240px;
+    --topbar-h:  58px;
+    --bg:        #090b11;
+    --bg2:       #0e1117;
+    --surface:   #131720;
+    --surface2:  #191e2a;
+    --surface3:  #1f2535;
+    --surface4:  #252c3f;
+    --border:    rgba(255,255,255,.06);
+    --border2:   rgba(255,255,255,.10);
+    --border3:   rgba(255,255,255,.16);
+    --fg:        #e8eaf6;
+    --fg2:       #7f85a8;
+    --fg3:       #3d4466;
+    --indigo:    #6366f1;
+    --indigo2:   #818cf8;
+    --indigo3:   #a5b4fc;
+    --indigo-bg: rgba(99,102,241,.10);
+    --indigo-glow: rgba(99,102,241,.25);
+    --green:     #10b981;
+    --green2:    #34d399;
+    --green-bg:  rgba(16,185,129,.10);
+    --red:       #f43f5e;
+    --red2:      #fb7185;
+    --red-bg:    rgba(244,63,94,.10);
+    --amber:     #f59e0b;
+    --amber2:    #fcd34d;
+    --amber-bg:  rgba(245,158,11,.10);
+    --purple:    #a855f7;
+    --purple2:   #c084fc;
+    --purple-bg: rgba(168,85,247,.10);
+    --radius:    14px;
+    --radius-sm: 9px;
+    --radius-xs: 6px;
     color-scheme: dark;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  /* Light override */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg:#f0f2f9; --bg2:#e6e9f4; --surface:#ffffff; --surface2:#f4f6fb;
+      --surface3:#ebeff8; --surface4:#e1e6f5;
+      --border:rgba(0,0,0,.07); --border2:rgba(0,0,0,.12); --border3:rgba(0,0,0,.18);
+      --fg:#0f1120; --fg2:#4a5280; --fg3:#9299be;
+      --indigo:#4f46e5; --indigo2:#6366f1; --indigo3:#818cf8;
+      --indigo-bg:rgba(79,70,229,.10); --indigo-glow:rgba(79,70,229,.18);
+      --green:#059669; --green2:#10b981; --green-bg:rgba(5,150,105,.10);
+      --red:#dc2626; --red2:#ef4444; --red-bg:rgba(220,38,38,.10);
+      --amber:#d97706; --amber2:#f59e0b; --amber-bg:rgba(217,119,6,.10);
+      --purple:#7c3aed; --purple2:#8b5cf6; --purple-bg:rgba(124,58,237,.10);
+      color-scheme: light;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#090b11;--bg2:#0e1117;--surface:#131720;--surface2:#191e2a;
+    --surface3:#1f2535;--surface4:#252c3f;
+    --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.10);--border3:rgba(255,255,255,.16);
+    --fg:#e8eaf6;--fg2:#7f85a8;--fg3:#3d4466;
+    --indigo:#6366f1;--indigo2:#818cf8;--indigo3:#a5b4fc;
+    --indigo-bg:rgba(99,102,241,.10);--indigo-glow:rgba(99,102,241,.25);
+    --green:#10b981;--green2:#34d399;--green-bg:rgba(16,185,129,.10);
+    --red:#f43f5e;--red2:#fb7185;--red-bg:rgba(244,63,94,.10);
+    --amber:#f59e0b;--amber2:#fcd34d;--amber-bg:rgba(245,158,11,.10);
+    --purple:#a855f7;--purple2:#c084fc;--purple-bg:rgba(168,85,247,.10);
+    color-scheme:dark;
+  }
+  :root[data-theme="light"] {
+    --bg:#f0f2f9;--bg2:#e6e9f4;--surface:#ffffff;--surface2:#f4f6fb;
+    --surface3:#ebeff8;--surface4:#e1e6f5;
+    --border:rgba(0,0,0,.07);--border2:rgba(0,0,0,.12);--border3:rgba(0,0,0,.18);
+    --fg:#0f1120;--fg2:#4a5280;--fg3:#9299be;
+    --indigo:#4f46e5;--indigo2:#6366f1;--indigo3:#818cf8;
+    --indigo-bg:rgba(79,70,229,.10);--indigo-glow:rgba(79,70,229,.18);
+    --green:#059669;--green2:#10b981;--green-bg:rgba(5,150,105,.10);
+    --red:#dc2626;--red2:#ef4444;--red-bg:rgba(220,38,38,.10);
+    --amber:#d97706;--amber2:#f59e0b;--amber-bg:rgba(217,119,6,.10);
+    --purple:#7c3aed;--purple2:#8b5cf6;--purple-bg:rgba(124,58,237,.10);
+    color-scheme:light;
   }
 
-  .sa-wrap * { box-sizing: border-box; }
-  .sa-wrap { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .sa-wrap *, .sa-wrap *::before, .sa-wrap *::after { box-sizing: border-box; }
+  .sa-wrap { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
 
-  /* Topnav */
+  /* ── Shell ── */
+  .sa-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+
+  /* ── Sidebar ── */
+  .sa-sidebar {
+    width: var(--sidebar-w); background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0;
+    overflow-y: auto; scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+  .sa-sidebar-logo {
+    height: var(--topbar-h); display: flex; align-items: center;
+    padding: 0 16px; border-bottom: 1px solid var(--border);
+    gap: 10px; flex-shrink: 0;
+  }
+  .sa-logo-mark {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(140deg, var(--indigo) 0%, var(--purple) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: white;
+    box-shadow: 0 4px 14px var(--indigo-glow);
+  }
+  .sa-logo-text { font-weight: 700; font-size: 14px; letter-spacing: -.3px; color: var(--fg); }
+  .sa-logo-badge {
+    margin-left: auto; background: var(--indigo-bg); color: var(--indigo3);
+    font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px;
+    letter-spacing: .8px; border: 1px solid rgba(99,102,241,.18);
+  }
+  .sa-nav-section { padding: 18px 8px 4px; }
+  .sa-nav-section-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--fg3); padding: 0 10px; margin-bottom: 4px;
+  }
+  .sa-nav-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 10px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--fg2); cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left;
+    position: relative; font-family: inherit; font-weight: 500;
+    transition: all .15s ease;
+  }
+  .sa-nav-item:hover { background: var(--surface2); color: var(--fg); }
+  .sa-nav-item.active { background: var(--indigo-bg); color: var(--indigo3); font-weight: 600; }
+  .sa-nav-item.active::before {
+    content: ''; position: absolute; left: 0; top: 4px; bottom: 4px;
+    width: 3px; border-radius: 0 3px 3px 0; background: var(--indigo);
+    margin-left: -8px;
+  }
+  .sa-nav-item .sa-nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: .55; }
+  .sa-nav-item:hover .sa-nav-icon { opacity: .8; }
+  .sa-nav-item.active .sa-nav-icon { opacity: 1; }
+  .sa-nav-badge {
+    margin-left: auto; background: var(--red-bg); color: var(--red2);
+    font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+    border: 1px solid rgba(244,63,94,.15);
+  }
+  .sa-nav-badge.green { background: var(--green-bg); color: var(--green2); border-color: rgba(16,185,129,.15); }
+
+  /* ── Main ── */
+  .sa-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* ── Topbar ── */
   .sa-topnav {
-    background: var(--surface);
+    height: var(--topbar-h); background: var(--surface);
     border-bottom: 1px solid var(--border);
-    height: 60px; padding: 0 24px;
     display: flex; align-items: center;
-    position: sticky; top: 0; z-index: 100;
-    backdrop-filter: blur(12px);
+    padding: 0 22px; gap: 10px; flex-shrink: 0;
+  }
+  .sa-topnav-title { font-size: 14px; font-weight: 700; letter-spacing: -.2px; color: var(--fg); }
+
+  /* ── Content ── */
+  .sa-content {
+    flex: 1; overflow-y: auto; padding: 24px 24px 40px;
+    scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
   }
 
-  /* Stat cards */
+  /* ── Stat cards ── */
   .sa-stat {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px 24px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
     position: relative; overflow: hidden;
-    transition: transform .15s, box-shadow .15s;
+    transition: transform .15s, border-color .15s;
   }
-  .sa-stat:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--indigo-glow); }
+  .sa-stat:hover { transform: translateY(-1px); border-color: var(--border2); }
+  .sa-stat::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent-color, var(--indigo)), transparent 70%);
+  }
   .sa-stat::after {
-    content: '';
-    position: absolute; top: 0; right: 0;
+    content: ''; position: absolute; top: 0; right: 0;
     width: 80px; height: 80px;
     background: radial-gradient(circle at 100% 0%, var(--accent-color, var(--indigo)), transparent 70%);
     opacity: .07;
   }
 
-  /* Buttons */
+  /* ── Slide-over detail panel ── */
+  .sa-detail-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(5px);
+    display: flex; align-items: stretch; justify-content: flex-end;
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .sa-detail-overlay.open { opacity: 1; pointer-events: all; }
+  .sa-detail-sheet {
+    width: min(880px, 96vw); height: 100%;
+    background: var(--bg2); border-left: 1px solid var(--border2);
+    display: flex; flex-direction: column;
+    transform: translateX(60px);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    overflow: hidden; box-shadow: -20px 0 60px rgba(0,0,0,.4);
+  }
+  .sa-detail-overlay.open .sa-detail-sheet { transform: translateX(0); }
+  .sa-detail-top {
+    padding: 18px 24px; background: var(--surface);
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .sa-detail-body {
+    flex: 1; overflow-y: auto; padding: 22px 24px;
+    scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+  }
+  .sa-detail-foot {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 24px; border-top: 1px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+
+  /* ── Buttons ── */
   .sa-btn-primary {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 16px;
-    background: var(--indigo); color: #fff;
+    padding: 8px 16px; background: var(--indigo); color: #fff;
     border: none; border-radius: var(--radius-sm);
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    box-shadow: 0 0 0 0 var(--indigo-glow);
+    font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
     transition: opacity .12s, box-shadow .2s, transform .1s;
   }
-  .sa-btn-primary:hover { opacity: .92; box-shadow: 0 0 0 6px var(--indigo-glow); transform: translateY(-1px); }
+  .sa-btn-primary:hover { opacity: .92; box-shadow: 0 4px 16px var(--indigo-glow); transform: translateY(-1px); }
   .sa-btn-primary:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
-
   .sa-btn-secondary {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 14px;
-    background: var(--surface3); color: var(--fg2);
+    padding: 8px 14px; background: var(--surface2); color: var(--fg);
     border: 1px solid var(--border2); border-radius: var(--radius-sm);
-    font-size: 13px; font-weight: 500; cursor: pointer;
+    font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
     transition: background .12s, border-color .12s;
   }
-  .sa-btn-secondary:hover { background: var(--surface4); border-color: var(--indigo3); }
-
+  .sa-btn-secondary:hover { background: var(--surface3); border-color: var(--border3); }
   .sa-btn-icon {
-    background: var(--surface3); border: 1px solid var(--border);
+    background: var(--surface2); border: 1px solid var(--border);
     border-radius: var(--radius-xs); padding: 7px;
     cursor: pointer; display: flex; align-items: center; color: var(--fg2);
     transition: background .12s, color .12s;
   }
-  .sa-btn-icon:hover { background: var(--surface4); color: var(--fg); }
+  .sa-btn-icon:hover { background: var(--surface3); color: var(--fg); }
 
-  /* Inputs */
+  /* ── Inputs ── */
   .sa-input {
-    width: 100%; padding: 9px 12px;
+    width: 100%; padding: 8px 11px;
     border: 1px solid var(--border2); border-radius: var(--radius-xs);
     font-size: 13px; color: var(--fg); outline: none;
     background: var(--surface2); box-sizing: border-box;
     font-family: inherit; transition: border-color .15s, box-shadow .15s;
   }
-  .sa-input:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-glow); }
+  .sa-input:focus { border-color: var(--indigo); box-shadow: 0 0 0 3px var(--indigo-bg); }
   .sa-input::placeholder { color: var(--fg3); }
-  .sa-label { font-size: 12px; font-weight: 500; color: var(--fg2); display: block; margin-bottom: 5px; }
+  .sa-label { font-size: 12px; font-weight: 600; color: var(--fg2); display: block; margin-bottom: 4px; }
 
-  /* Table */
+  /* ── Table ── */
   .sa-table { width: 100%; border-collapse: collapse; }
   .sa-table th {
-    padding: 10px 14px; text-align: left;
-    font-size: 11px; font-weight: 600; color: var(--fg3);
-    text-transform: uppercase; letter-spacing: .5px;
+    padding: 9px 14px; text-align: left;
+    font-size: 10.5px; font-weight: 700; color: var(--fg3);
+    text-transform: uppercase; letter-spacing: .6px;
     background: var(--surface2); border-bottom: 1px solid var(--border);
+    white-space: nowrap;
   }
-  .sa-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
-  .sa-table tr:hover td { background: var(--surface3); }
+  .sa-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .sa-table tr:hover td { background: var(--surface2); }
   .sa-table tr:last-child td { border-bottom: none; }
 
-  /* Tabs */
+  /* ── Tabs ── */
   .sa-tab {
     display: flex; align-items: center; gap: 6px;
-    padding: 12px 14px; border: none; background: none; cursor: pointer;
-    font-size: 13px; color: var(--fg3); font-weight: 400;
+    padding: 7px 14px; border: none; background: none; cursor: pointer;
+    font-size: 12.5px; color: var(--fg2); font-weight: 500;
     border-bottom: 2px solid transparent; margin-bottom: -1px;
-    transition: color .12s;
+    transition: color .12s; font-family: inherit; letter-spacing: -.1px;
   }
-  .sa-tab.active { color: var(--indigo2); font-weight: 600; border-bottom-color: var(--indigo); }
+  .sa-tab.active { color: var(--indigo3); font-weight: 700; border-bottom-color: var(--indigo); }
   .sa-tab:hover:not(.active) { color: var(--fg); }
 
-  /* Feed item */
+  /* ── Feed item ── */
   .sa-feed-item {
     display: flex; gap: 10px; align-items: flex-start;
     padding: 10px 14px; border-bottom: 1px solid var(--border);
@@ -197,69 +316,62 @@ const THEME_CSS = `
   }
   .sa-feed-item:hover { background: var(--surface2); }
 
-  /* Tenant row */
+  /* ── Tenant row ── */
   .sa-tenant-row { cursor: pointer; transition: background .1s; }
   .sa-tenant-row:hover td { background: var(--surface2); }
 
-  /* Section header */
+  /* ── Section header ── */
   .sa-section-hd {
-    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 8px;
     background: var(--surface2);
     font-size: 12px; font-weight: 600; color: var(--fg2);
   }
 
-  /* Toggle label */
-  .sa-toggle-label {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px; border-radius: var(--radius-xs); cursor: pointer;
-    transition: background .12s, border-color .12s;
-  }
-  .sa-toggle-label.on { background: rgba(99,102,241,.08); border-color: var(--indigo3); }
-  .sa-toggle-label.off { background: var(--surface3); }
-
-  /* Overlay */
+  /* ── Overlay modal (provision, tickets) ── */
   .sa-overlay {
     position: fixed; inset: 0; z-index: 1000;
-    background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+    background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
     display: flex; align-items: center; justify-content: center; padding: 20px;
   }
   .sa-modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); width: 100%;
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 16px; width: 100%;
+    box-shadow: 0 32px 80px rgba(0,0,0,.5);
   }
 
-  /* Badge */
+  /* ── Badge ── */
   .sa-badge {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 2px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 500; white-space: nowrap;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
   }
-  .sa-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .sa-badge-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 
-  /* Avatar */
+  /* ── Avatar ── */
   .sa-avatar {
-    border-radius: 50%; color: #fff;
+    border-radius: 10px; color: #fff;
     display: flex; align-items: center; justify-content: center;
-    font-weight: 600; flex-shrink: 0; letter-spacing: .5px;
+    font-weight: 700; flex-shrink: 0; letter-spacing: .5px;
   }
 
-  /* Live dot */
-  @keyframes sa-pulse {
-    0%,100% { opacity: 1; } 50% { opacity: .4; }
-  }
+  /* ── Live dot ── */
+  @keyframes sa-pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
   .sa-live-dot { animation: sa-pulse 2s ease-in-out infinite; }
-
   @keyframes sa-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .sa-spin { animation: sa-spin 1s linear infinite; }
 
-  /* MsgBanner */
-  .sa-msg-ok  { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: rgba(16,185,129,.12); color: var(--green2); }
-  .sa-msg-err { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: rgba(244,63,94,.12); color: var(--red2); }
-  .sa-err-banner { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: rgba(244,63,94,.12); color: var(--red2); }
+  /* ── Status messages ── */
+  .sa-msg-ok  { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: var(--green-bg); color: var(--green2); }
+  .sa-msg-err { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: var(--red-bg); color: var(--red2); }
+  .sa-err-banner { padding: 8px 12px; border-radius: var(--radius-xs); font-size: 12px; display: flex; align-items: center; gap: 6px; background: var(--red-bg); color: var(--red2); }
 
-  /* Monospace inputs */
+  /* ── Monospace ── */
   .sa-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* ── Meter ── */
+  .sa-meter-track { height: 5px; background: var(--surface3); border-radius: 10px; overflow: hidden; }
+  .sa-meter-fill { height: 100%; border-radius: 10px; background: var(--fill-color, var(--indigo)); transition: width .4s cubic-bezier(.4,0,.2,1); }
 `;
 
 // ── Theme context (simple) ────────────────────────────────────────────────────
@@ -496,11 +608,11 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   };
 
   if (!data) return (
-    <Overlay onClick={onClose}>
-      <ModalBox style={{ maxWidth: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60 }}>
+    <div className="sa-detail-overlay open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="sa-detail-sheet" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'var(--fg3)', fontSize: 14 }}>Loading…</div>
-      </ModalBox>
-    </Overlay>
+      </div>
+    </div>
   );
 
   const { tenant, employees = [], recentLogs = [], actionCounts = [], billing = [] } = data;
@@ -525,38 +637,38 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
   const FEAT_ICONS = { tasks: CheckCircle2, personalTasks: NotebookPen, planner: ListOrdered, fms: Zap, chat: MessageSquare, reports: BarChart3, orderForms: ShoppingCart, whatsapp: Bell, rewards: Star, checklist: ClipboardList };
 
   return (
-    <Overlay onClick={e => e.target === e.currentTarget && onClose()}>
-      <ModalBox style={{ maxWidth: 800, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="sa-detail-overlay open" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="sa-detail-sheet">
         {/* Header */}
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="sa-detail-top" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {avatar(name, 42)}
+            {avatar(name, 40)}
             <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--fg)' }}>{name}</div>
-              <div style={{ fontSize: 12, color: 'var(--fg3)', display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
-                <Mail size={11} /> {tenant.adminEmail}
-                <span>·</span><Globe size={11} /> {tenant.subdomain}.lrbcloud.ai
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>{name}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--fg3)', display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                <Mail size={10} /> {tenant.adminEmail}
+                <span>·</span><Globe size={10} /> {tenant.subdomain}.lrbcloud.ai
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Badge type={sa.status || 'active'} />
             <Badge type={sa.plan || 'free'} />
-            <button onClick={onClose} style={iconBtn}><X size={18} /></button>
+            <button onClick={onClose} className="sa-btn-icon"><X size={16} /></button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 24px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 24px', background: 'var(--surface)', flexShrink: 0 }}>
           {TABS.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => setTab(id)} className={`sa-tab${tab === id ? ' active' : ''}`}>
-              <Icon size={14} />{label}
+              <Icon size={13} />{label}
             </button>
           ))}
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+        <div className="sa-detail-body">
 
           {/* OVERVIEW */}
           {tab === 'overview' && (
@@ -983,8 +1095,8 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
             </div>
           )}
         </div>
-      </ModalBox>
-    </Overlay>
+      </div>
+    </div>
   );
 }
 
@@ -1394,167 +1506,335 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
 
   const FEED_ICONS = { login: Lock, task_created: CheckCircle2, order_submitted: Package, step_completed: Zap, whatsapp_sent: Bell, flow_created: Activity, default: Activity };
 
+  const [activeNav, setActiveNav] = useState('overview');
+
+  const NAV_SECTIONS = [
+    { label: 'Overview', items: [
+      { id: 'overview', icon: LayoutGrid, label: 'Dashboard' },
+      { id: 'tenants',  icon: Building2, label: 'Tenants', badge: tenants.length > 0 ? tenants.length : null, badgeColor: 'green' },
+      { id: 'activity', icon: Activity,  label: 'Live Activity' },
+    ]},
+    { label: 'Billing', items: [
+      { id: 'billing', icon: DollarSign, label: 'Revenue' },
+    ]},
+    { label: 'Support', items: [
+      { id: 'tickets', icon: Ticket, label: 'Tickets', badge: null },
+    ]},
+  ];
+
   return (
-    <div className={`sa-wrap${dark ? ' sa-dark' : ''}`} data-theme={dark ? 'dark' : 'light'}
-      style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div className={`sa-wrap`} data-theme={dark ? 'dark' : 'light'}
+      style={{ background: 'var(--bg)', color: 'var(--fg)' }}>
       <style>{THEME_CSS}</style>
 
-      {/* Top nav */}
-      <div className="sa-topnav">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'var(--indigo)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 3px var(--indigo-glow)' }}>
-            <Shield size={17} color='white' />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', letterSpacing: -.3 }}>WorkPilot SuperAdmin</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => setShowProvision(true)} style={primaryBtn}><Plus size={14} />Add client</button>
-          <button onClick={() => setShowTickets(true)} style={secondaryBtn}><Ticket size={14} />Tickets</button>
-          <button onClick={load} style={iconBtn}><RefreshCw size={15} style={loading ? { animation: 'sa-spin 1s linear infinite' } : {}} /></button>
-          <button onClick={toggle} style={iconBtn}>{dark ? <Sun size={15} /> : <Moon size={15} />}</button>
-          <div style={{ width: 1, height: 28, background: 'var(--border)', margin: '0 2px' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--surface2)', borderRadius: 8, border: '1px solid var(--border)' }}>
-            {avatar(user?.name || 'SA', 24)}
-            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg2)' }}>{user?.name || 'SuperAdmin'}</span>
-          </div>
-          <button title="Sign out"
-            onClick={async () => { if (await dialog.confirm('Are you sure you want to sign out?', { title: 'Sign out', confirmText: 'Yes', cancelText: 'No' })) handleLogout(); }}
-            style={{ ...iconBtn, color: 'var(--red)', borderColor: 'rgba(244,63,94,.3)' }}>
-            <LogOut size={15} />
-          </button>
-        </div>
-      </div>
+      {/* Shell */}
+      <div className="sa-shell">
 
-      <div style={{ maxWidth: 1300, margin: '0 auto', padding: '24px 28px' }}>
-
-        {/* Stats */}
-        {stats && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
-            <StatCard icon={Building2} label="Total tenants" value={stats.totalTenants} sub={`${stats.pausedTenants} paused`} color="var(--indigo)" />
-            <StatCard icon={Users} label="Total employees" value={fmt(stats.totalEmployees)} sub="across all tenants" color="var(--green)" />
-            <StatCard icon={DollarSign} label="Revenue this month" value={fmtR(stats.revenueThisMonth)} sub="paid invoices" color="var(--amber)" />
-            <StatCard icon={Zap} label="Active today" value={stats.activeUsersToday} sub="logged in last 24h" color="var(--purple)" />
+        {/* ── Sidebar ── */}
+        <nav className="sa-sidebar">
+          {/* Logo */}
+          <div className="sa-sidebar-logo">
+            <div className="sa-logo-mark">W</div>
+            <span className="sa-logo-text">WorkPilot</span>
+            <span className="sa-logo-badge">SA</span>
           </div>
-        )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
-
-          {/* Left: tenants */}
-          <div>
-            {/* Toolbar */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', background: 'var(--surface)' }}>
-                <Search size={15} color="var(--fg3)" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tenants…"
-                  style={{ border: 'none', outline: 'none', fontSize: 13, color: 'var(--fg)', background: 'transparent', width: '100%' }} />
-              </div>
-              <select value={filterStatus} onChange={e => setFilter(e.target.value)}
-                style={{ padding: '8px 12px', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--fg2)', background: 'var(--surface)', outline: 'none' }}>
-                <option value="all">All status</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="free">Free</option>
-                <option value="pro">Pro</option>
-                <option value="enterprise">Enterprise</option>
-              </select>
-              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                {[['grid', LayoutGrid], ['list', List]].map(([m, Icon]) => (
-                  <button key={m} onClick={() => setViewMode(m)}
-                    style={{ padding: '8px 10px', border: 'none', cursor: 'pointer', background: viewMode === m ? 'var(--indigo)' : 'var(--surface)', color: viewMode === m ? 'white' : 'var(--fg3)' }}>
-                    <Icon size={15} />
-                  </button>
-                ))}
-              </div>
+          {/* Nav */}
+          {NAV_SECTIONS.map(sec => (
+            <div className="sa-nav-section" key={sec.label}>
+              <div className="sa-nav-section-label">{sec.label}</div>
+              {sec.items.map(item => (
+                <button key={item.id} className={`sa-nav-item${activeNav === item.id ? ' active' : ''}`}
+                  onClick={() => {
+                    if (item.id === 'tickets') { setShowTickets(true); return; }
+                    setActiveNav(item.id);
+                  }}>
+                  <item.icon className="sa-nav-icon" size={15} />
+                  {item.label}
+                  {item.badge != null && (
+                    <span className={`sa-nav-badge${item.badgeColor === 'green' ? ' green' : ''}`}>{item.badge}</span>
+                  )}
+                </button>
+              ))}
             </div>
+          ))}
 
-            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 10 }}>
-              {loading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'tenant' : 'tenants'}`}
-            </div>
-
-            {viewMode === 'grid'
-              ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {filtered.map(t => <TenantCard key={t._id} t={t} onClick={() => setSelected(t._id)} />)}
+          {/* Bottom: user + logout */}
+          <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', padding: '12px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--surface2)' }}>
+              {avatar(user?.name || 'SA', 28)}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name || 'SuperAdmin'}</div>
+                <div style={{ fontSize: 10, color: 'var(--fg3)' }}>Super Admin</div>
               </div>
-              : <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--surface)' }}>
-                <ResponsiveTable>
-                  <table className="mobile-card-table sa-table">
-                    <thead>
-                      <tr>
-                        {['Company', 'Status', 'Plan', 'Employees', 'Tasks/mo', 'Orders/mo', 'Active Flows', 'Last Login', ''].map(h => <th key={h}>{h}</th>)}
-                      </tr>
-                    </thead>
+              <button title="Sign out"
+                onClick={async () => { if (await dialog.confirm('Sign out?', { title: 'Sign out', confirmText: 'Yes', cancelText: 'No' })) handleLogout(); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--fg3)', display: 'flex', padding: 4, borderRadius: 6 }}>
+                <LogOut size={14} />
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        {/* ── Main ── */}
+        <div className="sa-main">
+
+          {/* Topbar */}
+          <div className="sa-topnav">
+            <span className="sa-topnav-title">
+              {activeNav === 'overview' && 'Dashboard'}
+              {activeNav === 'tenants' && 'Tenants'}
+              {activeNav === 'activity' && 'Live Activity'}
+              {activeNav === 'billing' && 'Revenue'}
+            </span>
+            <div style={{ flex: 1 }} />
+            {/* Search */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface2)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', padding: '6px 12px', minWidth: 220 }}>
+              <Search size={13} color="var(--fg3)" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tenants…"
+                style={{ border: 'none', outline: 'none', fontSize: 12.5, color: 'var(--fg)', background: 'transparent', width: '100%' }} />
+            </div>
+            <button onClick={() => setShowProvision(true)} className="sa-btn-primary" style={{ gap: 6, padding: '7px 14px', fontSize: 12.5 }}><Plus size={13} />Add client</button>
+            <button onClick={load} className="sa-btn-icon"><RefreshCw size={14} style={loading ? { animation: 'sa-spin 1s linear infinite' } : {}} /></button>
+            <button onClick={toggle} className="sa-btn-icon">{dark ? <Sun size={14} /> : <Moon size={14} />}</button>
+          </div>
+
+          {/* Content */}
+          <div className="sa-content">
+
+            {/* ── DASHBOARD view ── */}
+            {activeNav === 'overview' && (
+              <div>
+                {/* Stats grid */}
+                {stats && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+                    <StatCard icon={Building2} label="Total tenants" value={stats.totalTenants} sub={`${stats.pausedTenants} paused`} color="var(--indigo)" />
+                    <StatCard icon={Users} label="Total employees" value={fmt(stats.totalEmployees)} sub="across all tenants" color="var(--green)" />
+                    <StatCard icon={DollarSign} label="Revenue this month" value={fmtR(stats.revenueThisMonth)} sub="paid invoices" color="var(--amber)" />
+                    <StatCard icon={Zap} label="Active today" value={stats.activeUsersToday} sub="logged in last 24h" color="var(--purple)" />
+                  </div>
+                )}
+
+                {/* Two-col: quick tenant overview + live feed */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
+                  {/* Recent tenants */}
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>Recent Tenants</span>
+                      <button onClick={() => setActiveNav('tenants')} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--indigo3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View all <ChevronRight size={12} /></button>
+                    </div>
+                    <table className="sa-table" style={{ width: '100%' }}>
+                      <thead><tr>{['Company','Status','Plan','Employees',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {tenants.slice(0, 8).map(t => (
+                          <tr key={t._id} className="sa-tenant-row" onClick={() => setSelected(t._id)}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                {avatar(t.companyName, 26)}
+                                <div>
+                                  <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' }}>{t.companyName}</div>
+                                  <div style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{t.subdomain}.lrbcloud.ai</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td><Badge type={t.superAdmin?.status || 'active'} /></td>
+                            <td><Badge type={t.superAdmin?.plan || 'free'} /></td>
+                            <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.employeeCount || 0}</td>
+                            <td><div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--indigo2)', fontWeight: 500 }}><Eye size={12} /> View</div></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {tenants.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: 'var(--fg3)', fontSize: 13 }}>No tenants yet</div>}
+                  </div>
+
+                  {/* Live feed */}
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <Activity size={14} color="var(--indigo2)" /> Live activity
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <div className="sa-live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
+                        <span style={{ fontSize: 10.5, color: 'var(--green)', fontWeight: 600 }}>Live</span>
+                      </div>
+                    </div>
+                    <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+                      {feed.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: 'var(--fg3)', fontSize: 13 }}>No recent activity</div>}
+                      {feed.slice(0, 15).map((log, i) => {
+                        const Icon = FEED_ICONS[log.action] || FEED_ICONS.default;
+                        return (
+                          <div key={i} className="sa-feed-item">
+                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--indigo-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Icon size={11} color="var(--indigo2)" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.employeeName}</div>
+                              <div style={{ fontSize: 10.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.description || log.action?.replace(/_/g, ' ')}</div>
+                              <div style={{ fontSize: 10, color: 'var(--fg3)', marginTop: 1 }}>{log.tenantId?.companyName || '—'}</div>
+                            </div>
+                            <div style={{ fontSize: 10, color: 'var(--fg3)', flexShrink: 0 }}>{timeAgo(log.createdAt)}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TENANTS view ── */}
+            {activeNav === 'tenants' && (
+              <div>
+                {/* Toolbar */}
+                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                  <select value={filterStatus} onChange={e => setFilter(e.target.value)}
+                    style={{ padding: '7px 12px', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', fontSize: 12.5, color: 'var(--fg)', background: 'var(--surface2)', outline: 'none', fontFamily: 'inherit' }}>
+                    <option value="all">All status</option>
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="free">Free</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                  <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                    {[['grid', LayoutGrid], ['list', List]].map(([m, Icon]) => (
+                      <button key={m} onClick={() => setViewMode(m)}
+                        style={{ padding: '7px 10px', border: 'none', cursor: 'pointer', background: viewMode === m ? 'var(--indigo)' : 'var(--surface)', color: viewMode === m ? 'white' : 'var(--fg3)' }}>
+                        <Icon size={14} />
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--fg3)', display: 'flex', alignItems: 'center' }}>
+                    {loading ? 'Loading…' : `${filtered.length} ${filtered.length === 1 ? 'tenant' : 'tenants'}`}
+                  </div>
+                </div>
+
+                {viewMode === 'grid'
+                  ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                    {filtered.map(t => <TenantCard key={t._id} t={t} onClick={() => setSelected(t._id)} />)}
+                  </div>
+                  : <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <ResponsiveTable>
+                      <table className="mobile-card-table sa-table">
+                        <thead>
+                          <tr>
+                            {['Company', 'Status', 'Plan', 'Employees', 'Tasks/mo', 'Orders/mo', 'Active Flows', 'Last Login', ''].map(h => <th key={h}>{h}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((t) => (
+                            <tr key={t._id} className="sa-tenant-row" onClick={() => setSelected(t._id)}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  {avatar(t.companyName, 28)}
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{t.companyName}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--fg3)' }}>{t.subdomain}.lrbcloud.ai</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td><Badge type={t.superAdmin?.status || 'active'} /></td>
+                              <td><Badge type={t.superAdmin?.plan || 'free'} /></td>
+                              <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.employeeCount || 0}</td>
+                              <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.tasksThisMonth || 0}</td>
+                              <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.ordersThisMonth || 0}</td>
+                              <td style={{ fontSize: 13, fontWeight: 600, color: (t.stats?.activeFlows || 0) > 0 ? 'var(--indigo2)' : 'var(--fg3)', textAlign: 'center' }}>{t.stats?.activeFlows || 0}</td>
+                              <td style={{ fontSize: 11, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>{t.stats?.lastActivity ? timeAgo(t.stats.lastActivity.createdAt) : 'Never'}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--indigo2)', fontWeight: 500 }}><Eye size={13} /> View</div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </ResponsiveTable>
+                    {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: 'var(--fg3)', fontSize: 13 }}>No tenants found</div>}
+                  </div>
+                }
+              </div>
+            )}
+
+            {/* ── ACTIVITY view ── */}
+            {activeNav === 'activity' && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', maxWidth: 720 }}>
+                <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)', display: 'flex', gap: 6, alignItems: 'center' }}><Activity size={14} color="var(--indigo2)" /> Live Activity</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div className="sa-live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)' }} />
+                    <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 600 }}>All tenants</span>
+                  </div>
+                </div>
+                <div>
+                  {feed.length === 0 && <div style={{ textAlign: 'center', padding: 48, color: 'var(--fg3)', fontSize: 13 }}>No recent activity</div>}
+                  {feed.map((log, i) => {
+                    const Icon = FEED_ICONS[log.action] || FEED_ICONS.default;
+                    return (
+                      <div key={i} className="sa-feed-item">
+                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--indigo-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon size={13} color="var(--indigo2)" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--fg)' }}>{log.employeeName}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{log.description || log.action?.replace(/_/g, ' ')}</div>
+                          <div style={{ fontSize: 10.5, color: 'var(--fg3)', marginTop: 2 }}>{log.tenantId?.companyName || '—'}</div>
+                        </div>
+                        <div style={{ fontSize: 10.5, color: 'var(--fg3)', flexShrink: 0 }}>{timeAgo(log.createdAt)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── BILLING view ── */}
+            {activeNav === 'billing' && (
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 24 }}>
+                  <StatCard icon={DollarSign} label="Revenue this month" value={fmtR(stats?.revenueThisMonth)} sub="paid invoices" color="var(--amber)" />
+                  <StatCard icon={Building2} label="Paid tenants" value={tenants.filter(t => t.superAdmin?.plan !== 'free').length} sub="non-free plans" color="var(--indigo)" />
+                  <StatCard icon={TrendingUp} label="Active tenants" value={tenants.filter(t => t.superAdmin?.status === 'active').length} sub="of total" color="var(--green)" />
+                </div>
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>All Tenants — Billing Overview</span>
+                  </div>
+                  <table className="sa-table">
+                    <thead><tr>{['Company','Plan','Status','Employees','Revenue',''].map(h => <th key={h}>{h}</th>)}</tr></thead>
                     <tbody>
-                      {filtered.map((t) => (
+                      {tenants.map(t => (
                         <tr key={t._id} className="sa-tenant-row" onClick={() => setSelected(t._id)}>
                           <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              {avatar(t.companyName, 28)}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                              {avatar(t.companyName, 26)}
                               <div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{t.companyName}</div>
-                                <div style={{ fontSize: 11, color: 'var(--fg3)' }}>{t.subdomain}.lrbcloud.ai</div>
+                                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' }}>{t.companyName}</div>
+                                <div style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{t.subdomain}</div>
                               </div>
                             </div>
                           </td>
-                          <td><Badge type={t.superAdmin?.status || 'active'} /></td>
                           <td><Badge type={t.superAdmin?.plan || 'free'} /></td>
-                          <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.employeeCount || 0}</td>
-                          <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.tasksThisMonth || 0}</td>
-                          <td style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', textAlign: 'center' }}>{t.stats?.ordersThisMonth || 0}</td>
-                          <td style={{ fontSize: 13, fontWeight: 600, color: (t.stats?.activeFlows || 0) > 0 ? 'var(--indigo2)' : 'var(--fg3)', textAlign: 'center' }}>{t.stats?.activeFlows || 0}</td>
-                          <td style={{ fontSize: 11, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>{t.stats?.lastActivity ? timeAgo(t.stats.lastActivity.createdAt) : 'Never'}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--indigo2)', fontWeight: 500 }}><Eye size={13} /> View</div>
-                          </td>
+                          <td><Badge type={t.superAdmin?.status || 'active'} /></td>
+                          <td style={{ fontSize: 13, textAlign: 'center', color: 'var(--fg)' }}>{t.stats?.employeeCount || 0}</td>
+                          <td style={{ fontSize: 12.5, color: 'var(--amber2)', fontWeight: 600 }}>{fmtR(t.billing?.totalPaid || 0)}</td>
+                          <td><div style={{ fontSize: 11.5, color: 'var(--indigo2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={12} /> View</div></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </ResponsiveTable>
-                {filtered.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: 'var(--fg3)', fontSize: 13 }}>No tenants found</div>}
-              </div>
-            }
-          </div>
-
-          {/* Right: live feed */}
-          <div style={{ position: 'sticky', top: 76 }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <Activity size={15} color="var(--indigo2)" /> Live activity
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div className="sa-live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
-                  <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>All tenants</span>
                 </div>
               </div>
-              <div style={{ maxHeight: 540, overflowY: 'auto' }}>
-                {feed.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: 'var(--fg3)', fontSize: 13 }}>No recent activity</div>}
-                {feed.map((log, i) => {
-                  const Icon = FEED_ICONS[log.action] || FEED_ICONS.default;
-                  return (
-                    <div key={i} className="sa-feed-item">
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(99,102,241,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon size={12} color="var(--indigo2)" />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.employeeName}</div>
-                        <div style={{ fontSize: 11, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.description || log.action?.replace(/_/g, ' ')}</div>
-                        <div style={{ fontSize: 10, color: 'var(--fg3)', marginTop: 1 }}>{log.tenantId?.companyName || '—'}</div>
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--fg3)', flexShrink: 0 }}>{timeAgo(log.createdAt)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            )}
 
+          </div>{/* end .sa-content */}
+        </div>{/* end .sa-main */}
+      </div>{/* end .sa-shell */}
+
+      {/* Modals */}
       {showProvision && <ProvisionModal onClose={() => setShowProvision(false)} onSuccess={() => { setShowProvision(false); load(); }} />}
       {showTickets && <TicketsModal onClose={() => setShowTickets(false)} />}
+
+      {/* Slide-over tenant detail */}
       {selectedTenant && <TenantDetail tenantId={selectedTenant} onClose={() => setSelected(null)} onRefresh={load} />}
     </div>
   );
