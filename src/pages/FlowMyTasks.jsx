@@ -43,6 +43,7 @@ export function TaskCard({ task, onComplete, openThread }) {
   const [values, setValues] = useState({});
   const [submitting, setSub] = useState(false);
   const [error, setError] = useState('');
+  const [confirmNo, setConfirmNo] = useState(false);
   const [expanded, setExp] = useState(true);
 
   const { activeStep, nodeConfig, rawSheetData, orderIdentifier, templateName, isOverdue, instanceId, visibleCollectedData } = task;
@@ -235,7 +236,7 @@ export function TaskCard({ task, onComplete, openThread }) {
                 className="py-2.5 rounded-xl text-sm font-semibold border border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <RefreshCcw size={13} className="animate-spin" /> : <CheckCircle2 size={14} />} Yes
               </button>
-              <button onClick={() => submit('no')} disabled={submitting}
+              <button onClick={() => setConfirmNo(true)} disabled={submitting}
                 className="py-2.5 rounded-xl text-sm font-semibold border border-red-300 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting ? <RefreshCcw size={13} className="animate-spin" /> : <AlertCircle size={14} />} No
               </button>
@@ -250,6 +251,26 @@ export function TaskCard({ task, onComplete, openThread }) {
         </div>
       )}
     </div>
+
+      {/* No confirmation modal */}
+      {confirmNo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-card rounded-2xl shadow-xl border border-border p-6 w-80 max-w-full">
+            <h3 className="text-base font-semibold text-foreground mb-2">Confirm No</h3>
+            <p className="text-sm text-muted-foreground mb-5">Are you sure you want to select <span className="font-semibold text-red-500">No</span> for this step?</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmNo(false)}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold border border-border text-muted-foreground hover:bg-muted transition">
+                Cancel
+              </button>
+              <button onClick={() => { setConfirmNo(false); submit('no'); }} disabled={submitting}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold bg-red-500 text-white hover:bg-red-600 transition disabled:opacity-50">
+                Yes, No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
 
