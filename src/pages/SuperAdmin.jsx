@@ -993,18 +993,20 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 })()}
               </Section>
 
-              {/* Feature flags */}
-              <Section icon={ToggleRight} title="Feature flags" color="var(--purple2)" accent="">
+              {/* Navigation Tabs / Feature flags */}
+              <Section icon={ToggleRight} title="Navigation tabs &amp; features" color="var(--purple2)" accent="">
+                <p style={{ fontSize: 12, color: 'var(--fg3)', margin: '0 0 12px' }}>Turn each tab on or off for this company's users. Off = the tab is completely hidden from their sidebar. Includes Manage Delegation Task, Manage Task, My Task and all other navigation items.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {Object.entries(features).map(([f, on]) => {
                     const Icon = FEAT_ICONS[f] || Settings;
+                    const NAV_LABELS = { 'tasks': 'Manage Task', 'personalTasks': 'My Task (Personal)', 'checklist': 'Manage Checklist', 'fms': 'Manage Delegation Task', 'chat': 'Chat', 'whatsapp': 'WhatsApp', 'tracking': 'Coordinator Tracking', 'reviewMeeting': 'Review Meeting', 'employees': 'Employees', 'mapping': 'Mapping', 'formDesigner': 'Form Designer', 'menuControl': 'Menu on/off control', 'dailyTaskAlert': 'Daily Task Alert', 'planner': 'Planner', 'orderForms': 'Order Forms', 'newOrder': 'New Order', 'reports': 'Reports Hub', 'rewards': 'Rewards Log', 'settings': 'Settings' };
                     return (
                       <label key={f} onClick={() => setFeatures(p => ({ ...p, [f]: !p[f] }))}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', border: `1px solid ${on ? 'var(--indigo)' : 'var(--border)'}`, borderRadius: 8, cursor: 'pointer', background: on ? 'rgba(99,102,241,.08)' : 'var(--surface3)', transition: 'all .12s' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Icon size={14} color={on ? 'var(--indigo2)' : 'var(--fg3)'} />
                           <span style={{ fontSize: 13, fontWeight: 500, color: on ? 'var(--fg)' : 'var(--fg3)' }}>
-                            {({ 'tasks': 'Manage Tasks', 'personalTasks': 'Personal Tasks', 'checklist': 'Checklist', 'fms': 'Flow Management', 'chat': 'Chat', 'whatsapp': 'WhatsApp', 'tracking': 'Coordinator Tracking', 'reviewMeeting': 'Review Meeting', 'employees': 'Employees', 'mapping': 'Mapping', 'formDesigner': 'Form designer', 'menuControl': 'Menu on/off', 'dailyTaskAlert': 'Daily task alert', 'planner': 'Planner', 'orderForms': 'Order Forms', 'newOrder': 'New Order', 'reports': 'Reports Hub', 'rewards': 'Rewards Log', 'settings': 'Settings' })[f] || f.charAt(0).toUpperCase() + f.slice(1)}
+                            {NAV_LABELS[f] || f.charAt(0).toUpperCase() + f.slice(1)}
                           </span>
                         </div>
                         {on ? <ToggleRight size={20} color="var(--indigo2)" /> : <ToggleLeft size={20} color="var(--fg3)" />}
@@ -1014,7 +1016,7 @@ function TenantDetail({ tenantId, onClose, onRefresh }) {
                 </div>
                 {msg && <MsgBanner msg={msg} />}
                 <button onClick={() => api(() => SA.put(`/superadmin/tenants/${tenantId}/features`, { features }))} disabled={saving} style={primaryBtn}>
-                  <Save size={14} />{saving ? 'Saving…' : 'Save features'}
+                  <Save size={14} />{saving ? 'Saving…' : 'Save navigation tabs'}
                 </button>
               </Section>
 
