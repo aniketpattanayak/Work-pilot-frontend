@@ -377,7 +377,11 @@ const THEME_CSS = `
 // ── Theme context (simple) ────────────────────────────────────────────────────
 function useTheme() {
   const [dark, setDark] = useState(() => {
-    try { return localStorage.getItem('sa_theme') === 'dark'; } catch { return false; }
+    try {
+      const stored = localStorage.getItem('sa_theme');
+      if (stored === 'light') return false;
+      return true; // dark by default (matches dark-first CSS)
+    } catch { return true; }
   });
   const toggle = () => setDark(d => {
     const next = !d;
