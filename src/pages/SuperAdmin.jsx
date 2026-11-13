@@ -1516,6 +1516,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
     ]},
     { label: 'Billing', items: [
       { id: 'billing', icon: DollarSign, label: 'Revenue' },
+      { id: 'plans', icon: CreditCard, label: 'Plans' },
     ]},
     { label: 'Support', items: [
       { id: 'tickets', icon: Ticket, label: 'Tickets', badge: null },
@@ -1586,6 +1587,7 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
               {activeNav === 'tenants' && 'Tenants'}
               {activeNav === 'activity' && 'Live Activity'}
               {activeNav === 'billing' && 'Revenue'}
+              {activeNav === 'plans' && 'Plans'}
             </span>
             <div style={{ flex: 1 }} />
             {/* Search */}
@@ -1825,6 +1827,73 @@ function SuperAdminPanel({ user: initialUser, onLogout: handleLogout }) {
                 </div>
               </div>
             )}
+
+            {/* ── PLANS view ── */}
+            {activeNav === 'plans' && (() => {
+              const PLAN_TIERS = ['free','starter','pro','enterprise','custom'];
+              const PLAN_COLORS = { free:'var(--fg3)', starter:'var(--indigo2)', pro:'var(--green2)', enterprise:'var(--amber2)', custom:'var(--purple2)' };
+              return (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 28 }}>
+                    {PLAN_TIERS.map(p => {
+                      const count = tenants.filter(t => (t.superAdmin?.plan || 'free') === p).length;
+                      return (
+                        <div key={p} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '14px 16px' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: PLAN_COLORS[p], marginBottom: 6 }}>{p}</div>
+                          <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--fg)' }}>{count}</div>
+                          <div style={{ fontSize: 11, color: 'var(--fg3)' }}>tenant{count !== 1 ? 's' : ''}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--fg)' }}>Tenant Plans</span>
+                      <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>Click a plan badge to change it</span>
+                    </div>
+                    <table className="sa-table">
+                      <thead><tr>{['Company','Current Plan','Employees','Status','Change Plan'].map(h => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {tenants.map(t => {
+                          const currentPlan = t.superAdmin?.plan || 'free';
+                          return (
+                            <tr key={t._id}>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                  {avatar(t.companyName, 26)}
+                                  <div>
+                                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' }}>{t.companyName}</div>
+                                    <div style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{t.subdomain}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td><Badge type={currentPlan} /></td>
+                              <td style={{ fontSize: 13, textAlign: 'center', color: 'var(--fg)' }}>{t.stats?.employeeCount || 0}</td>
+                              <td><Badge type={t.superAdmin?.status || 'active'} /></td>
+                              <td>
+                                <select
+                                  defaultValue={currentPlan}
+                                  onChange={async e => {
+                                    const newPlan = e.target.value;
+                                    try {
+                                      await SA.put(`/superadmin/tenants/${t._id}/billing`, { plan: newPlan });
+                                      setTenants(prev => prev.map(x => x._id === t._id ? { ...x, superAdmin: { ...x.superAdmin, plan: newPlan } } : x));
+                                    } catch {}
+                                  }}
+                                  style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--fg)', cursor: 'pointer' }}
+                                >
+                                  {PLAN_TIERS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>{/* end .sa-content */}
         </div>{/* end .sa-main */}

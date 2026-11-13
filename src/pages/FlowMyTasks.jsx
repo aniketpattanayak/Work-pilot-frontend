@@ -250,8 +250,6 @@ export function TaskCard({ task, onComplete, openThread }) {
           )}
         </div>
       )}
-    </div>
-
       {/* No confirmation modal */}
       {confirmNo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -271,6 +269,7 @@ export function TaskCard({ task, onComplete, openThread }) {
           </div>
         </div>
       )}
+    </div>
   );
 }
 
