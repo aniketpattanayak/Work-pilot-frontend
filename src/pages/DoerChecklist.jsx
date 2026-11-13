@@ -576,7 +576,7 @@ const DoerChecklist = ({ doerId }) => {
       { key: 'assignedTo', label: 'Assigned To', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-slate-600 dark:text-slate-300 whitespace-normal break-words leading-tight px-1', render: (it) => it.assignedToName || '-' },
       { key: 'followers', label: 'Followers', width: 'minmax(78px,0.8fr)', headerClassName: 'text-center', cellClassName: 'text-center text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-300 px-1 whitespace-normal break-words', render: (it) => (it.followerNames && it.followerNames.length ? it.followerNames.join(', ') : '-') },
       { key: 'description', label: 'Description', width: 'minmax(100px,1.4fr)', cellClassName: 'text-xs opacity-70 font-semibold whitespace-normal break-words pr-2', render: (it) => descriptionCell(it) },
-      { key: 'date', label: 'Deadline', width: 'minmax(112px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] font-bold', render: (it) => dateCell(it) },
+      { key: 'date', label: 'Deadline', width: 'minmax(112px,1fr)', headerClassName: 'text-center', cellClassName: 'flex flex-col items-center justify-center gap-1 text-[9px] font-bold', render: (it) => dateCell(it) },
       { key: 'status', label: 'Priority / Status', width: 'minmax(108px,0.9fr)', headerClassName: 'text-center', cellClassName: 'flex justify-center items-center gap-2', render: (it) => statusCell(it) },
       { key: 'actions', label: 'Actions', width: '112px', pinEnd: true, headerClassName: 'text-right pr-4', cellClassName: 'flex flex-wrap justify-end items-center gap-1.5', render: (it) => actionsFor(it) },
     );
@@ -759,13 +759,13 @@ const DoerChecklist = ({ doerId }) => {
   };
   const reviseCheck = (it) => {
     if (it.dataType !== 'Delegation') return { ok: false, why: 'Only delegation tasks can get a new date here.' };
-    if (!companyAllows('delegation_doerRevise')) return { ok: false, why: 'Your company has switched off date changes by doers.' };
+
     if (isDoneItem(it)) return { ok: false, why: 'Already done.' };
     if (isFollowerRow(it)) return { ok: false, why: followerWhy(it) };
     if (isPassedOn(it)) return { ok: false, why: 'You passed this task to someone else.' };
     if (!['Pending', 'Accepted'].includes(it.status)) return { ok: false, why: `It is "${it.status}", so the date cannot be changed now.` };
-    if (it.isRevisionAllowed === false) return { ok: false, why: 'The person who gave the task did not allow date changes.' };
-    if (isPastDueItem(it) || (it.deadlineDate && new Date(it.deadlineDate) < new Date())) return { ok: false, why: 'The deadline has already passed.' };
+    if (it.isRevisionAllowed === false || it.isRevisionAllowed === 'false') return { ok: false, why: 'The person who gave the task did not allow date changes.' };
+
     if ((it.history || []).some((h) => h.action === 'Deadline Approved' || h.action === 'Deadline Revised')) return { ok: false, why: 'The date was already changed once.' };
     return { ok: true };
   };
@@ -882,15 +882,33 @@ const DoerChecklist = ({ doerId }) => {
       )}
     </>
   );
+  // Revise Date button in Deadline column
+  const reviseDateButton = (it) => (it.dataType === 'Delegation' && reviseCheck(it).ok ? (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setSelectedTask(it); setShowRevisionModal(true); }}
+      data-testid="revise-link"
+      className="inline-flex items-center gap-1 px-2.5 py-0.5 mt-0.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-all active:scale-95 cursor-pointer shadow-sm"
+      title="Revise Date"
+    >
+      <Clock size={10} />
+      <span>Revise</span>
+    </button>
+  ) : null);
+
   const dateCell = (it) => {
     const red = isPastDueItem(it) && !it.isBacklog;
     return (
       <>
-        <Calendar size={12} className="text-primary/30 shrink-0" />
-        <p className={`uppercase tracking-tighter whitespace-nowrap ${red ? 'text-red-500' : it.isBacklog && !isDoneItem(it) ? 'text-amber-600' : 'text-slate-500'}`}>{dateTextOf(it)}</p>
+        <div className="flex items-center gap-1">
+          <Calendar size={12} className="text-primary/30 shrink-0" />
+          <p className={`uppercase tracking-tighter whitespace-nowrap ${red ? 'text-red-500' : it.isBacklog && !isDoneItem(it) ? 'text-amber-600' : 'text-slate-500'}`}>{dateTextOf(it)}</p>
+        </div>
         {isHeld(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600">Clock paused</span>}
         {it.dataType === 'Checklist' && !it.isDone && Number(it.pendingDue) > 1 && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="Missed days still waiting to be submitted">{it.pendingDue} days pending</span>}
         {revisedNote(it) && <span className="basis-full text-center text-[8px] font-black uppercase text-amber-600" title="The deadline was changed">{revisedNote(it)}</span>}
+        {reviseDateButton(it)}
+
       </>
     );
   };
@@ -902,21 +920,27 @@ const DoerChecklist = ({ doerId }) => {
     }
     if (it.dataType === 'Checklist') return <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{it.frequency || 'Daily'} CYCLE</span>;
     return (
-      <div className="flex flex-col items-center gap-1">
-        <div className="flex items-center gap-1.5">
-          <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
-          <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
-        </div>
-        {reviseLink(it)}
+      <div className="flex items-center gap-1.5">
+
+        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border ${isPastDueItem(it) ? 'text-red-500 border-red-500/20 bg-red-500/5' : 'text-primary border-primary/20 bg-primary/5'}`}>{it.priority || 'Standard'}</span>
+        <span className="text-[7px] text-slate-400 font-black uppercase">/ {it.statusLabel || it.status}</span>
       </div>
     );
   };
-  // "Revise" sits under Priority / Status (it used to be in the Actions menu)
-  const reviseLink = (it) => (it.dataType === 'Delegation' && reviseCheck(it).ok ? (
-    <button type="button" onClick={() => { setSelectedTask(it); setShowRevisionModal(true); }} data-testid="revise-link"
-      className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[8px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-white transition-colors active:scale-95 max-lg:min-h-8"
-      title="Ask for more time on this task">Revise</button>
+  /* OLD_REVISE_LINK_CLEANUP
+        </div>
+
+      </div>
+    );
+  };
+
+
+
+
+
   ) : null);
+
+  */
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[300px] bg-transparent">
@@ -1203,7 +1227,7 @@ const DoerChecklist = ({ doerId }) => {
                       {item.followerNames && item.followerNames.length > 0 && <span className="flex items-baseline gap-1.5 min-w-0 text-indigo-600 dark:text-indigo-300"><span className="text-[9.5px] font-black tracking-wider uppercase text-muted-foreground shrink-0">FOLLOWERS:</span><span className="text-xs font-bold overflow-wrap-anywhere">{item.followerNames.join(', ')}</span></span>}
                       {item.dataType === 'Checklist' && <span className="flex items-center gap-1.5 min-w-0"><RefreshCcw size={13} className="shrink-0 opacity-70" />{item.frequency || 'Daily'}</span>}
                       {revisedNote(item) && <span className="basis-full text-[10px] font-black uppercase text-amber-600">{revisedNote(item)}</span>}
-                      {reviseLink(item) && <span className="basis-full">{reviseLink(item)}</span>}
+                      {reviseDateButton(item) && <span className="basis-full">{reviseDateButton(item)}</span>}
                     </div>
         
                     {photoLink(item)}

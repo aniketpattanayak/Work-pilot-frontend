@@ -625,7 +625,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                   <p className="mt-1.5 text-[11px] text-slate-500">Followers can only watch and follow up with the doer. They cannot complete the task or change its date.</p>
                 </div>
               </FormField>
-              <FormField L={L} id="revision" full>
+              <FormField L={{ ...L, hidden: (id) => id === 'revision' ? false : L.hidden(id) }} id="revision" full>
                 <div className="flex flex-wrap items-center gap-6 pt-2">
                   <label className="flex items-center gap-2 text-xl text-slate-600">
                     <input
@@ -634,7 +634,7 @@ const CreateTask = ({ tenantId, assignerId, employees: initialEmployees, onSucce
                       checked={task.isRevisionAllowed}
                       onChange={(e) => setTask({ ...task, isRevisionAllowed: e.target.checked })}
                     />
-                    {L.label("revision", "Allow deadline change")}
+                    {L.label("revision", "Allow Deadline Change")}
                   </label>
                   {task.isRevisionAllowed && (
                     <label className="flex items-center gap-2 text-sm text-slate-600" title="After the deadline you chose, the doer can move it by up to this many days">
